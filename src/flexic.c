@@ -59,6 +59,53 @@ static bool bytes_to_width(flexi_width_e *width, int bytes)
 
 /******************************************************************************/
 
+static bool type_is_int(flexi_type_e type)
+{
+    if (type == FLEXI_TYPE_INT || type == FLEXI_TYPE_INDIRECT_INT)
+    {
+        return true;
+    }
+    return false;
+}
+
+/******************************************************************************/
+
+static bool type_is_uint(flexi_type_e type)
+{
+    if (type == FLEXI_TYPE_UINT || type == FLEXI_TYPE_INDIRECT_UINT)
+    {
+        return true;
+    }
+    return false;
+}
+
+/******************************************************************************/
+
+static bool type_is_anyint(flexi_type_e type)
+{
+    switch (type)
+    {
+    case FLEXI_TYPE_INT:
+    case FLEXI_TYPE_UINT:
+    case FLEXI_TYPE_INDIRECT_INT:
+    case FLEXI_TYPE_INDIRECT_UINT: return true;
+    }
+    return false;
+}
+
+/******************************************************************************/
+
+static bool type_is_float(flexi_type_e type)
+{
+    if (type == FLEXI_TYPE_FLOAT || type == FLEXI_TYPE_INDIRECT_FLOAT)
+    {
+        return true;
+    }
+    return false;
+}
+
+/******************************************************************************/
+
 static bool type_is_direct(flexi_type_e type)
 {
     if (type >= FLEXI_TYPE_NULL && type <= FLEXI_TYPE_FLOAT)
@@ -222,7 +269,7 @@ int flexi_cursor_stride(const flexi_cursor_s *cursor)
 
 bool flexi_cursor_get_int(const flexi_cursor_s *cursor, int64_t *v)
 {
-    if (cursor->type == FLEXI_TYPE_INT || cursor->type == FLEXI_TYPE_UINT)
+    if (type_is_anyint(cursor->type))
     {
         switch (cursor->stride)
         {
@@ -233,7 +280,7 @@ bool flexi_cursor_get_int(const flexi_cursor_s *cursor, int64_t *v)
         }
         return false;
     }
-    else if (cursor->type == FLEXI_TYPE_FLOAT)
+    else if (type_is_float(cursor->type))
     {
         if (cursor->stride == 4)
         {
@@ -258,7 +305,7 @@ bool flexi_cursor_get_int(const flexi_cursor_s *cursor, int64_t *v)
 
 bool flexi_cursor_get_uint(const flexi_cursor_s *cursor, uint64_t *v)
 {
-    if (cursor->type == FLEXI_TYPE_INT || cursor->type == FLEXI_TYPE_UINT)
+    if (type_is_anyint(cursor->type))
     {
         switch (cursor->stride)
         {
@@ -269,7 +316,7 @@ bool flexi_cursor_get_uint(const flexi_cursor_s *cursor, uint64_t *v)
         }
         return false;
     }
-    else if (cursor->type == FLEXI_TYPE_FLOAT)
+    else if (type_is_float(cursor->type))
     {
         if (cursor->stride == 4)
         {
@@ -294,7 +341,7 @@ bool flexi_cursor_get_uint(const flexi_cursor_s *cursor, uint64_t *v)
 
 bool flexi_cursor_get_float(const flexi_cursor_s *cursor, float *v)
 {
-    if (cursor->type == FLEXI_TYPE_INT)
+    if (type_is_int(cursor->type))
     {
         switch (cursor->stride)
         {
@@ -305,7 +352,7 @@ bool flexi_cursor_get_float(const flexi_cursor_s *cursor, float *v)
         }
         return false;
     }
-    else if (cursor->type == FLEXI_TYPE_UINT)
+    else if (type_is_uint(cursor->type))
     {
         switch (cursor->stride)
         {
@@ -316,7 +363,7 @@ bool flexi_cursor_get_float(const flexi_cursor_s *cursor, float *v)
         }
         return false;
     }
-    else if (cursor->type == FLEXI_TYPE_FLOAT)
+    else if (type_is_float(cursor->type))
     {
         if (cursor->stride == 4)
         {
@@ -341,7 +388,7 @@ bool flexi_cursor_get_float(const flexi_cursor_s *cursor, float *v)
 
 bool flexi_cursor_get_double(const flexi_cursor_s *cursor, double *v)
 {
-    if (cursor->type == FLEXI_TYPE_INT)
+    if (type_is_int(cursor->type))
     {
         switch (cursor->stride)
         {
@@ -352,7 +399,7 @@ bool flexi_cursor_get_double(const flexi_cursor_s *cursor, double *v)
         }
         return false;
     }
-    else if (cursor->type == FLEXI_TYPE_UINT)
+    else if (type_is_uint(cursor->type))
     {
         switch (cursor->stride)
         {
@@ -363,7 +410,7 @@ bool flexi_cursor_get_double(const flexi_cursor_s *cursor, double *v)
         }
         return false;
     }
-    else if (cursor->type == FLEXI_TYPE_FLOAT)
+    else if (type_is_float(cursor->type))
     {
         if (cursor->stride == 4)
         {

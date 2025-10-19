@@ -177,6 +177,66 @@ TEST(FlexiC, SingleIndirectInt1)
 
     ASSERT_EQ(FLEXI_TYPE_INDIRECT_INT, flexi_cursor_type(&cursor));
     ASSERT_EQ(1, flexi_cursor_stride(&cursor));
+
+    {
+        int64_t v = 0;
+        ASSERT_TRUE(flexi_cursor_get_int(&cursor, &v));
+        ASSERT_EQ(v, 1);
+    }
+
+    {
+        uint64_t v = 0;
+        ASSERT_TRUE(flexi_cursor_get_uint(&cursor, &v));
+        ASSERT_EQ(v, 1);
+    }
+
+    {
+        float v = 0.0f;
+        ASSERT_TRUE(flexi_cursor_get_float(&cursor, &v));
+        ASSERT_EQ(v, 1.0f);
+    }
+
+    {
+        double v = 0.0;
+        ASSERT_TRUE(flexi_cursor_get_double(&cursor, &v));
+        ASSERT_EQ(v, 1.0);
+    }
+}
+
+TEST(FlexiC, SingleIndirectFloat)
+{
+    const uint8_t data[7] = {0x00, 0x00, 0x80, 0x3f, 0x04, 0x22, 0x01};
+
+    flexi_cursor_s cursor;
+    flexi_buffer_s buffer = flexi_make_buffer(data, sizeof(data));
+    ASSERT_TRUE(flexi_buffer_open(&buffer, &cursor));
+
+    ASSERT_EQ(FLEXI_TYPE_INDIRECT_FLOAT, flexi_cursor_type(&cursor));
+    ASSERT_EQ(4, flexi_cursor_stride(&cursor));
+
+    {
+        int64_t v = 0;
+        ASSERT_TRUE(flexi_cursor_get_int(&cursor, &v));
+        ASSERT_EQ(v, 1);
+    }
+
+    {
+        uint64_t v = 0;
+        ASSERT_TRUE(flexi_cursor_get_uint(&cursor, &v));
+        ASSERT_EQ(v, 1);
+    }
+
+    {
+        float v = 0.0f;
+        ASSERT_TRUE(flexi_cursor_get_float(&cursor, &v));
+        ASSERT_EQ(v, 1.0f);
+    }
+
+    {
+        double v = 0.0;
+        ASSERT_TRUE(flexi_cursor_get_double(&cursor, &v));
+        ASSERT_EQ(v, 1.0);
+    }
 }
 
 TEST(FlexiC, SimpleVector)
