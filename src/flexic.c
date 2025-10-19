@@ -26,14 +26,14 @@
 
 static flexi_type_e unpack_type(flexi_packed_t packed)
 {
-    return packed >> 2;
+    return (flexi_type_e)(packed >> 2);
 }
 
 /******************************************************************************/
 
 static flexi_width_e unpack_width(flexi_packed_t packed)
 {
-    return packed & 0x03;
+    return (flexi_width_e)(packed & 0x03);
 }
 
 /******************************************************************************/
@@ -41,20 +41,6 @@ static flexi_width_e unpack_width(flexi_packed_t packed)
 static int width_to_bytes(flexi_width_e width)
 {
     return 1 << width;
-}
-
-/******************************************************************************/
-
-static bool bytes_to_width(flexi_width_e *width, int bytes)
-{
-    switch (bytes)
-    {
-    case 1: *width = FLEXI_WIDTH_1B; return true;
-    case 2: *width = FLEXI_WIDTH_2B; return true;
-    case 4: *width = FLEXI_WIDTH_4B; return true;
-    case 8: *width = FLEXI_WIDTH_8B; return true;
-    }
-    return false;
 }
 
 /******************************************************************************/
@@ -189,7 +175,7 @@ static bool cursor_get_types(const flexi_cursor_s *cursor, const flexi_packed_t 
 flexi_buffer_s flexi_make_buffer(const void *buffer, size_t len)
 {
     flexi_buffer_s rvo;
-    rvo.data = buffer;
+    rvo.data = (const char *)buffer;
     rvo.length = (ptrdiff_t)len;
     return rvo;
 }
@@ -239,7 +225,7 @@ bool flexi_buffer_open(const flexi_buffer_s *buffer, flexi_cursor_s *cursor)
     default: return false;
     }
 
-    uint8_t *dest = NULL;
+    const uint8_t *dest = NULL;
     if (!cursor_resolve_offset(&dest, cursor->buffer, cursor->cursor.pb, offset))
     {
         return false;

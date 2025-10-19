@@ -6,11 +6,14 @@ option(FLEXIC_ENABLE_TESTS "Enable tests for FlexiC")
 
 project(flexic LANGUAGES C CXX)
 
-add_library(flexic STATIC)
-target_sources(flexic PUBLIC
-    "${CMAKE_CURRENT_SOURCE_DIR}/include/flexic.h")
-target_sources(flexic PRIVATE
+# C library
+
+set(FLEXIC_SOURCES
+    "${CMAKE_CURRENT_SOURCE_DIR}/include/flexic.h"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/flexic.c")
+
+add_library(flexic STATIC)
+target_sources(flexic PRIVATE ${FLEXIC_SOURCES})
 target_include_directories(flexic PUBLIC
     "${CMAKE_CURRENT_SOURCE_DIR}/include")
 
