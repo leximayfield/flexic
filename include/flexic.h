@@ -80,12 +80,7 @@ extern "C"
     typedef struct _flexi_cursor_s
     {
         const flexi_buffer_s *buffer;
-        union {
-            const uint8_t *pb;
-            const uint16_t *pw;
-            const uint32_t *pdw;
-            const uint64_t *pqw;
-        } cursor;
+        const char *cursor;
         flexi_type_e type;
         int stride;
     } flexi_cursor_s;
@@ -100,10 +95,14 @@ extern "C"
     bool flexi_cursor_get_double(const flexi_cursor_s *cursor, double *v);
     bool flexi_cursor_get_string(const flexi_cursor_s *cursor, const char **str);
     bool flexi_cursor_get_string_len(const flexi_cursor_s *cursor, size_t *len);
+    bool flexi_cursor_get_vector_data(const flexi_cursor_s *cursor, const void **data);
     bool flexi_cursor_get_vector_len(const flexi_cursor_s *cursor, size_t *len);
     bool flexi_cursor_get_vector_types(const flexi_cursor_s *cursor, const flexi_packed_t **packed);
+    bool flexi_cursor_seek_vector_index(const flexi_cursor_s *cursor, size_t index, flexi_cursor_s *dest);
     bool flexi_cursor_get_map_len(const flexi_cursor_s *cursor, size_t *len);
     bool flexi_cursor_get_map_types(const flexi_cursor_s *cursor, const flexi_packed_t **packed);
+    bool flexi_cursor_get_map_key(const flexi_cursor_s *cursor, size_t index, const char **str);
+    bool flexi_cursor_seek_map_value(const flexi_cursor_s *cursor, size_t index, flexi_cursor_s *dest);
 
 #ifdef __cplusplus
 }

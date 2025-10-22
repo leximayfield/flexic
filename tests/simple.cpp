@@ -248,15 +248,27 @@ TEST(FlexiC, SimpleVector)
     flexi_buffer_s buffer = flexi_make_buffer(data, sizeof(data));
     ASSERT_TRUE(flexi_buffer_open(&buffer, &cursor));
 
+    ASSERT_EQ(FLEXI_TYPE_VECTOR, flexi_cursor_type(&cursor));
+    ASSERT_EQ(4, flexi_cursor_stride(&cursor));
+
     size_t len = 0;
     ASSERT_TRUE(flexi_cursor_get_vector_len(&cursor, &len));
     ASSERT_EQ(len, 3);
 
     const flexi_packed_t *types;
     ASSERT_TRUE(flexi_cursor_get_vector_types(&cursor, &types));
+
+    int64_t checked[3] = {1, 256, 65546};
     for (size_t i = 0; i < len; i++)
     {
         ASSERT_EQ(types[i], 6);
+
+        flexi_cursor_s index;
+        ASSERT_TRUE(flexi_cursor_seek_vector_index(&cursor, i, &index));
+
+        int64_t v = 0;
+        ASSERT_TRUE(flexi_cursor_get_int(&index, &v));
+        EXPECT_EQ(v, checked[i]);
     }
 }
 
@@ -265,13 +277,23 @@ TEST(FlexiC, SimpleTypedVector)
     const uint8_t data[19] = {0x03, 0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x00, 0x01,
                               0x00, 0x00, 0x0A, 0x00, 0x01, 0x00, 0x0C, 0x2E, 0x01};
 
-    flexi_cursor_s cursor;
+    flexi_cursor_s cursor{};
     flexi_buffer_s buffer = flexi_make_buffer(data, sizeof(data));
     ASSERT_TRUE(flexi_buffer_open(&buffer, &cursor));
+
+    ASSERT_EQ(FLEXI_TYPE_VECTOR_INT, flexi_cursor_type(&cursor));
+    ASSERT_EQ(4, flexi_cursor_stride(&cursor));
 
     size_t len = 0;
     ASSERT_TRUE(flexi_cursor_get_vector_len(&cursor, &len));
     ASSERT_EQ(len, 3);
+
+    const void *vec_ptr = nullptr;
+    ASSERT_TRUE(flexi_cursor_get_vector_data(&cursor, &vec_ptr));
+    auto vec_data = static_cast<const int32_t *>(vec_ptr);
+    EXPECT_EQ(vec_data[0], 1);
+    EXPECT_EQ(vec_data[1], 256);
+    EXPECT_EQ(vec_data[2], 65546);
 }
 
 TEST(FlexiC, SimpleMap)
@@ -279,7 +301,7 @@ TEST(FlexiC, SimpleMap)
     const uint8_t data[19] = {0x66, 0x6F, 0x6F, 0x00, 0x03, 0x62, 0x61, 0x72, 0x00, 0x01,
                               0x0A, 0x01, 0x01, 0x01, 0x09, 0x14, 0x02, 0x24, 0x01};
 
-    flexi_cursor_s cursor;
+    flexi_cursor_s cursor{};
     flexi_buffer_s buffer = flexi_make_buffer(data, sizeof(data));
     ASSERT_TRUE(flexi_buffer_open(&buffer, &cursor));
 
@@ -287,7 +309,18 @@ TEST(FlexiC, SimpleMap)
     ASSERT_TRUE(flexi_cursor_get_map_len(&cursor, &len));
     ASSERT_EQ(len, 1);
 
-    const flexi_packed_t *types;
+    const flexi_packed_t *types = nullptr;
     ASSERT_TRUE(flexi_cursor_get_map_types(&cursor, &types));
     ASSERT_EQ(*types, 0x14);
+
+    const char *key = nullptr;
+    ASSERT_TRUE(flexi_cursor_get_map_key(&cursor, 0, &key));
+    ASSERT_STREQ(key, "foo");
+
+    flexi_cursor_s cursor_value{};
+    ASSERT_TRUE(flexi_cursor_seek_map_value(&cursor, 0, &cursor_value));
+
+    const char *value = nullptr;
+    ASSERT_TRUE(flexi_cursor_get_string(&cursor_value, &value));
+    ASSERT_STREQ(value, "bar");
 }

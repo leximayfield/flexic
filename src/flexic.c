@@ -24,6 +24,19 @@
 
 /******************************************************************************/
 
+#define PTR_S8(ptr) ((const int8_t *)(ptr))
+#define PTR_S16(ptr) ((const int16_t *)(ptr))
+#define PTR_S32(ptr) ((const int32_t *)(ptr))
+#define PTR_S64(ptr) ((const int64_t *)(ptr))
+#define PTR_U8(ptr) ((const uint8_t *)(ptr))
+#define PTR_U16(ptr) ((const uint16_t *)(ptr))
+#define PTR_U32(ptr) ((const uint32_t *)(ptr))
+#define PTR_U64(ptr) ((const uint64_t *)(ptr))
+#define PTR_FLOAT(ptr) ((const float *)(ptr))
+#define PTR_DOUBLE(ptr) ((const double *)(ptr))
+
+/******************************************************************************/
+
 static flexi_type_e unpack_type(flexi_packed_t packed)
 {
     return (flexi_type_e)(packed >> 2);
@@ -122,8 +135,7 @@ static bool type_is_vector(flexi_type_e type)
 
 /******************************************************************************/
 
-static bool cursor_resolve_offset(const uint8_t **dest, const flexi_buffer_s *buffer, const uint8_t *src,
-                                  uint64_t offset)
+static bool cursor_resolve_offset(const char **dest, const flexi_buffer_s *buffer, const char *src, uint64_t offset)
 {
     if (offset > PTRDIFF_MAX)
     {
@@ -131,7 +143,7 @@ static bool cursor_resolve_offset(const uint8_t **dest, const flexi_buffer_s *bu
     }
 
     ptrdiff_t move = (ptrdiff_t)offset;
-    ptrdiff_t max_move = (const char *)src - buffer->data;
+    ptrdiff_t max_move = src - buffer->data;
     if (move > max_move)
     {
         return false;
@@ -147,10 +159,10 @@ static bool cursor_get_len(const flexi_cursor_s *cursor, size_t *len)
 {
     switch (cursor->stride)
     {
-    case 1: *len = *(cursor->cursor.pb - 1); return true;
-    case 2: *len = *(cursor->cursor.pw - 1); return true;
-    case 4: *len = *(cursor->cursor.pdw - 1); return true;
-    case 8: *len = *(cursor->cursor.pqw - 1); return true;
+    case 1: *len = *(PTR_U8(cursor->cursor) - 1); return true;
+    case 2: *len = *(PTR_U16(cursor->cursor) - 1); return true;
+    case 4: *len = *(PTR_U32(cursor->cursor) - 1); return true;
+    case 8: *len = *(PTR_U64(cursor->cursor) - 1); return true;
     }
     return false;
 }
@@ -165,8 +177,52 @@ static bool cursor_get_types(const flexi_cursor_s *cursor, const flexi_packed_t 
         return false;
     }
 
-    const flexi_packed_t *p = cursor->cursor.pb;
+    const flexi_packed_t *p = PTR_U8(cursor->cursor);
     *packed = p + len * cursor->stride;
+    return true;
+}
+
+/******************************************************************************/
+
+static bool cursor_seek_vector_index(const flexi_cursor_s *cursor, size_t index, flexi_cursor_s *dest)
+{
+    const flexi_packed_t *types = NULL;
+    if (!cursor_get_types(cursor, &types))
+    {
+        return false;
+    }
+
+    flexi_type_e type = unpack_type(types[index]);
+    if (type_is_direct(type))
+    {
+        // No need to resolve an offset, we're pretty much done.
+        dest->buffer = cursor->buffer;
+        dest->cursor = cursor->cursor + (index * (size_t)cursor->stride);
+        dest->type = type;
+        dest->stride = cursor->stride;
+        return true;
+    }
+
+    uint64_t offset = 0;
+    const char *offset_ptr = cursor->cursor + (index * (size_t)cursor->stride);
+
+    switch (cursor->stride)
+    {
+    case 1: offset = *PTR_U8(offset_ptr); break;
+    case 2: offset = *PTR_U16(offset_ptr); break;
+    case 4: offset = *PTR_U32(offset_ptr); break;
+    case 8: offset = *PTR_U64(offset_ptr); break;
+    default: return false;
+    }
+
+    if (!cursor_resolve_offset(&dest->cursor, cursor->buffer, cursor->cursor, offset))
+    {
+        return false;
+    }
+
+    dest->buffer = cursor->buffer;
+    dest->type = type;
+    dest->stride = width_to_bytes(unpack_width(types[index]));
     return true;
 }
 
@@ -192,20 +248,20 @@ bool flexi_buffer_open(const flexi_buffer_s *buffer, flexi_cursor_s *cursor)
 
     // Width of root object.
     cursor->buffer = buffer;
-    cursor->cursor.pb = (const uint8_t *)(buffer->data) + buffer->length - 1;
-    uint8_t root_bytes = *cursor->cursor.pb;
+    cursor->cursor = buffer->data + buffer->length - 1;
+    uint8_t root_bytes = *PTR_U8(cursor->cursor);
     if (buffer->length < root_bytes + 2)
     {
         return false;
     }
 
     // Obtain the packed type.
-    cursor->cursor.pb -= 1;
-    flexi_packed_t packed = *cursor->cursor.pb;
+    cursor->cursor -= 1;
+    flexi_packed_t packed = *PTR_U8(cursor->cursor);
 
     // Point at the root object.
     flexi_type_e type = unpack_type(packed);
-    cursor->cursor.pb -= root_bytes;
+    cursor->cursor -= root_bytes;
     if (type_is_direct(type))
     {
         // No need to resolve an offset, we're done.
@@ -218,20 +274,20 @@ bool flexi_buffer_open(const flexi_buffer_s *buffer, flexi_cursor_s *cursor)
     uint64_t offset = 0;
     switch (root_bytes)
     {
-    case 1: offset = *cursor->cursor.pb; break;
-    case 2: offset = *cursor->cursor.pw; break;
-    case 4: offset = *cursor->cursor.pdw; break;
-    case 8: offset = *cursor->cursor.pqw; break;
+    case 1: offset = *PTR_U8(cursor->cursor); break;
+    case 2: offset = *PTR_U16(cursor->cursor); break;
+    case 4: offset = *PTR_U32(cursor->cursor); break;
+    case 8: offset = *PTR_U64(cursor->cursor); break;
     default: return false;
     }
 
-    const uint8_t *dest = NULL;
-    if (!cursor_resolve_offset(&dest, cursor->buffer, cursor->cursor.pb, offset))
+    const char *dest = NULL;
+    if (!cursor_resolve_offset(&dest, cursor->buffer, cursor->cursor, offset))
     {
         return false;
     }
 
-    cursor->cursor.pb = dest;
+    cursor->cursor = dest;
     cursor->type = type;
     cursor->stride = width_to_bytes(unpack_width(packed));
     return true;
@@ -259,10 +315,10 @@ bool flexi_cursor_get_int(const flexi_cursor_s *cursor, int64_t *v)
     {
         switch (cursor->stride)
         {
-        case 1: *v = (int64_t)(*(int8_t *)cursor->cursor.pb); return true;
-        case 2: *v = (int64_t)(*(int16_t *)cursor->cursor.pw); return true;
-        case 4: *v = (int64_t)(*(int32_t *)cursor->cursor.pdw); return true;
-        case 8: *v = (int64_t)(*(int64_t *)cursor->cursor.pqw); return true;
+        case 1: *v = *PTR_S8(cursor->cursor); return true;
+        case 2: *v = *PTR_S16(cursor->cursor); return true;
+        case 4: *v = *PTR_S32(cursor->cursor); return true;
+        case 8: *v = *PTR_S64(cursor->cursor); return true;
         }
         return false;
     }
@@ -270,12 +326,12 @@ bool flexi_cursor_get_int(const flexi_cursor_s *cursor, int64_t *v)
     {
         if (cursor->stride == 4)
         {
-            *v = (int64_t)(*(float *)cursor->cursor.pdw);
+            *v = (int64_t)*PTR_FLOAT(cursor->cursor);
             return true;
         }
         else if (cursor->stride == 8)
         {
-            *v = (int64_t)(*(double *)cursor->cursor.pqw);
+            *v = (int64_t)*PTR_DOUBLE(cursor->cursor);
             return true;
         }
 
@@ -295,10 +351,10 @@ bool flexi_cursor_get_uint(const flexi_cursor_s *cursor, uint64_t *v)
     {
         switch (cursor->stride)
         {
-        case 1: *v = *cursor->cursor.pb; return true;
-        case 2: *v = *cursor->cursor.pw; return true;
-        case 4: *v = *cursor->cursor.pdw; return true;
-        case 8: *v = *cursor->cursor.pqw; return true;
+        case 1: *v = *PTR_U8(cursor->cursor); return true;
+        case 2: *v = *PTR_U16(cursor->cursor); return true;
+        case 4: *v = *PTR_U32(cursor->cursor); return true;
+        case 8: *v = *PTR_U64(cursor->cursor); return true;
         }
         return false;
     }
@@ -306,12 +362,12 @@ bool flexi_cursor_get_uint(const flexi_cursor_s *cursor, uint64_t *v)
     {
         if (cursor->stride == 4)
         {
-            *v = (uint64_t)(*(float *)cursor->cursor.pdw);
+            *v = (uint64_t)*PTR_FLOAT(cursor->cursor);
             return true;
         }
         else if (cursor->stride == 8)
         {
-            *v = (uint64_t)(*(double *)cursor->cursor.pqw);
+            *v = (uint64_t)*PTR_DOUBLE(cursor->cursor);
             return true;
         }
 
@@ -331,10 +387,10 @@ bool flexi_cursor_get_float(const flexi_cursor_s *cursor, float *v)
     {
         switch (cursor->stride)
         {
-        case 1: *v = (float)(*(int8_t *)cursor->cursor.pb); return true;
-        case 2: *v = (float)(*(int16_t *)cursor->cursor.pw); return true;
-        case 4: *v = (float)(*(int32_t *)cursor->cursor.pdw); return true;
-        case 8: *v = (float)(*(int64_t *)cursor->cursor.pqw); return true;
+        case 1: *v = (float)*PTR_S8(cursor->cursor); return true;
+        case 2: *v = (float)*PTR_S16(cursor->cursor); return true;
+        case 4: *v = (float)*PTR_S32(cursor->cursor); return true;
+        case 8: *v = (float)*PTR_S64(cursor->cursor); return true;
         }
         return false;
     }
@@ -342,10 +398,10 @@ bool flexi_cursor_get_float(const flexi_cursor_s *cursor, float *v)
     {
         switch (cursor->stride)
         {
-        case 1: *v = (float)*cursor->cursor.pb; return true;
-        case 2: *v = (float)*cursor->cursor.pw; return true;
-        case 4: *v = (float)*cursor->cursor.pdw; return true;
-        case 8: *v = (float)*cursor->cursor.pqw; return true;
+        case 1: *v = (float)*PTR_U8(cursor->cursor); return true;
+        case 2: *v = (float)*PTR_U16(cursor->cursor); return true;
+        case 4: *v = (float)*PTR_U32(cursor->cursor); return true;
+        case 8: *v = (float)*PTR_U64(cursor->cursor); return true;
         }
         return false;
     }
@@ -353,12 +409,12 @@ bool flexi_cursor_get_float(const flexi_cursor_s *cursor, float *v)
     {
         if (cursor->stride == 4)
         {
-            *v = *(float *)cursor->cursor.pdw;
+            *v = *PTR_FLOAT(cursor->cursor);
             return true;
         }
         else if (cursor->stride == 8)
         {
-            *v = (float)(*(double *)cursor->cursor.pqw);
+            *v = (float)*PTR_DOUBLE(cursor->cursor);
             return true;
         }
 
@@ -378,10 +434,10 @@ bool flexi_cursor_get_double(const flexi_cursor_s *cursor, double *v)
     {
         switch (cursor->stride)
         {
-        case 1: *v = (double)(*(int8_t *)cursor->cursor.pb); return true;
-        case 2: *v = (double)(*(int16_t *)cursor->cursor.pw); return true;
-        case 4: *v = (double)(*(int32_t *)cursor->cursor.pdw); return true;
-        case 8: *v = (double)(*(int64_t *)cursor->cursor.pqw); return true;
+        case 1: *v = (double)*PTR_S8(cursor->cursor); return true;
+        case 2: *v = (double)*PTR_S16(cursor->cursor); return true;
+        case 4: *v = (double)*PTR_S32(cursor->cursor); return true;
+        case 8: *v = (double)*PTR_S64(cursor->cursor); return true;
         }
         return false;
     }
@@ -389,10 +445,10 @@ bool flexi_cursor_get_double(const flexi_cursor_s *cursor, double *v)
     {
         switch (cursor->stride)
         {
-        case 1: *v = (double)*cursor->cursor.pb; return true;
-        case 2: *v = (double)*cursor->cursor.pw; return true;
-        case 4: *v = (double)*cursor->cursor.pdw; return true;
-        case 8: *v = (double)*cursor->cursor.pqw; return true;
+        case 1: *v = (double)*PTR_U8(cursor->cursor); return true;
+        case 2: *v = (double)*PTR_U16(cursor->cursor); return true;
+        case 4: *v = (double)*PTR_U32(cursor->cursor); return true;
+        case 8: *v = (double)*PTR_U64(cursor->cursor); return true;
         }
         return false;
     }
@@ -400,12 +456,12 @@ bool flexi_cursor_get_double(const flexi_cursor_s *cursor, double *v)
     {
         if (cursor->stride == 4)
         {
-            *v = (double)(*(float *)cursor->cursor.pdw);
+            *v = (double)*PTR_FLOAT(cursor->cursor);
             return true;
         }
         else if (cursor->stride == 8)
         {
-            *v = *(double *)cursor->cursor.pqw;
+            *v = *PTR_DOUBLE(cursor->cursor);
             return true;
         }
 
@@ -426,7 +482,7 @@ bool flexi_cursor_get_string(const flexi_cursor_s *cursor, const char **str)
         return false;
     }
 
-    *str = (const char *)cursor->cursor.pb;
+    *str = cursor->cursor;
     return true;
 }
 
@@ -440,6 +496,19 @@ bool flexi_cursor_get_string_len(const flexi_cursor_s *cursor, size_t *len)
     }
 
     return cursor_get_len(cursor, len);
+}
+
+/******************************************************************************/
+
+bool flexi_cursor_get_vector_data(const flexi_cursor_s *cursor, const void **data)
+{
+    if (cursor->type == FLEXI_TYPE_VECTOR || !type_is_vector(cursor->type))
+    {
+        return false;
+    }
+
+    *data = cursor->cursor;
+    return true;
 }
 
 /******************************************************************************/
@@ -468,6 +537,18 @@ bool flexi_cursor_get_vector_types(const flexi_cursor_s *cursor, const flexi_pac
 
 /******************************************************************************/
 
+bool flexi_cursor_seek_vector_index(const flexi_cursor_s *cursor, size_t index, flexi_cursor_s *dest)
+{
+    if (cursor->type != FLEXI_TYPE_VECTOR)
+    {
+        return false;
+    }
+
+    return cursor_seek_vector_index(cursor, index, dest);
+}
+
+/******************************************************************************/
+
 bool flexi_cursor_get_map_len(const flexi_cursor_s *cursor, size_t *len)
 {
     if (cursor->type != FLEXI_TYPE_MAP)
@@ -488,4 +569,68 @@ bool flexi_cursor_get_map_types(const flexi_cursor_s *cursor, const flexi_packed
     }
 
     return cursor_get_types(cursor, packed);
+}
+
+/******************************************************************************/
+
+bool flexi_cursor_get_map_key(const flexi_cursor_s *cursor, size_t index, const char **str)
+{
+    if (cursor->type != FLEXI_TYPE_MAP)
+    {
+        return false;
+    }
+
+    // Figure out offset and width of keys vector.
+    uint64_t keys_offset = 0;
+    uint64_t keys_width = 0;
+    switch (cursor->stride)
+    {
+    case 1:
+        keys_offset = *(PTR_U8(cursor->cursor) - 3);
+        keys_width = *(PTR_U8(cursor->cursor) - 2);
+        break;
+    case 2:
+        keys_offset = *(PTR_U16(cursor->cursor) - 3);
+        keys_width = *(PTR_U16(cursor->cursor) - 2);
+        break;
+    case 4:
+        keys_offset = *(PTR_U32(cursor->cursor) - 3);
+        keys_width = *(PTR_U32(cursor->cursor) - 2);
+        break;
+    case 8:
+        keys_offset = *(PTR_U64(cursor->cursor) - 3);
+        keys_width = *(PTR_U64(cursor->cursor) - 2);
+        break;
+    default: return false;
+    }
+
+    // Seek the keys base.
+    const char *keys_base = cursor->cursor - ((3 * cursor->stride) + keys_offset);
+
+    // Resolve the key.
+    uint64_t offset = 0;
+    const char *offset_ptr = keys_base + (index * (size_t)keys_width);
+
+    switch (keys_width)
+    {
+    case 1: offset = *PTR_U8(offset_ptr); break;
+    case 2: offset = *PTR_U16(offset_ptr); break;
+    case 4: offset = *PTR_U32(offset_ptr); break;
+    case 8: offset = *PTR_U64(offset_ptr); break;
+    default: return false;
+    }
+
+    return cursor_resolve_offset(str, cursor->buffer, offset_ptr, offset);
+}
+
+/******************************************************************************/
+
+bool flexi_cursor_seek_map_value(const flexi_cursor_s *cursor, size_t index, flexi_cursor_s *dest)
+{
+    if (cursor->type != FLEXI_TYPE_MAP)
+    {
+        return false;
+    }
+
+    return cursor_seek_vector_index(cursor, index, dest);
 }

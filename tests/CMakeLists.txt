@@ -11,7 +11,8 @@ enable_testing()
 # Test suite.
 add_executable(flexic_test)
 target_sources(flexic_test PRIVATE
-    "${CMAKE_CURRENT_SOURCE_DIR}/test.cpp")
+    "${CMAKE_CURRENT_SOURCE_DIR}/simple.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/gold.cpp")
 target_include_directories(flexic_test PRIVATE "${CMAKE_CURRENT_BINARY_DIR}")
 target_link_libraries(flexic_test PRIVATE flexic GTest::gtest_main)
 
