@@ -36,6 +36,12 @@ TEST(Simple, SingleInt1)
         ASSERT_TRUE(flexi_cursor_double(&cursor, &v));
         ASSERT_EQ(v, 1.0);
     }
+
+    {
+        bool v = false;
+        ASSERT_TRUE(flexi_cursor_bool(&cursor, &v));
+        ASSERT_EQ(v, true);
+    }
 }
 
 TEST(Simple, SingleUint1)
@@ -71,6 +77,12 @@ TEST(Simple, SingleUint1)
         double v = 0.0;
         ASSERT_TRUE(flexi_cursor_double(&cursor, &v));
         ASSERT_EQ(v, 1.0);
+    }
+
+    {
+        bool v = false;
+        ASSERT_TRUE(flexi_cursor_bool(&cursor, &v));
+        ASSERT_EQ(v, true);
     }
 }
 
@@ -108,6 +120,12 @@ TEST(Simple, SingleFloat)
         ASSERT_TRUE(flexi_cursor_double(&cursor, &v));
         ASSERT_EQ(v, 1.0);
     }
+
+    {
+        bool v = false;
+        ASSERT_TRUE(flexi_cursor_bool(&cursor, &v));
+        ASSERT_EQ(v, true);
+    }
 }
 
 TEST(Simple, SingleDouble)
@@ -144,6 +162,12 @@ TEST(Simple, SingleDouble)
         ASSERT_TRUE(flexi_cursor_double(&cursor, &v));
         ASSERT_EQ(v, 1.0);
     }
+
+    {
+        bool v = false;
+        ASSERT_TRUE(flexi_cursor_bool(&cursor, &v));
+        ASSERT_EQ(v, true);
+    }
 }
 
 TEST(Simple, SingleString)
@@ -165,6 +189,27 @@ TEST(Simple, SingleString)
     const char *ch = nullptr;
     ASSERT_TRUE(flexi_cursor_string(&cursor, &ch));
     ASSERT_STREQ(ch, "hello flexbuffers!");
+}
+
+TEST(Simple, SingleBlob)
+{
+    const uint8_t data[23] = {0x12, 0x68, 0x65, 0x6C, 0x6C, 0x6F, 0x20, 0x66, 0x6C, 0x65, 0x78, 0x62,
+                              0x75, 0x66, 0x66, 0x65, 0x72, 0x73, 0x21, 0x00, 0x13, 0x64, 0x01};
+
+    flexi_cursor_s cursor;
+    flexi_buffer_s buffer = flexi_make_buffer(data, sizeof(data));
+    ASSERT_TRUE(flexi_buffer_open(&buffer, &cursor));
+
+    ASSERT_EQ(FLEXI_TYPE_BLOB, flexi_cursor_type(&cursor));
+    ASSERT_EQ(1, flexi_cursor_stride(&cursor));
+
+    size_t len = 0;
+    ASSERT_TRUE(flexi_cursor_length(&cursor, &len));
+    ASSERT_EQ(len, 18);
+
+    const uint8_t *ch = nullptr;
+    ASSERT_TRUE(flexi_cursor_blob(&cursor, &ch));
+    ASSERT_EQ(0, memcmp(ch, "hello flexbuffers!", 19));
 }
 
 TEST(Simple, SingleIndirectInt1)

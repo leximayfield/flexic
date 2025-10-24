@@ -115,17 +115,18 @@ extern "C"
     flexi_type_e flexi_cursor_type(const flexi_cursor_s *cursor);
     int flexi_cursor_stride(const flexi_cursor_s *cursor);
     bool flexi_cursor_length(const flexi_cursor_s *cursor, size_t *len);
+    bool flexi_cursor_bool(const flexi_cursor_s *cursor, bool *v);
     bool flexi_cursor_int(const flexi_cursor_s *cursor, int64_t *v);
     bool flexi_cursor_uint(const flexi_cursor_s *cursor, uint64_t *v);
     bool flexi_cursor_float(const flexi_cursor_s *cursor, float *v);
     bool flexi_cursor_double(const flexi_cursor_s *cursor, double *v);
     bool flexi_cursor_string(const flexi_cursor_s *cursor, const char **str);
+    bool flexi_cursor_blob(const flexi_cursor_s *cursor, const uint8_t **blob);
     bool flexi_cursor_typed_vector_data(const flexi_cursor_s *cursor, const void **data);
     bool flexi_cursor_vector_types(const flexi_cursor_s *cursor, const flexi_packed_t **packed);
     bool flexi_cursor_seek_vector_index(const flexi_cursor_s *cursor, size_t index, flexi_cursor_s *dest);
     bool flexi_cursor_map_key_at_index(const flexi_cursor_s *cursor, size_t index, const char **str);
     bool flexi_cursor_seek_map_key(const flexi_cursor_s *cursor, const char *key, flexi_cursor_s *dest);
-    bool flexi_cursor_seek_map_key2(const flexi_cursor_s *cursor, const char *key, flexi_cursor_s *dest);
 
     bool flexi_read(const flexi_reader_s *reader, const flexi_cursor_s *cursor);
 

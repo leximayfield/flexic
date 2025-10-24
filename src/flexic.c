@@ -430,6 +430,41 @@ bool flexi_cursor_length(const flexi_cursor_s *cursor, size_t *len)
 
 /******************************************************************************/
 
+bool flexi_cursor_bool(const flexi_cursor_s *cursor, bool *v)
+{
+    if (type_is_anyint(cursor->type))
+    {
+        switch (cursor->stride)
+        {
+        case 1: *v = (bool)*PTR_U8(cursor->cursor); return true;
+        case 2: *v = (bool)*PTR_U16(cursor->cursor); return true;
+        case 4: *v = (bool)*PTR_U32(cursor->cursor); return true;
+        case 8: *v = (bool)*PTR_U64(cursor->cursor); return true;
+        }
+        return false;
+    }
+    else if (type_is_float(cursor->type))
+    {
+        switch (cursor->stride)
+        {
+        case 4: *v = (bool)*PTR_F32(cursor->cursor); return true;
+        case 8: *v = (bool)*PTR_F64(cursor->cursor); return true;
+        }
+        return false;
+    }
+    else if (cursor->type == FLEXI_TYPE_BOOL && cursor->stride == 1)
+    {
+        *v = *PTR_BOOL(cursor->cursor);
+        return true;
+    }
+    else
+    {
+        return false;
+    }
+}
+
+/******************************************************************************/
+
 bool flexi_cursor_int(const flexi_cursor_s *cursor, int64_t *v)
 {
     if (type_is_anyint(cursor->type))
@@ -451,6 +486,11 @@ bool flexi_cursor_int(const flexi_cursor_s *cursor, int64_t *v)
         case 8: *v = (int64_t)*PTR_F64(cursor->cursor); return true;
         }
         return false;
+    }
+    else if (cursor->type == FLEXI_TYPE_BOOL && cursor->stride == 1)
+    {
+        *v = *PTR_BOOL(cursor->cursor);
+        return true;
     }
     else
     {
@@ -481,6 +521,11 @@ bool flexi_cursor_uint(const flexi_cursor_s *cursor, uint64_t *v)
         case 8: *v = (uint64_t)*PTR_F64(cursor->cursor); return true;
         }
         return false;
+    }
+    else if (cursor->type == FLEXI_TYPE_BOOL && cursor->stride == 1)
+    {
+        *v = *PTR_BOOL(cursor->cursor);
+        return true;
     }
     else
     {
@@ -523,6 +568,11 @@ bool flexi_cursor_float(const flexi_cursor_s *cursor, float *v)
         }
         return false;
     }
+    else if (cursor->type == FLEXI_TYPE_BOOL && cursor->stride == 1)
+    {
+        *v = (float)*PTR_BOOL(cursor->cursor);
+        return true;
+    }
     else
     {
         return false;
@@ -564,6 +614,11 @@ bool flexi_cursor_double(const flexi_cursor_s *cursor, double *v)
         }
         return false;
     }
+    else if (cursor->type == FLEXI_TYPE_BOOL && cursor->stride == 1)
+    {
+        *v = (double)*PTR_BOOL(cursor->cursor);
+        return true;
+    }
     else
     {
         return false;
@@ -580,6 +635,19 @@ bool flexi_cursor_string(const flexi_cursor_s *cursor, const char **str)
     }
 
     *str = cursor->cursor;
+    return true;
+}
+
+/******************************************************************************/
+
+bool flexi_cursor_blob(const flexi_cursor_s *cursor, const uint8_t **blob)
+{
+    if (cursor->type != FLEXI_TYPE_BLOB)
+    {
+        return false;
+    }
+
+    *blob = cursor->cursor;
     return true;
 }
 

@@ -27,7 +27,7 @@ const uint8_t g_data[166] = {
     0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x3D, 0x00, 0x00, 0x00, 0x00, 0x00, 0xC8, 0x42, 0x2D, 0x00, 0x00, 0x00,
     0x85, 0x00, 0x00, 0x00, 0x2E, 0x4E, 0x6A, 0x90, 0x0E, 0x24, 0x28, 0x23, 0x26, 0x01};
 
-TEST(Gold, GetMapKey)
+TEST(Gold, MapLength)
 {
     flexi_cursor_s cursor;
     flexi_buffer_s buffer = flexi_make_buffer(g_data, sizeof(g_data));
@@ -36,6 +36,13 @@ TEST(Gold, GetMapKey)
     size_t len = 0;
     ASSERT_TRUE(flexi_cursor_length(&cursor, &len));
     ASSERT_EQ(len, 7);
+}
+
+TEST(Gold, CursorMapKeyAtIndex)
+{
+    flexi_cursor_s cursor;
+    flexi_buffer_s buffer = flexi_make_buffer(g_data, sizeof(g_data));
+    ASSERT_TRUE(flexi_buffer_open(&buffer, &cursor));
 
     const char *keys[7] = {"bar", "bar3", "bool", "bools", "foo", "mymap", "vec"};
     for (size_t i = 0; i < 7; i++)
@@ -52,9 +59,18 @@ TEST(Gold, SeekMapKey)
     flexi_buffer_s buffer = flexi_make_buffer(g_data, sizeof(g_data));
     ASSERT_TRUE(flexi_buffer_open(&buffer, &cursor));
 
-    flexi_cursor_s found;
-    ASSERT_TRUE(flexi_cursor_seek_map_key(&cursor, "bar3", &found));
-    ASSERT_EQ(FLEXI_TYPE_VECTOR_INT3, flexi_cursor_type(&found));
+    const char *keys[7] = {"bar", "bar3", "bool", "bools", "foo", "mymap", "vec"};
+    flexi_type_e types[7] = {
+        FLEXI_TYPE_VECTOR_INT, FLEXI_TYPE_VECTOR_INT3, FLEXI_TYPE_BOOL,   FLEXI_TYPE_VECTOR_BOOL,
+        FLEXI_TYPE_FLOAT,      FLEXI_TYPE_MAP,         FLEXI_TYPE_VECTOR,
+    };
+
+    for (size_t i = 0; i < 7; i++)
+    {
+        flexi_cursor_s check;
+        ASSERT_TRUE(flexi_cursor_seek_map_key(&cursor, keys[i], &check));
+        ASSERT_EQ(flexi_cursor_type(&check), types[i]);
+    }
 }
 
 TEST(Gold, SeekMapKeyMissing)
