@@ -85,24 +85,49 @@ extern "C"
         int stride;
     } flexi_cursor_s;
 
+    typedef struct _flexi_reader_s
+    {
+        void (*sint)(int64_t);
+        void (*uint)(uint64_t);
+        void (*f32)(float);
+        void (*f64)(double);
+        void (*string)(const char *str, size_t len);
+        void (*blob)(const void *ptr, size_t len);
+        void (*map_begin)(size_t len);
+        void (*map_key)(const char *str);
+        void (*map_end)(void);
+        void (*vector_begin)(size_t len);
+        void (*vector_end)(void);
+        void (*vector_s8)(const int8_t *ptr, size_t len);
+        void (*vector_u8)(const uint8_t *ptr, size_t len);
+        void (*vector_s16)(const int16_t *ptr, size_t len);
+        void (*vector_u16)(const uint16_t *ptr, size_t len);
+        void (*vector_s32)(const int32_t *ptr, size_t len);
+        void (*vector_u32)(const uint32_t *ptr, size_t len);
+        void (*vector_s64)(const int64_t *ptr, size_t len);
+        void (*vector_u64)(const uint64_t *ptr, size_t len);
+        void (*boolean)(bool value);
+        void (*vector_boolean)(const bool *ptr, size_t len);
+    } flexi_reader_s;
+
     flexi_buffer_s flexi_make_buffer(const void *buffer, size_t len);
     bool flexi_buffer_open(const flexi_buffer_s *buffer, flexi_cursor_s *cursor);
     flexi_type_e flexi_cursor_type(const flexi_cursor_s *cursor);
     int flexi_cursor_stride(const flexi_cursor_s *cursor);
-    bool flexi_cursor_get_int(const flexi_cursor_s *cursor, int64_t *v);
-    bool flexi_cursor_get_uint(const flexi_cursor_s *cursor, uint64_t *v);
-    bool flexi_cursor_get_float(const flexi_cursor_s *cursor, float *v);
-    bool flexi_cursor_get_double(const flexi_cursor_s *cursor, double *v);
-    bool flexi_cursor_get_string(const flexi_cursor_s *cursor, const char **str);
-    bool flexi_cursor_get_string_len(const flexi_cursor_s *cursor, size_t *len);
-    bool flexi_cursor_get_vector_data(const flexi_cursor_s *cursor, const void **data);
-    bool flexi_cursor_get_vector_len(const flexi_cursor_s *cursor, size_t *len);
-    bool flexi_cursor_get_vector_types(const flexi_cursor_s *cursor, const flexi_packed_t **packed);
+    bool flexi_cursor_length(const flexi_cursor_s *cursor, size_t *len);
+    bool flexi_cursor_int(const flexi_cursor_s *cursor, int64_t *v);
+    bool flexi_cursor_uint(const flexi_cursor_s *cursor, uint64_t *v);
+    bool flexi_cursor_float(const flexi_cursor_s *cursor, float *v);
+    bool flexi_cursor_double(const flexi_cursor_s *cursor, double *v);
+    bool flexi_cursor_string(const flexi_cursor_s *cursor, const char **str);
+    bool flexi_cursor_typed_vector_data(const flexi_cursor_s *cursor, const void **data);
+    bool flexi_cursor_vector_types(const flexi_cursor_s *cursor, const flexi_packed_t **packed);
     bool flexi_cursor_seek_vector_index(const flexi_cursor_s *cursor, size_t index, flexi_cursor_s *dest);
-    bool flexi_cursor_get_map_len(const flexi_cursor_s *cursor, size_t *len);
-    bool flexi_cursor_get_map_types(const flexi_cursor_s *cursor, const flexi_packed_t **packed);
-    bool flexi_cursor_get_map_key(const flexi_cursor_s *cursor, size_t index, const char **str);
-    bool flexi_cursor_seek_map_value(const flexi_cursor_s *cursor, size_t index, flexi_cursor_s *dest);
+    bool flexi_cursor_map_key_at_index(const flexi_cursor_s *cursor, size_t index, const char **str);
+    bool flexi_cursor_seek_map_key(const flexi_cursor_s *cursor, const char *key, flexi_cursor_s *dest);
+    bool flexi_cursor_seek_map_key2(const flexi_cursor_s *cursor, const char *key, flexi_cursor_s *dest);
+
+    bool flexi_read(const flexi_reader_s *reader, const flexi_cursor_s *cursor);
 
 #ifdef __cplusplus
 }

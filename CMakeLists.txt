@@ -3,6 +3,7 @@ cmake_minimum_required(VERSION 3.31)
 set_property(GLOBAL PROPERTY USE_FOLDERS ON)
 
 option(FLEXIC_ENABLE_TESTS "Enable tests for FlexiC")
+option(FLEXIC_ENABLE_BENCHES "Enable benchmarks for FlexiC")
 
 project(flexic LANGUAGES C CXX)
 
@@ -25,4 +26,8 @@ endif()
 
 if(FLEXIC_ENABLE_TESTS)
     add_subdirectory(tests)
+endif()
+
+if(FLEXIC_ENABLE_BENCHES)
+    add_subdirectory(benches)
 endif()
