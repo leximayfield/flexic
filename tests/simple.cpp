@@ -26,14 +26,8 @@ TEST(Simple, SingleInt1)
     }
 
     {
-        float v = 0.0f;
-        ASSERT_TRUE(flexi_cursor_float(&cursor, &v));
-        ASSERT_EQ(v, 1.0f);
-    }
-
-    {
         double v = 0.0;
-        ASSERT_TRUE(flexi_cursor_double(&cursor, &v));
+        ASSERT_TRUE(flexi_cursor_float(&cursor, &v));
         ASSERT_EQ(v, 1.0);
     }
 
@@ -68,14 +62,8 @@ TEST(Simple, SingleUint1)
     }
 
     {
-        float v = 0.0f;
-        ASSERT_TRUE(flexi_cursor_float(&cursor, &v));
-        ASSERT_EQ(v, 1.0f);
-    }
-
-    {
         double v = 0.0;
-        ASSERT_TRUE(flexi_cursor_double(&cursor, &v));
+        ASSERT_TRUE(flexi_cursor_float(&cursor, &v));
         ASSERT_EQ(v, 1.0);
     }
 
@@ -110,14 +98,8 @@ TEST(Simple, SingleFloat)
     }
 
     {
-        float v = 0.0f;
-        ASSERT_TRUE(flexi_cursor_float(&cursor, &v));
-        ASSERT_EQ(v, 1.0f);
-    }
-
-    {
         double v = 0.0;
-        ASSERT_TRUE(flexi_cursor_double(&cursor, &v));
+        ASSERT_TRUE(flexi_cursor_float(&cursor, &v));
         ASSERT_EQ(v, 1.0);
     }
 
@@ -152,14 +134,8 @@ TEST(Simple, SingleDouble)
     }
 
     {
-        float v = 0.0f;
-        ASSERT_TRUE(flexi_cursor_float(&cursor, &v));
-        ASSERT_EQ(v, 1.0f);
-    }
-
-    {
         double v = 0.0;
-        ASSERT_TRUE(flexi_cursor_double(&cursor, &v));
+        ASSERT_TRUE(flexi_cursor_float(&cursor, &v));
         ASSERT_EQ(v, 1.0);
     }
 
@@ -236,14 +212,8 @@ TEST(Simple, SingleIndirectInt1)
     }
 
     {
-        float v = 0.0f;
-        ASSERT_TRUE(flexi_cursor_float(&cursor, &v));
-        ASSERT_EQ(v, 1.0f);
-    }
-
-    {
         double v = 0.0;
-        ASSERT_TRUE(flexi_cursor_double(&cursor, &v));
+        ASSERT_TRUE(flexi_cursor_float(&cursor, &v));
         ASSERT_EQ(v, 1.0);
     }
 }
@@ -272,14 +242,8 @@ TEST(Simple, SingleIndirectFloat)
     }
 
     {
-        float v = 0.0f;
-        ASSERT_TRUE(flexi_cursor_float(&cursor, &v));
-        ASSERT_EQ(v, 1.0f);
-    }
-
-    {
         double v = 0.0;
-        ASSERT_TRUE(flexi_cursor_double(&cursor, &v));
+        ASSERT_TRUE(flexi_cursor_float(&cursor, &v));
         ASSERT_EQ(v, 1.0);
     }
 }

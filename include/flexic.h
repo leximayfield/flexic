@@ -89,8 +89,7 @@ extern "C"
     {
         void (*sint)(int64_t);
         void (*uint)(uint64_t);
-        void (*f32)(float);
-        void (*f64)(double);
+        void (*flt)(double);
         void (*string)(const char *str, size_t len);
         void (*blob)(const void *ptr, size_t len);
         void (*map_begin)(size_t len);
@@ -98,16 +97,11 @@ extern "C"
         void (*map_end)(void);
         void (*vector_begin)(size_t len);
         void (*vector_end)(void);
-        void (*vector_s8)(const int8_t *ptr, size_t len);
-        void (*vector_u8)(const uint8_t *ptr, size_t len);
-        void (*vector_s16)(const int16_t *ptr, size_t len);
-        void (*vector_u16)(const uint16_t *ptr, size_t len);
-        void (*vector_s32)(const int32_t *ptr, size_t len);
-        void (*vector_u32)(const uint32_t *ptr, size_t len);
-        void (*vector_s64)(const int64_t *ptr, size_t len);
-        void (*vector_u64)(const uint64_t *ptr, size_t len);
+        void (*typed_vector_sint)(const void *ptr, int width, size_t len);
+        void (*typed_vector_uint)(const void *ptr, int width, size_t len);
+        void (*typed_vector_flt)(const void *ptr, int width, size_t len);
         void (*boolean)(bool value);
-        void (*vector_boolean)(const bool *ptr, size_t len);
+        void (*typed_vector_bool)(const bool *ptr, size_t len);
     } flexi_reader_s;
 
     flexi_buffer_s flexi_make_buffer(const void *buffer, size_t len);
@@ -118,8 +112,7 @@ extern "C"
     bool flexi_cursor_bool(const flexi_cursor_s *cursor, bool *v);
     bool flexi_cursor_int(const flexi_cursor_s *cursor, int64_t *v);
     bool flexi_cursor_uint(const flexi_cursor_s *cursor, uint64_t *v);
-    bool flexi_cursor_float(const flexi_cursor_s *cursor, float *v);
-    bool flexi_cursor_double(const flexi_cursor_s *cursor, double *v);
+    bool flexi_cursor_float(const flexi_cursor_s *cursor, double *v);
     bool flexi_cursor_string(const flexi_cursor_s *cursor, const char **str);
     bool flexi_cursor_blob(const flexi_cursor_s *cursor, const uint8_t **blob);
     bool flexi_cursor_typed_vector_data(const flexi_cursor_s *cursor, const void **data);
