@@ -1858,13 +1858,19 @@ bool flexi_write_inline_map(flexi_writer_s *writer, size_t len,
         return false;
     }
 
+    // We already have the keys written out, write out the keys vector,
+    // starting with the length.
+    if (!write_uint_by_width(writer, len, stride_bytes)) {
+        return false;
+    }
+
     // Save the base of the keys vector for later.
     size_t keys_offset;
     if (!writer_tell(writer, &keys_offset)) {
         return false;
     }
 
-    // We already have the keys written out, write out the keys vector.
+    // Write out key offsets.
     for (int i = start; i < writer->head; i += 2) {
         flexi_value_s *value = &writer->stack[i];
         ASSERT(value->type == FLEXI_TYPE_KEY);
@@ -1898,7 +1904,7 @@ bool flexi_write_inline_map(flexi_writer_s *writer, size_t len,
     }
 
     // Now we're to the values - write length.
-    if (!write_uint_by_width(writer, offset, stride_bytes)) {
+    if (!write_uint_by_width(writer, len, stride_bytes)) {
         return false;
     }
 

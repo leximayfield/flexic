@@ -48,4 +48,36 @@ TEST(Writer, WriteInlineMapInts) {
         ASSERT_TRUE(flexi_write_inline_map(&writer, 5, FLEXI_WIDTH_2B));
         ASSERT_TRUE(flexi_write_finalize(&writer));
     }
+
+    std::array<uint8_t, 87> expected = {
+        'b',  'o',  'o',  'l',  '\0', // First three keys
+        's',  'i',  'n',  't',  '\0', //
+        'i',  'n',  'd',  'i',  'r',  'e', 'c',
+        't',  '_',  's',  'i',  'n',  't', '\0', //
+        0xff, 0xff, 0xff, 0x7f,                  // Indirect int
+        'u',  'i',  'n',  't',  '\0',            // Last two keys
+        'i',  'n',  'd',  'i',  'r',  'e', 'c',
+        't',  '_',  'u',  'i',  'n',  't', '\0', //
+        0xff, 0xff, 0xff, 0xff,                  // Indirect uint
+        0x05, 0x00,                              // Map keys vector length
+        0x35, 0x00,                              // Keys[0] "bool"
+        0x2d, 0x00,                              // Keys[1] "indirect_sint"
+        0x18, 0x00,                              // Keys[2] "indirect_uint"
+        0x36, 0x00,                              // Keys[3] "sint"
+        0x21, 0x00,                              // Keys[4] "uint"
+        0x0a, 0x00,                              // Keys vector offset
+        0x02, 0x00,                              // Keys vector stride
+        0x05, 0x00,                              // Map values vector length
+        0x01, 0x00,                              // Values[0] Bool
+        0x2f, 0x00,                              // Values[1] Indirect int
+        0x1a, 0x00,                              // Values[2] Indirect uint
+        0xff, 0x7f,                              // Values[3] Int
+        0xff, 0xff,                              // Values[4] Uint
+        0x1e, 0x13, 0x05, 0x13, 0x09,            // Types
+        0x0f, 0x25, 0x01,                        // Root
+    };
+
+    for (size_t i = 0; i < std::size(expected); i++) {
+        ASSERT_EQ(expected[i], *stream.DataAt(i));
+    }
 }
