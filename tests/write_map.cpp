@@ -24,8 +24,7 @@
 
 #include "flexic.h"
 
-TEST(Writer, WriteInlineMapInts)
-{
+TEST(Writer, WriteInlineMapInts) {
     TestStream stream;
 
     {

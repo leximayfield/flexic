@@ -1,6 +1,5 @@
 ---
-BasedOnStyle: Microsoft
-IndentWidth: 4
+BasedOnStyle: LLVM
 AccessModifierOffset: -4
-AllowShortCaseLabelsOnASingleLine: true
-AlwaysBreakTemplateDeclarations: true
+AlignEscapedNewlines: DontAlign
+IndentWidth: 4

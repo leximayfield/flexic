@@ -24,8 +24,7 @@
 
 #include "flexic.h"
 
-TEST(Writer, WriteVectorInts)
-{
+TEST(Writer, WriteVectorInts) {
     TestStream stream;
 
     {
@@ -58,8 +57,7 @@ TEST(Writer, WriteVectorInts)
         0x0f, 0x29, 0x01,             // Root offset
     };
 
-    for (size_t i = 0; i < std::size(expected); i++)
-    {
+    for (size_t i = 0; i < std::size(expected); i++) {
         ASSERT_EQ(expected[i], *stream.DataAt(i));
     }
 
@@ -104,8 +102,7 @@ TEST(Writer, WriteVectorInts)
     }
 }
 
-TEST(Writer, WriteVectorFloats)
-{
+TEST(Writer, WriteVectorFloats) {
     TestStream stream;
 
     {
@@ -125,19 +122,24 @@ TEST(Writer, WriteVectorFloats)
     }
 
     std::array<uint8_t, 59> expected = {
-        0xdb, 0x0f, 0x49, 0x40,                         // Indirect float
-        0x18, 0x2d, 0x44, 0x54, 0xfb, 0x21, 0x09, 0x40, // Indirect double
-        0x04, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, // Vector length (stride 8)
-        0x00, 0x00, 0x00, 0x60, 0xfb, 0x21, 0x09, 0x40, // [0] Float (widened)
-        0x1c, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, // [1] Indirect float
-        0x18, 0x2d, 0x44, 0x54, 0xfb, 0x21, 0x09, 0x40, // [2] Double
-        0x28, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, // [2] Indirect double
-        0x0e, 0x22, 0x0f, 0x23,                         // Vector types
-        0x24, 0x2b, 0x01,                               // Root offset
+        0xdb, 0x0f, 0x49, 0x40, // Indirect float
+        0x18, 0x2d, 0x44, 0x54,
+        0xfb, 0x21, 0x09, 0x40, // Indirect double
+        0x04, 0x00, 0x00, 0x00,
+        0x00, 0x00, 0x00, 0x00, // Vector length (stride 8)
+        0x00, 0x00, 0x00, 0x60,
+        0xfb, 0x21, 0x09, 0x40, // [0] Float (widened)
+        0x1c, 0x00, 0x00, 0x00,
+        0x00, 0x00, 0x00, 0x00, // [1] Indirect float
+        0x18, 0x2d, 0x44, 0x54,
+        0xfb, 0x21, 0x09, 0x40, // [2] Double
+        0x28, 0x00, 0x00, 0x00,
+        0x00, 0x00, 0x00, 0x00, // [2] Indirect double
+        0x0e, 0x22, 0x0f, 0x23, // Vector types
+        0x24, 0x2b, 0x01,       // Root offset
     };
 
-    for (size_t i = 0; i < std::size(expected); i++)
-    {
+    for (size_t i = 0; i < std::size(expected); i++) {
         ASSERT_EQ(expected[i], *stream.DataAt(i));
     }
 
@@ -176,11 +178,11 @@ TEST(Writer, WriteVectorFloats)
     }
 }
 
-TEST(Writer, WriteStringBlob)
-{
+TEST(Writer, WriteStringBlob) {
     TestStream stream;
 
-    constexpr std::array<uint8_t, 8> BLOB = {0xD0, 0xCF, 0x11, 0xE0, 0xA1, 0xB1, 0x1A, 0xE1};
+    constexpr std::array<uint8_t, 8> BLOB = {0xD0, 0xCF, 0x11, 0xE0,
+                                             0xA1, 0xB1, 0x1A, 0xE1};
 
     {
         flexi_writer_s writer{};
@@ -199,15 +201,14 @@ TEST(Writer, WriteStringBlob)
     std::array<uint8_t, 24> expected = {
         0x05, 'x',  'y',  'z',  'z',  'y',  '\0',             // String
         0x08, 0xD0, 0xCF, 0x11, 0xE0, 0xA1, 0xB1, 0x1A, 0xE1, // Blob
-        0x02,                                                 // Vector length (stride 1)
-        0x10,                                                 // [0] String offset
-        0x0a,                                                 // [1] Blob offset
-        0x14, 0x64,                                           // Vector types
-        0x04, 0x28, 0x01,                                     // Root offset
+        0x02,             // Vector length (stride 1)
+        0x10,             // [0] String offset
+        0x0a,             // [1] Blob offset
+        0x14, 0x64,       // Vector types
+        0x04, 0x28, 0x01, // Root offset
     };
 
-    for (size_t i = 0; i < std::size(expected); i++)
-    {
+    for (size_t i = 0; i < std::size(expected); i++) {
         ASSERT_EQ(expected[i], *stream.DataAt(i));
     }
 
@@ -239,8 +240,7 @@ TEST(Writer, WriteStringBlob)
         ASSERT_TRUE(flexi_cursor_blob(&vcursor, &blob));
         ASSERT_TRUE(flexi_cursor_length(&vcursor, &len));
         ASSERT_EQ(len, 8);
-        for (size_t i = 0; i < len; i++)
-        {
+        for (size_t i = 0; i < len; i++) {
             ASSERT_EQ(blob[i], BLOB[i]);
         }
     }

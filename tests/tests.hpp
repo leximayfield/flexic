@@ -26,16 +26,13 @@
 
 #define PI_VALUE (3.14159265358979323846)
 
-class TestStream
-{
+class TestStream {
     std::array<uint8_t, 256> m_buffer{};
     size_t m_offset = 0;
 
 public:
-    bool Write(const void *ptr, size_t len)
-    {
-        if (m_offset + len >= std::size(m_buffer))
-        {
+    bool Write(const void *ptr, size_t len) {
+        if (m_offset + len >= std::size(m_buffer)) {
             return false;
         }
 
@@ -44,31 +41,24 @@ public:
         return true;
     }
 
-    const uint8_t *DataAt(size_t index) const
-    {
-        return &m_buffer[index];
-    }
+    const uint8_t *DataAt(size_t index) const { return &m_buffer[index]; }
 
-    bool Tell(size_t *offset) const
-    {
+    bool Tell(size_t *offset) const {
         *offset = m_offset;
         return true;
     }
 
-    static bool WriteFunc(const void *ptr, size_t len, void *user)
-    {
+    static bool WriteFunc(const void *ptr, size_t len, void *user) {
         auto stream = static_cast<TestStream *>(user);
         return stream->Write(ptr, len);
     }
 
-    static const void *DataAtFunc(size_t index, void *user)
-    {
+    static const void *DataAtFunc(size_t index, void *user) {
         auto stream = static_cast<TestStream *>(user);
         return stream->DataAt(index);
     }
 
-    static bool TellFunc(size_t *offset, void *user)
-    {
+    static bool TellFunc(size_t *offset, void *user) {
         auto stream = static_cast<TestStream *>(user);
         return stream->Tell(offset);
     }
