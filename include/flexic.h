@@ -42,28 +42,27 @@ extern "C"
     typedef enum _flexi_type_e
     {
         FLEXI_TYPE_NULL = 0,
-        FLEXI_TYPE_INT = 1,
+        FLEXI_TYPE_SINT = 1,
         FLEXI_TYPE_UINT = 2,
         FLEXI_TYPE_FLOAT = 3,
         FLEXI_TYPE_KEY = 4,
         FLEXI_TYPE_STRING = 5,
-        FLEXI_TYPE_INDIRECT_INT = 6,
+        FLEXI_TYPE_INDIRECT_SINT = 6,
         FLEXI_TYPE_INDIRECT_UINT = 7,
         FLEXI_TYPE_INDIRECT_FLOAT = 8,
         FLEXI_TYPE_MAP = 9,
         FLEXI_TYPE_VECTOR = 10,
-        FLEXI_TYPE_VECTOR_INT = 11,
+        FLEXI_TYPE_VECTOR_SINT = 11,
         FLEXI_TYPE_VECTOR_UINT = 12,
         FLEXI_TYPE_VECTOR_FLOAT = 13,
         FLEXI_TYPE_VECTOR_KEY = 14,
-        FLEXI_TYPE_VECTOR_STRING = 15,
-        FLEXI_TYPE_VECTOR_INT2 = 16,
+        FLEXI_TYPE_VECTOR_SINT2 = 16,
         FLEXI_TYPE_VECTOR_UINT2 = 17,
         FLEXI_TYPE_VECTOR_FLOAT2 = 18,
-        FLEXI_TYPE_VECTOR_INT3 = 19,
+        FLEXI_TYPE_VECTOR_SINT3 = 19,
         FLEXI_TYPE_VECTOR_UINT3 = 20,
         FLEXI_TYPE_VECTOR_FLOAT3 = 21,
-        FLEXI_TYPE_VECTOR_INT4 = 22,
+        FLEXI_TYPE_VECTOR_SINT4 = 22,
         FLEXI_TYPE_VECTOR_UINT4 = 23,
         FLEXI_TYPE_VECTOR_FLOAT4 = 24,
         FLEXI_TYPE_BLOB = 25,
@@ -87,9 +86,12 @@ extern "C"
 
     typedef struct _flexi_reader_s
     {
+        void (*null)(void);
         void (*sint)(int64_t);
         void (*uint)(uint64_t);
-        void (*flt)(double);
+        void (*f32)(float);
+        void (*f64)(double);
+        void (*key)(const char *str);
         void (*string)(const char *str, size_t len);
         void (*blob)(const void *ptr, size_t len);
         void (*map_begin)(size_t len);
@@ -104,16 +106,41 @@ extern "C"
         void (*typed_vector_bool)(const bool *ptr, size_t len);
     } flexi_reader_s;
 
+    typedef struct _flexi_value_s
+    {
+        union {
+            int64_t s64;
+            uint64_t u64;
+            float f32;
+            double f64;
+            size_t offset;
+        } u;
+        flexi_type_e type;
+        int width;
+    } flexi_value_s;
+
+    typedef struct _flexi_writer_s
+    {
+        flexi_value_s stack[256];
+        bool (*write_func)(const void *ptr, size_t len, void *user);
+        const void *(*data_at_func)(size_t index, void *user);
+        bool (*tell_func)(size_t *offset, void *user);
+        void *user;
+        int head;
+    } flexi_writer_s;
+
     flexi_buffer_s flexi_make_buffer(const void *buffer, size_t len);
     bool flexi_buffer_open(const flexi_buffer_s *buffer, flexi_cursor_s *cursor);
     flexi_type_e flexi_cursor_type(const flexi_cursor_s *cursor);
     int flexi_cursor_stride(const flexi_cursor_s *cursor);
     bool flexi_cursor_length(const flexi_cursor_s *cursor, size_t *len);
     bool flexi_cursor_bool(const flexi_cursor_s *cursor, bool *v);
-    bool flexi_cursor_int(const flexi_cursor_s *cursor, int64_t *v);
+    bool flexi_cursor_sint(const flexi_cursor_s *cursor, int64_t *v);
     bool flexi_cursor_uint(const flexi_cursor_s *cursor, uint64_t *v);
-    bool flexi_cursor_float(const flexi_cursor_s *cursor, double *v);
+    bool flexi_cursor_f32(const flexi_cursor_s *cursor, float *v);
+    bool flexi_cursor_f64(const flexi_cursor_s *cursor, double *v);
     bool flexi_cursor_string(const flexi_cursor_s *cursor, const char **str);
+    bool flexi_cursor_key(const flexi_cursor_s *cursor, const char **str);
     bool flexi_cursor_blob(const flexi_cursor_s *cursor, const uint8_t **blob);
     bool flexi_cursor_typed_vector_data(const flexi_cursor_s *cursor, const void **data);
     bool flexi_cursor_vector_types(const flexi_cursor_s *cursor, const flexi_packed_t **packed);
@@ -122,6 +149,22 @@ extern "C"
     bool flexi_cursor_seek_map_key(const flexi_cursor_s *cursor, const char *key, flexi_cursor_s *dest);
 
     bool flexi_read(const flexi_reader_s *reader, const flexi_cursor_s *cursor);
+
+    bool flexi_write_bool(flexi_writer_s *writer, bool v);
+    bool flexi_write_sint(flexi_writer_s *writer, int64_t v);
+    bool flexi_write_uint(flexi_writer_s *writer, uint64_t v);
+    bool flexi_write_f32(flexi_writer_s *writer, float v);
+    bool flexi_write_f64(flexi_writer_s *writer, double v);
+    bool flexi_write_string(flexi_writer_s *writer, const char *str);
+    bool flexi_write_key(flexi_writer_s *writer, const char *str);
+    bool flexi_write_blob(flexi_writer_s *writer, const void *ptr, size_t len);
+    bool flexi_write_indirect_sint(flexi_writer_s *writer, int64_t v);
+    bool flexi_write_indirect_uint(flexi_writer_s *writer, uint64_t v);
+    bool flexi_write_indirect_f32(flexi_writer_s *writer, float v);
+    bool flexi_write_indirect_f64(flexi_writer_s *writer, double v);
+    bool flexi_write_inline_map(flexi_writer_s *writer, size_t len, flexi_width_e stride);
+    bool flexi_write_vector(flexi_writer_s *writer, size_t len, flexi_width_e stride);
+    bool flexi_write_finalize(flexi_writer_s *writer);
 
 #ifdef __cplusplus
 }
