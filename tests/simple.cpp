@@ -22,8 +22,6 @@
 
 #include "tests.hpp"
 
-#include "flexic.h"
-
 TEST(Simple, SingleInt1) {
     const uint8_t data[3] = {0x01, 0x04, 0x01};
 
@@ -32,7 +30,7 @@ TEST(Simple, SingleInt1) {
     ASSERT_TRUE(flexi_buffer_open(&buffer, &cursor));
 
     ASSERT_EQ(FLEXI_TYPE_SINT, flexi_cursor_type(&cursor));
-    ASSERT_EQ(1, flexi_cursor_stride(&cursor));
+    ASSERT_EQ(1, flexi_cursor_width(&cursor));
 
     {
         int64_t v = 0;
@@ -73,7 +71,7 @@ TEST(Simple, SingleUint1) {
     ASSERT_TRUE(flexi_buffer_open(&buffer, &cursor));
 
     ASSERT_EQ(FLEXI_TYPE_UINT, flexi_cursor_type(&cursor));
-    ASSERT_EQ(1, flexi_cursor_stride(&cursor));
+    ASSERT_EQ(1, flexi_cursor_width(&cursor));
 
     {
         int64_t v = 0;
@@ -114,7 +112,7 @@ TEST(Simple, SingleFloat) {
     ASSERT_TRUE(flexi_buffer_open(&buffer, &cursor));
 
     ASSERT_EQ(FLEXI_TYPE_FLOAT, flexi_cursor_type(&cursor));
-    ASSERT_EQ(4, flexi_cursor_stride(&cursor));
+    ASSERT_EQ(4, flexi_cursor_width(&cursor));
 
     {
         int64_t v = 0;
@@ -156,7 +154,7 @@ TEST(Simple, SingleDouble) {
     ASSERT_TRUE(flexi_buffer_open(&buffer, &cursor));
 
     ASSERT_EQ(FLEXI_TYPE_FLOAT, flexi_cursor_type(&cursor));
-    ASSERT_EQ(8, flexi_cursor_stride(&cursor));
+    ASSERT_EQ(8, flexi_cursor_width(&cursor));
 
     {
         int64_t v = 0;
@@ -199,7 +197,7 @@ TEST(Simple, SingleString) {
     ASSERT_TRUE(flexi_buffer_open(&buffer, &cursor));
 
     ASSERT_EQ(FLEXI_TYPE_STRING, flexi_cursor_type(&cursor));
-    ASSERT_EQ(1, flexi_cursor_stride(&cursor));
+    ASSERT_EQ(1, flexi_cursor_width(&cursor));
 
     size_t len = 0;
     ASSERT_TRUE(flexi_cursor_length(&cursor, &len));
@@ -220,7 +218,7 @@ TEST(Simple, SingleBlob) {
     ASSERT_TRUE(flexi_buffer_open(&buffer, &cursor));
 
     ASSERT_EQ(FLEXI_TYPE_BLOB, flexi_cursor_type(&cursor));
-    ASSERT_EQ(1, flexi_cursor_stride(&cursor));
+    ASSERT_EQ(1, flexi_cursor_width(&cursor));
 
     size_t len = 0;
     ASSERT_TRUE(flexi_cursor_length(&cursor, &len));
@@ -239,7 +237,7 @@ TEST(Simple, SingleIndirectInt1) {
     ASSERT_TRUE(flexi_buffer_open(&buffer, &cursor));
 
     ASSERT_EQ(FLEXI_TYPE_INDIRECT_SINT, flexi_cursor_type(&cursor));
-    ASSERT_EQ(1, flexi_cursor_stride(&cursor));
+    ASSERT_EQ(1, flexi_cursor_width(&cursor));
 
     {
         int64_t v = 0;
@@ -274,7 +272,7 @@ TEST(Simple, SingleIndirectFloat) {
     ASSERT_TRUE(flexi_buffer_open(&buffer, &cursor));
 
     ASSERT_EQ(FLEXI_TYPE_INDIRECT_FLOAT, flexi_cursor_type(&cursor));
-    ASSERT_EQ(4, flexi_cursor_stride(&cursor));
+    ASSERT_EQ(4, flexi_cursor_width(&cursor));
 
     {
         int64_t v = 0;
@@ -311,7 +309,7 @@ TEST(Simple, SimpleVector) {
     ASSERT_TRUE(flexi_buffer_open(&buffer, &cursor));
 
     ASSERT_EQ(FLEXI_TYPE_VECTOR, flexi_cursor_type(&cursor));
-    ASSERT_EQ(4, flexi_cursor_stride(&cursor));
+    ASSERT_EQ(4, flexi_cursor_width(&cursor));
 
     size_t len = 0;
     ASSERT_TRUE(flexi_cursor_length(&cursor, &len));
@@ -343,7 +341,7 @@ TEST(Simple, SimpleTypedVector) {
     ASSERT_TRUE(flexi_buffer_open(&buffer, &cursor));
 
     ASSERT_EQ(FLEXI_TYPE_VECTOR_SINT, flexi_cursor_type(&cursor));
-    ASSERT_EQ(4, flexi_cursor_stride(&cursor));
+    ASSERT_EQ(4, flexi_cursor_width(&cursor));
 
     size_t len = 0;
     ASSERT_TRUE(flexi_cursor_length(&cursor, &len));

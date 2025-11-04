@@ -20,11 +20,29 @@
 // 3. This notice may not be removed or altered from any source distribution.
 //
 
+#include "flexic.h"
+
 #include "gtest/gtest.h"
 
 #include <array>
+#include <iostream>
+
+#define INT8_PATTERN (INT8_C(-120))
+#define INT16_PATTERN (INT16_C(-26232))
+#define INT32_PATTERN (INT32_C(-1146447480))
+#define INT64_PATTERN (INT64_C(-4822678189205112))
+
+#define UINT8_PATTERN (UINT8_C(0x88))
+#define UINT16_PATTERN (UINT16_C(0x8899))
+#define UINT32_PATTERN (UINT32_C(0x8899aabb))
+#define UINT64_PATTERN (UINT64_C(0x8899aabbccddeeff))
 
 #define PI_VALUE (3.14159265358979323846)
+
+enum class direct_e {
+    direct,
+    indirect,
+};
 
 class TestStream {
     std::array<uint8_t, 256> m_buffer{};
@@ -61,5 +79,29 @@ public:
     static bool TellFunc(size_t *offset, void *user) {
         auto stream = static_cast<TestStream *>(user);
         return stream->Tell(offset);
+    }
+};
+
+class WriteFixture : public testing::Test {
+protected:
+    TestStream m_actual;
+    flexi_writer_s m_writer{};
+
+    void SetUp() override {
+        m_writer.user = &m_actual;
+        m_writer.write_func = TestStream::WriteFunc;
+        m_writer.data_at_func = TestStream::DataAtFunc;
+        m_writer.tell_func = TestStream::TellFunc;
+    }
+
+    void AssertData(const std::vector<uint8_t> &expected) {
+        size_t actual_size = 0;
+        ASSERT_TRUE(m_actual.Tell(&actual_size));
+        ASSERT_EQ(expected.size(), actual_size);
+
+        for (size_t i = 0; i < expected.size(); i++) {
+            SCOPED_TRACE(testing::Message() << "At pos: " << i);
+            ASSERT_EQ(expected[i], *m_actual.DataAt(i));
+        }
     }
 };

@@ -22,8 +22,6 @@
 
 #include "tests.hpp"
 
-#include "flexic.h"
-
 TEST(Writer, WriteInlineMapInts) {
     TestStream stream;
 

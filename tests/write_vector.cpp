@@ -22,8 +22,6 @@
 
 #include "tests.hpp"
 
-#include "flexic.h"
-
 TEST(Writer, WriteVectorInts) {
     TestStream stream;
 
@@ -69,7 +67,7 @@ TEST(Writer, WriteVectorInts) {
         auto buffer = flexi_make_buffer(stream.DataAt(0), offset);
         ASSERT_TRUE(flexi_buffer_open(&buffer, &cursor));
         ASSERT_EQ(FLEXI_TYPE_VECTOR, flexi_cursor_type(&cursor));
-        ASSERT_EQ(2, flexi_cursor_stride(&cursor));
+        ASSERT_EQ(2, flexi_cursor_width(&cursor));
 
         size_t len = 0;
         ASSERT_TRUE(flexi_cursor_length(&cursor, &len));
@@ -144,14 +142,14 @@ TEST(Writer, WriteVectorFloats) {
     }
 
     {
-        size_t offset;
+        size_t offset = 0;
         ASSERT_TRUE(stream.Tell(&offset));
 
         flexi_cursor_s cursor{};
         auto buffer = flexi_make_buffer(stream.DataAt(0), offset);
         ASSERT_TRUE(flexi_buffer_open(&buffer, &cursor));
         ASSERT_EQ(FLEXI_TYPE_VECTOR, flexi_cursor_type(&cursor));
-        ASSERT_EQ(8, flexi_cursor_stride(&cursor));
+        ASSERT_EQ(8, flexi_cursor_width(&cursor));
 
         size_t len = 0;
         ASSERT_TRUE(flexi_cursor_length(&cursor, &len));
@@ -220,7 +218,7 @@ TEST(Writer, WriteStringBlob) {
         auto buffer = flexi_make_buffer(stream.DataAt(0), offset);
         ASSERT_TRUE(flexi_buffer_open(&buffer, &cursor));
         ASSERT_EQ(FLEXI_TYPE_VECTOR, flexi_cursor_type(&cursor));
-        ASSERT_EQ(1, flexi_cursor_stride(&cursor));
+        ASSERT_EQ(1, flexi_cursor_width(&cursor));
 
         size_t len = 0;
         ASSERT_TRUE(flexi_cursor_length(&cursor, &len));

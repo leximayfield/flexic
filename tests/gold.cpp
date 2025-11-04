@@ -22,8 +22,6 @@
 
 #include "tests.hpp"
 
-#include "flexic.h"
-
 //
 // Google's gold_flexbuffer_example.bin
 //

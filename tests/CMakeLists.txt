@@ -22,7 +22,10 @@ target_sources(flexic_test PRIVATE
     "${CMAKE_CURRENT_SOURCE_DIR}/tests.hpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/simple.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/gold.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/write_float.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/write_int.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/write_map.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/write_other.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/write_vector.cpp")
 target_link_libraries(flexic_test PRIVATE flexic GTest::gtest_main)
 

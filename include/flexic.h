@@ -76,7 +76,7 @@ typedef struct {
     const flexi_buffer_s *buffer;
     const char *cursor;
     flexi_type_e type;
-    int stride;
+    int width;
 } flexi_cursor_s;
 
 typedef struct {
@@ -124,7 +124,7 @@ typedef struct {
 flexi_buffer_s flexi_make_buffer(const void *buffer, size_t len);
 bool flexi_buffer_open(const flexi_buffer_s *buffer, flexi_cursor_s *cursor);
 flexi_type_e flexi_cursor_type(const flexi_cursor_s *cursor);
-int flexi_cursor_stride(const flexi_cursor_s *cursor);
+int flexi_cursor_width(const flexi_cursor_s *cursor);
 bool flexi_cursor_length(const flexi_cursor_s *cursor, size_t *len);
 bool flexi_cursor_bool(const flexi_cursor_s *cursor, bool *v);
 bool flexi_cursor_sint(const flexi_cursor_s *cursor, int64_t *v);
@@ -147,6 +147,7 @@ bool flexi_cursor_seek_map_key(const flexi_cursor_s *cursor, const char *key,
 
 bool flexi_read(const flexi_reader_s *reader, const flexi_cursor_s *cursor);
 
+bool flexi_write_null(flexi_writer_s *writer);
 bool flexi_write_bool(flexi_writer_s *writer, bool v);
 bool flexi_write_sint(flexi_writer_s *writer, int64_t v);
 bool flexi_write_uint(flexi_writer_s *writer, uint64_t v);
@@ -163,6 +164,8 @@ bool flexi_write_inline_map(flexi_writer_s *writer, size_t len,
                             flexi_width_e stride);
 bool flexi_write_vector(flexi_writer_s *writer, size_t len,
                         flexi_width_e stride);
+bool flexi_write_vector_f32(flexi_writer_s *writer, float *a, size_t len);
+bool flexi_write_vector_f64(flexi_writer_s *writer, double *a, size_t len);
 bool flexi_write_finalize(flexi_writer_s *writer);
 
 #ifdef __cplusplus
