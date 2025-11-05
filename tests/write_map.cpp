@@ -22,60 +22,83 @@
 
 #include "tests.hpp"
 
-TEST(Writer, WriteInlineMapInts) {
-    TestStream stream;
+TEST_F(WriteFixture, WriteMapInts) {
 
-    {
-        flexi_writer_s writer{};
+    ASSERT_TRUE(flexi_write_key(&m_writer, "bool"));
+    ASSERT_TRUE(flexi_write_key(&m_writer, "sint"));
+    ASSERT_TRUE(flexi_write_key(&m_writer, "indirect_sint"));
+    ASSERT_TRUE(flexi_write_key(&m_writer, "uint"));
+    ASSERT_TRUE(flexi_write_key(&m_writer, "indirect_uint"));
+    flexi_stack_idx_t keyset = -1;
+    ASSERT_TRUE(flexi_write_map_keys(&m_writer, 5, FLEXI_WIDTH_2B, &keyset));
+    ASSERT_EQ(0, keyset);
 
-        writer.user = &stream;
-        writer.write_func = TestStream::WriteFunc;
-        writer.data_at_func = TestStream::DataAtFunc;
-        writer.tell_func = TestStream::TellFunc;
+    ASSERT_TRUE(flexi_write_bool_keyed(&m_writer, "bool", true));
+    ASSERT_TRUE(flexi_write_sint_keyed(&m_writer, "sint", INT16_MAX));
+    ASSERT_TRUE(
+        flexi_write_indirect_sint_keyed(&m_writer, "indirect_sint", INT32_MAX));
+    ASSERT_TRUE(flexi_write_uint_keyed(&m_writer, "uint", UINT16_MAX));
+    ASSERT_TRUE(flexi_write_indirect_uint_keyed(&m_writer, "indirect_uint",
+                                                UINT32_MAX));
+    ASSERT_TRUE(flexi_write_map(&m_writer, keyset, 5, FLEXI_WIDTH_2B));
+    ASSERT_TRUE(flexi_write_finalize(&m_writer));
 
-        ASSERT_TRUE(flexi_write_key(&writer, "bool"));
-        ASSERT_TRUE(flexi_write_bool(&writer, true));
-        ASSERT_TRUE(flexi_write_key(&writer, "sint"));
-        ASSERT_TRUE(flexi_write_sint(&writer, INT16_MAX));
-        ASSERT_TRUE(flexi_write_key(&writer, "indirect_sint"));
-        ASSERT_TRUE(flexi_write_indirect_sint(&writer, INT32_MAX));
-        ASSERT_TRUE(flexi_write_key(&writer, "uint"));
-        ASSERT_TRUE(flexi_write_uint(&writer, UINT16_MAX));
-        ASSERT_TRUE(flexi_write_key(&writer, "indirect_uint"));
-        ASSERT_TRUE(flexi_write_indirect_uint(&writer, UINT32_MAX));
-        ASSERT_TRUE(flexi_write_inline_map(&writer, 5, FLEXI_WIDTH_2B));
-        ASSERT_TRUE(flexi_write_finalize(&writer));
-    }
-
-    std::array<uint8_t, 87> expected = {
+    std::vector<uint8_t> expected = {
         'b',  'o',  'o',  'l',  '\0', // First three keys
         's',  'i',  'n',  't',  '\0', //
         'i',  'n',  'd',  'i',  'r',  'e', 'c',
         't',  '_',  's',  'i',  'n',  't', '\0', //
-        0xff, 0xff, 0xff, 0x7f,                  // Indirect int
         'u',  'i',  'n',  't',  '\0',            // Last two keys
         'i',  'n',  'd',  'i',  'r',  'e', 'c',
         't',  '_',  'u',  'i',  'n',  't', '\0', //
-        0xff, 0xff, 0xff, 0xff,                  // Indirect uint
         0x05, 0x00,                              // Map keys vector length
-        0x35, 0x00,                              // Keys[0] "bool"
-        0x2d, 0x00,                              // Keys[1] "indirect_sint"
-        0x18, 0x00,                              // Keys[2] "indirect_uint"
-        0x36, 0x00,                              // Keys[3] "sint"
-        0x21, 0x00,                              // Keys[4] "uint"
-        0x0a, 0x00,                              // Keys vector offset
+        0x2d, 0x00,                              // Keys[0] "bool"
+        0x25, 0x00,                              // Keys[1] "indirect_sint"
+        0x14, 0x00,                              // Keys[2] "indirect_uint"
+        0x2e, 0x00,                              // Keys[3] "sint"
+        0x1d, 0x00,                              // Keys[4] "uint"
+        0xff, 0xff, 0xff, 0x7f,                  // Indirect int
+        0xff, 0xff, 0xff, 0xff,                  // Indirect uint
+        0x12, 0x00,                              // Keys vector offset
         0x02, 0x00,                              // Keys vector stride
         0x05, 0x00,                              // Map values vector length
         0x01, 0x00,                              // Values[0] Bool
-        0x2f, 0x00,                              // Values[1] Indirect int
-        0x1a, 0x00,                              // Values[2] Indirect uint
+        0x10, 0x00,                              // Values[1] Indirect int
+        0x0e, 0x00,                              // Values[2] Indirect uint
         0xff, 0x7f,                              // Values[3] Int
         0xff, 0xff,                              // Values[4] Uint
-        0x1e, 0x13, 0x05, 0x13, 0x09,            // Types
+        0x68, 0x1a, 0x1e, 0x05, 0x09,            // Types
         0x0f, 0x25, 0x01,                        // Root
     };
 
-    for (size_t i = 0; i < std::size(expected); i++) {
-        ASSERT_EQ(expected[i], *stream.DataAt(i));
-    }
+    AssertData(expected);
+
+    flexi_cursor_s cursor{};
+    GetCursor(&cursor);
+
+    ASSERT_EQ(FLEXI_TYPE_MAP, flexi_cursor_type(&cursor));
+    ASSERT_EQ(2, flexi_cursor_width(&cursor));
+
+    flexi_cursor_s value{};
+
+    bool vbool = false;
+    ASSERT_TRUE(flexi_cursor_seek_map_key(&cursor, "bool", &value));
+    ASSERT_TRUE(flexi_cursor_bool(&value, &vbool));
+    ASSERT_EQ(true, vbool);
+
+    int64_t vsint = 0;
+    ASSERT_TRUE(flexi_cursor_seek_map_key(&cursor, "sint", &value));
+    ASSERT_TRUE(flexi_cursor_sint(&value, &vsint));
+    ASSERT_EQ(INT16_MAX, vsint);
+    ASSERT_TRUE(flexi_cursor_seek_map_key(&cursor, "indirect_sint", &value));
+    ASSERT_TRUE(flexi_cursor_sint(&value, &vsint));
+    ASSERT_EQ(INT32_MAX, vsint);
+
+    uint64_t vuint = 0;
+    ASSERT_TRUE(flexi_cursor_seek_map_key(&cursor, "uint", &value));
+    ASSERT_TRUE(flexi_cursor_uint(&value, &vuint));
+    ASSERT_EQ(UINT16_MAX, vuint);
+    ASSERT_TRUE(flexi_cursor_seek_map_key(&cursor, "indirect_uint", &value));
+    ASSERT_TRUE(flexi_cursor_uint(&value, &vuint));
+    ASSERT_EQ(UINT32_MAX, vuint);
 }

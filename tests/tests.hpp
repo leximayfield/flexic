@@ -104,4 +104,12 @@ protected:
             ASSERT_EQ(expected[i], *m_actual.DataAt(i));
         }
     }
+
+    void GetCursor(flexi_cursor_s *cursor) {
+        size_t offset = 0;
+        ASSERT_TRUE(m_actual.Tell(&offset));
+
+        auto buffer = flexi_make_buffer(m_actual.DataAt(0), offset);
+        ASSERT_TRUE(flexi_buffer_open(&buffer, cursor));
+    }
 };

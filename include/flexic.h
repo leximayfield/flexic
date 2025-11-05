@@ -29,6 +29,7 @@
 extern "C" {
 #endif
 typedef uint8_t flexi_packed_t;
+typedef int flexi_stack_idx_t;
 
 typedef enum {
     FLEXI_WIDTH_1B,
@@ -108,6 +109,7 @@ typedef struct {
         double f64;
         size_t offset;
     } u;
+    const char *key;
     flexi_type_e type;
     int width;
 } flexi_value_s;
@@ -118,7 +120,7 @@ typedef struct {
     const void *(*data_at_func)(size_t index, void *user);
     bool (*tell_func)(size_t *offset, void *user);
     void *user;
-    int head;
+    flexi_stack_idx_t head;
 } flexi_writer_s;
 
 flexi_buffer_s flexi_make_buffer(const void *buffer, size_t len);
@@ -147,26 +149,114 @@ bool flexi_cursor_seek_map_key(const flexi_cursor_s *cursor, const char *key,
 
 bool flexi_read(const flexi_reader_s *reader, const flexi_cursor_s *cursor);
 
-bool flexi_write_null(flexi_writer_s *writer);
-bool flexi_write_bool(flexi_writer_s *writer, bool v);
-bool flexi_write_sint(flexi_writer_s *writer, int64_t v);
-bool flexi_write_uint(flexi_writer_s *writer, uint64_t v);
-bool flexi_write_f32(flexi_writer_s *writer, float v);
-bool flexi_write_f64(flexi_writer_s *writer, double v);
-bool flexi_write_string(flexi_writer_s *writer, const char *str);
-bool flexi_write_key(flexi_writer_s *writer, const char *str);
-bool flexi_write_blob(flexi_writer_s *writer, const void *ptr, size_t len);
-bool flexi_write_indirect_sint(flexi_writer_s *writer, int64_t v);
-bool flexi_write_indirect_uint(flexi_writer_s *writer, uint64_t v);
-bool flexi_write_indirect_f32(flexi_writer_s *writer, float v);
-bool flexi_write_indirect_f64(flexi_writer_s *writer, double v);
-bool flexi_write_inline_map(flexi_writer_s *writer, size_t len,
-                            flexi_width_e stride);
-bool flexi_write_vector(flexi_writer_s *writer, size_t len,
-                        flexi_width_e stride);
-bool flexi_write_vector_f32(flexi_writer_s *writer, float *a, size_t len);
-bool flexi_write_vector_f64(flexi_writer_s *writer, double *a, size_t len);
+bool flexi_write_null_keyed(flexi_writer_s *writer, const char *k);
+bool flexi_write_bool_keyed(flexi_writer_s *writer, const char *k, bool v);
+bool flexi_write_sint_keyed(flexi_writer_s *writer, const char *k, int64_t v);
+bool flexi_write_uint_keyed(flexi_writer_s *writer, const char *k, uint64_t v);
+bool flexi_write_f32_keyed(flexi_writer_s *writer, const char *k, float v);
+bool flexi_write_f64_keyed(flexi_writer_s *writer, const char *k, double v);
+bool flexi_write_string_keyed(flexi_writer_s *writer, const char *k,
+                              const char *str);
+bool flexi_write_key_keyed(flexi_writer_s *writer, const char *k,
+                           const char *str);
+bool flexi_write_blob_keyed(flexi_writer_s *writer, const char *k,
+                            const void *ptr, size_t len);
+bool flexi_write_indirect_sint_keyed(flexi_writer_s *writer, const char *k,
+                                     int64_t v);
+bool flexi_write_indirect_uint_keyed(flexi_writer_s *writer, const char *k,
+                                     uint64_t v);
+bool flexi_write_indirect_f32_keyed(flexi_writer_s *writer, const char *k,
+                                    float v);
+bool flexi_write_indirect_f64_keyed(flexi_writer_s *writer, const char *k,
+                                    double v);
+bool flexi_write_map_keys(flexi_writer_s *writer, size_t len,
+                          flexi_width_e stride, flexi_stack_idx_t *keyset);
+bool flexi_write_map_keyed(flexi_writer_s *writer, const char *k,
+                           flexi_stack_idx_t keyset, size_t len,
+                           flexi_width_e stride);
+bool flexi_write_vector_keyed(flexi_writer_s *writer, const char *k, size_t len,
+                              flexi_width_e stride);
+bool flexi_write_vector_f32_keyed(flexi_writer_s *writer, const char *k,
+                                  float *a, size_t len);
+bool flexi_write_vector_f64_keyed(flexi_writer_s *writer, const char *k,
+                                  double *a, size_t len);
 bool flexi_write_finalize(flexi_writer_s *writer);
+
+static inline bool flexi_write_null(flexi_writer_s *writer) {
+    return flexi_write_null_keyed(writer, NULL);
+}
+
+static inline bool flexi_write_bool(flexi_writer_s *writer, bool v) {
+    return flexi_write_bool_keyed(writer, NULL, v);
+}
+
+static inline bool flexi_write_sint(flexi_writer_s *writer, int64_t v) {
+    return flexi_write_sint_keyed(writer, NULL, v);
+}
+
+static inline bool flexi_write_uint(flexi_writer_s *writer, uint64_t v) {
+    return flexi_write_uint_keyed(writer, NULL, v);
+}
+
+static inline bool flexi_write_f32(flexi_writer_s *writer, float v) {
+    return flexi_write_f32_keyed(writer, NULL, v);
+}
+
+static inline bool flexi_write_f64(flexi_writer_s *writer, double v) {
+    return flexi_write_f64_keyed(writer, NULL, v);
+}
+
+static inline bool flexi_write_string(flexi_writer_s *writer, const char *str) {
+    return flexi_write_string_keyed(writer, NULL, str);
+}
+
+static inline bool flexi_write_key(flexi_writer_s *writer, const char *str) {
+    return flexi_write_key_keyed(writer, NULL, str);
+}
+
+static inline bool flexi_write_blob(flexi_writer_s *writer, const void *ptr,
+                                    size_t len) {
+    return flexi_write_blob_keyed(writer, NULL, ptr, len);
+}
+
+static inline bool flexi_write_indirect_sint(flexi_writer_s *writer,
+                                             int64_t v) {
+    return flexi_write_indirect_sint_keyed(writer, NULL, v);
+}
+
+static inline bool flexi_write_indirect_uint(flexi_writer_s *writer,
+                                             uint64_t v) {
+    return flexi_write_indirect_uint_keyed(writer, NULL, v);
+}
+
+static inline bool flexi_write_indirect_f32(flexi_writer_s *writer, float v) {
+    return flexi_write_indirect_f32_keyed(writer, NULL, v);
+}
+
+static inline bool flexi_write_indirect_f64(flexi_writer_s *writer, double v) {
+    return flexi_write_indirect_f64_keyed(writer, NULL, v);
+}
+
+static inline bool flexi_write_map(flexi_writer_s *writer,
+                                   flexi_stack_idx_t keyset, size_t len,
+                                   flexi_width_e stride) {
+    return flexi_write_map_keyed(writer, NULL, keyset, len, stride);
+}
+
+static inline bool flexi_write_vector(flexi_writer_s *writer, size_t len,
+                                      flexi_width_e stride) {
+    return flexi_write_vector_keyed(writer, NULL, len, stride);
+}
+
+static inline bool flexi_write_vector_f32(flexi_writer_s *writer, float *a,
+                                          size_t len) {
+    return flexi_write_vector_f32_keyed(writer, NULL, a, len);
+}
+
+static inline bool flexi_write_vector_f64(flexi_writer_s *writer, double *a,
+                                          size_t len) {
+    return flexi_write_vector_f64_keyed(writer, NULL, a, len);
+}
 
 #ifdef __cplusplus
 }

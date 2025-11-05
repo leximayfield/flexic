@@ -29,12 +29,9 @@ TEST_F(WriteFixture, Null) {
     std::vector<uint8_t> expected = {0x00, 0x00, 0x01};
     AssertData(expected);
 
-    size_t offset = 0;
-    ASSERT_TRUE(m_actual.Tell(&offset));
-
     flexi_cursor_s cursor{};
-    auto buffer = flexi_make_buffer(m_actual.DataAt(0), offset);
-    ASSERT_TRUE(flexi_buffer_open(&buffer, &cursor));
+    GetCursor(&cursor);
+
     ASSERT_EQ(FLEXI_TYPE_NULL, flexi_cursor_type(&cursor));
     ASSERT_EQ(1, flexi_cursor_width(&cursor));
 }
@@ -46,12 +43,9 @@ TEST_F(WriteFixture, Bool) {
     std::vector<uint8_t> expected = {0x01, 0x68, 0x01};
     AssertData(expected);
 
-    size_t offset = 0;
-    ASSERT_TRUE(m_actual.Tell(&offset));
-
     flexi_cursor_s cursor{};
-    auto buffer = flexi_make_buffer(m_actual.DataAt(0), offset);
-    ASSERT_TRUE(flexi_buffer_open(&buffer, &cursor));
+    GetCursor(&cursor);
+
     ASSERT_EQ(FLEXI_TYPE_BOOL, flexi_cursor_type(&cursor));
     ASSERT_EQ(1, flexi_cursor_width(&cursor));
 
