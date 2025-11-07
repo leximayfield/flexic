@@ -29,7 +29,9 @@
 
 /******************************************************************************/
 
-int main() {
+int
+main(const int, const char *[])
+{
     std::ifstream file{"large_doc1.flexbuf", std::ios::binary};
     std::stringstream stream;
     stream << file.rdbuf();
@@ -64,10 +66,9 @@ int main() {
     };
 
     flexi_cursor_s dest;
-    ankerl::nanobench::Bench().run("flexi_cursor_seek_map_key", [&] {
-        flexi_cursor_seek_map_key(&cursor, "map-82", &dest);
-    });
+    ankerl::nanobench::Bench().run("flexi_cursor_seek_map_key",
+        [&] { (void)flexi_cursor_seek_map_key(&cursor, "map-82", &dest); });
     ankerl::nanobench::Bench().run("flexi_read",
-                                   [&] { flexi_read(&reader, &cursor); });
+        [&] { (void)flexi_read(&reader, &cursor); });
     return 0;
 }

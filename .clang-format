@@ -1,5 +1,14 @@
 ---
 BasedOnStyle: LLVM
+
 AccessModifierOffset: -4
-AlignEscapedNewlines: DontAlign
+AlignAfterOpenBracket: DontAlign
+AllowShortCaseLabelsOnASingleLine: True
+BraceWrapping:
+  AfterFunction: True
+BreakAfterReturnType: TopLevel
+BreakBeforeBraces: Custom
+BreakTemplateDeclarations: No
 IndentWidth: 4
+PenaltyBreakOpenParenthesis: 10
+SpaceAfterTemplateKeyword: No

@@ -22,7 +22,8 @@
 
 #include "tests.hpp"
 
-TEST_F(WriteFixture, Null) {
+TEST_F(WriteFixture, Null)
+{
     ASSERT_TRUE(flexi_write_null(&m_writer));
     ASSERT_TRUE(flexi_write_finalize(&m_writer));
 
@@ -36,7 +37,8 @@ TEST_F(WriteFixture, Null) {
     ASSERT_EQ(1, flexi_cursor_width(&cursor));
 }
 
-TEST_F(WriteFixture, Bool) {
+TEST_F(WriteFixture, Bool)
+{
     ASSERT_TRUE(flexi_write_bool(&m_writer, true));
     ASSERT_TRUE(flexi_write_finalize(&m_writer));
 

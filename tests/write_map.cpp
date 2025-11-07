@@ -22,8 +22,8 @@
 
 #include "tests.hpp"
 
-TEST_F(WriteFixture, WriteMapInts) {
-
+TEST_F(WriteFixture, WriteMapInts)
+{
     ASSERT_TRUE(flexi_write_key(&m_writer, "bool"));
     ASSERT_TRUE(flexi_write_key(&m_writer, "sint"));
     ASSERT_TRUE(flexi_write_key(&m_writer, "indirect_sint"));
@@ -39,36 +39,36 @@ TEST_F(WriteFixture, WriteMapInts) {
         flexi_write_indirect_sint_keyed(&m_writer, "indirect_sint", INT32_MAX));
     ASSERT_TRUE(flexi_write_uint_keyed(&m_writer, "uint", UINT16_MAX));
     ASSERT_TRUE(flexi_write_indirect_uint_keyed(&m_writer, "indirect_uint",
-                                                UINT32_MAX));
+        UINT32_MAX));
     ASSERT_TRUE(flexi_write_map(&m_writer, keyset, 5, FLEXI_WIDTH_2B));
     ASSERT_TRUE(flexi_write_finalize(&m_writer));
 
     std::vector<uint8_t> expected = {
-        'b',  'o',  'o',  'l',  '\0', // First three keys
-        's',  'i',  'n',  't',  '\0', //
-        'i',  'n',  'd',  'i',  'r',  'e', 'c',
-        't',  '_',  's',  'i',  'n',  't', '\0', //
-        'u',  'i',  'n',  't',  '\0',            // Last two keys
-        'i',  'n',  'd',  'i',  'r',  'e', 'c',
-        't',  '_',  'u',  'i',  'n',  't', '\0', //
-        0x05, 0x00,                              // Map keys vector length
-        0x2d, 0x00,                              // Keys[0] "bool"
-        0x25, 0x00,                              // Keys[1] "indirect_sint"
-        0x14, 0x00,                              // Keys[2] "indirect_uint"
-        0x2e, 0x00,                              // Keys[3] "sint"
-        0x1d, 0x00,                              // Keys[4] "uint"
-        0xff, 0xff, 0xff, 0x7f,                  // Indirect int
-        0xff, 0xff, 0xff, 0xff,                  // Indirect uint
-        0x12, 0x00,                              // Keys vector offset
-        0x02, 0x00,                              // Keys vector stride
-        0x05, 0x00,                              // Map values vector length
-        0x01, 0x00,                              // Values[0] Bool
-        0x10, 0x00,                              // Values[1] Indirect int
-        0x0e, 0x00,                              // Values[2] Indirect uint
-        0xff, 0x7f,                              // Values[3] Int
-        0xff, 0xff,                              // Values[4] Uint
-        0x68, 0x1a, 0x1e, 0x05, 0x09,            // Types
-        0x0f, 0x25, 0x01,                        // Root
+        'b', 'o', 'o', 'l', '\0', // First three keys
+        's', 'i', 'n', 't', '\0', //
+        'i', 'n', 'd', 'i', 'r', 'e', 'c', 't', '_', 's', 'i', 'n', 't',
+        '\0',                     //
+        'u', 'i', 'n', 't', '\0', // Last two keys
+        'i', 'n', 'd', 'i', 'r', 'e', 'c', 't', '_', 'u', 'i', 'n', 't',
+        '\0',                         //
+        0x05, 0x00,                   // Map keys vector length
+        0x2d, 0x00,                   // Keys[0] "bool"
+        0x25, 0x00,                   // Keys[1] "indirect_sint"
+        0x14, 0x00,                   // Keys[2] "indirect_uint"
+        0x2e, 0x00,                   // Keys[3] "sint"
+        0x1d, 0x00,                   // Keys[4] "uint"
+        0xff, 0xff, 0xff, 0x7f,       // Indirect int
+        0xff, 0xff, 0xff, 0xff,       // Indirect uint
+        0x12, 0x00,                   // Keys vector offset
+        0x02, 0x00,                   // Keys vector stride
+        0x05, 0x00,                   // Map values vector length
+        0x01, 0x00,                   // Values[0] Bool
+        0x10, 0x00,                   // Values[1] Indirect int
+        0x0e, 0x00,                   // Values[2] Indirect uint
+        0xff, 0x7f,                   // Values[3] Int
+        0xff, 0xff,                   // Values[4] Uint
+        0x68, 0x1a, 0x1e, 0x05, 0x09, // Types
+        0x0f, 0x25, 0x01,             // Root
     };
 
     AssertData(expected);
