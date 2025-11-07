@@ -5,7 +5,9 @@ if(MSVC)
 else()
     target_compile_options(flexic PRIVATE -Wall -Wextra)
 endif()
-set_target_properties(flexic PROPERTIES C_CLANG_TIDY "clang-tidy;-checks=*")
+set_target_properties(flexic PROPERTIES
+    C_CLANG_TIDY "clang-tidy;-checks=*"
+    EXPORT_COMPILE_COMMANDS YES)
 
 include(FetchContent)
 FetchContent_Declare(

@@ -372,7 +372,7 @@ template<typename T> static inline bool
 flexi_write_typed_vector_keyed(flexi_writer_s *writer, const char *k,
     const T *a, size_t len);
 
-template<> static inline bool
+template<> inline bool
 flexi_write_typed_vector<int8_t>(flexi_writer_s *writer, const int8_t *a,
     size_t len)
 {
@@ -380,7 +380,7 @@ flexi_write_typed_vector<int8_t>(flexi_writer_s *writer, const int8_t *a,
         len);
 }
 
-template<> static inline bool
+template<> inline bool
 flexi_write_typed_vector_keyed<int8_t>(flexi_writer_s *writer, const char *k,
     const int8_t *a, size_t len)
 {
@@ -388,7 +388,7 @@ flexi_write_typed_vector_keyed<int8_t>(flexi_writer_s *writer, const char *k,
         len);
 }
 
-template<> static inline bool
+template<> inline bool
 flexi_write_typed_vector<int16_t>(flexi_writer_s *writer, const int16_t *a,
     size_t len)
 {
@@ -396,7 +396,7 @@ flexi_write_typed_vector<int16_t>(flexi_writer_s *writer, const int16_t *a,
         len);
 }
 
-template<> static inline bool
+template<> inline bool
 flexi_write_typed_vector_keyed<int16_t>(flexi_writer_s *writer, const char *k,
     const int16_t *a, size_t len)
 {
@@ -404,7 +404,7 @@ flexi_write_typed_vector_keyed<int16_t>(flexi_writer_s *writer, const char *k,
         len);
 }
 
-template<> static inline bool
+template<> inline bool
 flexi_write_typed_vector<int32_t>(flexi_writer_s *writer, const int32_t *a,
     size_t len)
 {
@@ -412,7 +412,7 @@ flexi_write_typed_vector<int32_t>(flexi_writer_s *writer, const int32_t *a,
         len);
 }
 
-template<> static inline bool
+template<> inline bool
 flexi_write_typed_vector_keyed<int32_t>(flexi_writer_s *writer, const char *k,
     const int32_t *a, size_t len)
 {
@@ -420,7 +420,7 @@ flexi_write_typed_vector_keyed<int32_t>(flexi_writer_s *writer, const char *k,
         len);
 }
 
-template<> static inline bool
+template<> inline bool
 flexi_write_typed_vector<int64_t>(flexi_writer_s *writer, const int64_t *a,
     size_t len)
 {
@@ -428,7 +428,7 @@ flexi_write_typed_vector<int64_t>(flexi_writer_s *writer, const int64_t *a,
         len);
 }
 
-template<> static inline bool
+template<> inline bool
 flexi_write_typed_vector_keyed<int64_t>(flexi_writer_s *writer, const char *k,
     const int64_t *a, size_t len)
 {
@@ -436,7 +436,7 @@ flexi_write_typed_vector_keyed<int64_t>(flexi_writer_s *writer, const char *k,
         len);
 }
 
-template<> static inline bool
+template<> inline bool
 flexi_write_typed_vector<uint8_t>(flexi_writer_s *writer, const uint8_t *a,
     size_t len)
 {
@@ -444,7 +444,7 @@ flexi_write_typed_vector<uint8_t>(flexi_writer_s *writer, const uint8_t *a,
         len);
 }
 
-template<> static inline bool
+template<> inline bool
 flexi_write_typed_vector_keyed<uint8_t>(flexi_writer_s *writer, const char *k,
     const uint8_t *a, size_t len)
 {
@@ -452,7 +452,7 @@ flexi_write_typed_vector_keyed<uint8_t>(flexi_writer_s *writer, const char *k,
         len);
 }
 
-template<> static inline bool
+template<> inline bool
 flexi_write_typed_vector<uint16_t>(flexi_writer_s *writer, const uint16_t *a,
     size_t len)
 {
@@ -460,7 +460,7 @@ flexi_write_typed_vector<uint16_t>(flexi_writer_s *writer, const uint16_t *a,
         len);
 }
 
-template<> static inline bool
+template<> inline bool
 flexi_write_typed_vector_keyed<uint16_t>(flexi_writer_s *writer, const char *k,
     const uint16_t *a, size_t len)
 {
@@ -468,7 +468,7 @@ flexi_write_typed_vector_keyed<uint16_t>(flexi_writer_s *writer, const char *k,
         len);
 }
 
-template<> static inline bool
+template<> inline bool
 flexi_write_typed_vector<uint32_t>(flexi_writer_s *writer, const uint32_t *a,
     size_t len)
 {
@@ -476,7 +476,7 @@ flexi_write_typed_vector<uint32_t>(flexi_writer_s *writer, const uint32_t *a,
         len);
 }
 
-template<> static inline bool
+template<> inline bool
 flexi_write_typed_vector_keyed<uint32_t>(flexi_writer_s *writer, const char *k,
     const uint32_t *a, size_t len)
 {
@@ -484,7 +484,7 @@ flexi_write_typed_vector_keyed<uint32_t>(flexi_writer_s *writer, const char *k,
         len);
 }
 
-template<> static inline bool
+template<> inline bool
 flexi_write_typed_vector<uint64_t>(flexi_writer_s *writer, const uint64_t *a,
     size_t len)
 {
@@ -492,7 +492,7 @@ flexi_write_typed_vector<uint64_t>(flexi_writer_s *writer, const uint64_t *a,
         len);
 }
 
-template<> static inline bool
+template<> inline bool
 flexi_write_typed_vector_keyed<uint64_t>(flexi_writer_s *writer, const char *k,
     const uint64_t *a, size_t len)
 {
@@ -500,7 +500,7 @@ flexi_write_typed_vector_keyed<uint64_t>(flexi_writer_s *writer, const char *k,
         len);
 }
 
-template<> static inline bool
+template<> inline bool
 flexi_write_typed_vector<float>(flexi_writer_s *writer, const float *a,
     size_t len)
 {
@@ -508,7 +508,7 @@ flexi_write_typed_vector<float>(flexi_writer_s *writer, const float *a,
         len);
 }
 
-template<> static inline bool
+template<> inline bool
 flexi_write_typed_vector_keyed<float>(flexi_writer_s *writer, const char *k,
     const float *a, size_t len)
 {
@@ -516,7 +516,7 @@ flexi_write_typed_vector_keyed<float>(flexi_writer_s *writer, const char *k,
         len);
 }
 
-template<> static inline bool
+template<> inline bool
 flexi_write_typed_vector<double>(flexi_writer_s *writer, const double *a,
     size_t len)
 {
@@ -524,7 +524,7 @@ flexi_write_typed_vector<double>(flexi_writer_s *writer, const double *a,
         len);
 }
 
-template<> static inline bool
+template<> inline bool
 flexi_write_typed_vector_keyed<double>(flexi_writer_s *writer, const char *k,
     const double *a, size_t len)
 {
