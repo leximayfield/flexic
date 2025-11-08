@@ -40,35 +40,35 @@ main(const int, const char *[])
     flexi_buffer_s view = flexi_make_buffer(buffer.data(), buffer.length());
 
     flexi_cursor_s cursor;
-    if (!flexi_buffer_open(&view, &cursor)) {
+    if (!flexi_open_buffer(&view, &cursor)) {
         throw "assert";
     }
 
-    flexi_reader_s reader{
-        []() {},
-        [](int64_t) {},
-        [](uint64_t) {},
-        [](float) {},
-        [](double) {},
-        [](const char *) {},
-        [](const char *, size_t) {},
-        [](const void *, size_t) {},
-        [](size_t) {},
-        [](const char *) {},
-        [](void) {},
-        [](size_t) {},
-        [](void) {},
-        [](const void *, int, size_t) {},
-        [](const void *, int, size_t) {},
-        [](const void *, int, size_t) {},
-        [](bool) {},
-        [](const bool *, size_t) {},
+    flexi_parser_s parser{
+        [](void *) {},
+        [](int64_t, void *) {},
+        [](uint64_t, void *) {},
+        [](float, void *) {},
+        [](double, void *) {},
+        [](const char *, void *) {},
+        [](const char *, size_t, void *) {},
+        [](const void *, size_t, void *) {},
+        [](size_t, void *) {},
+        [](const char *, void *) {},
+        [](void *) {},
+        [](size_t, void *) {},
+        [](void *) {},
+        [](const void *, int, size_t, void *) {},
+        [](const void *, int, size_t, void *) {},
+        [](const void *, int, size_t, void *) {},
+        [](bool, void *) {},
+        [](const bool *, size_t, void *) {},
     };
 
     flexi_cursor_s dest;
     ankerl::nanobench::Bench().run("flexi_cursor_seek_map_key",
         [&] { (void)flexi_cursor_seek_map_key(&cursor, "map-82", &dest); });
     ankerl::nanobench::Bench().run("flexi_read",
-        [&] { (void)flexi_read(&reader, &cursor); });
+        [&] { (void)flexi_parse_cursor(&parser, &cursor, NULL); });
     return 0;
 }

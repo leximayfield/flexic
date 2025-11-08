@@ -118,6 +118,6 @@ protected:
         ASSERT_TRUE(m_actual.Tell(&offset));
 
         auto buffer = flexi_make_buffer(m_actual.DataAt(0), offset);
-        ASSERT_TRUE(flexi_buffer_open(&buffer, cursor));
+        ASSERT_TRUE(flexi_open_buffer(&buffer, cursor));
     }
 };

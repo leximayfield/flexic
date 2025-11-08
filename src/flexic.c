@@ -729,53 +729,56 @@ cursor_seek_map_key_bsearch(const flexi_cursor_s *cursor, size_t len,
 /******************************************************************************/
 
 static bool
-reader_emit_sint(const flexi_reader_s *reader, const flexi_cursor_s *cursor)
+reader_emit_sint(const flexi_parser_s *reader, const flexi_cursor_s *cursor,
+    void *user)
 {
-    int64_t u;
-    if (!read_sint_by_width(&u, cursor->cursor, cursor->width)) {
+    int64_t v;
+    if (!read_sint_by_width(&v, cursor->cursor, cursor->width)) {
         return false;
     }
 
-    reader->sint(u);
+    reader->sint(v, user);
     return true;
 }
 
 /******************************************************************************/
 
 static bool
-reader_emit_uint(const flexi_reader_s *reader, const flexi_cursor_s *cursor)
+reader_emit_uint(const flexi_parser_s *reader, const flexi_cursor_s *cursor,
+    void *user)
 {
-    uint64_t u;
-    if (!read_uint_by_width(&u, cursor->cursor, cursor->width)) {
+    uint64_t v;
+    if (!read_uint_by_width(&v, cursor->cursor, cursor->width)) {
         return false;
     }
 
-    reader->uint(u);
+    reader->uint(v, user);
     return true;
 }
 
 /******************************************************************************/
 
 static bool
-reader_emit_flt(const flexi_reader_s *reader, const flexi_cursor_s *cursor)
+reader_emit_flt(const flexi_parser_s *reader, const flexi_cursor_s *cursor,
+    void *user)
 {
     switch (cursor->width) {
     case 4: {
-        float u;
-        if (!read_f32(&u, cursor->cursor, cursor->width)) {
+        float v;
+        if (!read_f32(&v, cursor->cursor, cursor->width)) {
             return false;
         }
 
-        reader->f32(u);
+        reader->f32(v, user);
         return true;
     }
     case 8: {
-        double u;
-        if (!read_f64(&u, cursor->cursor, cursor->width)) {
+        double v;
+        if (!read_f64(&v, cursor->cursor, cursor->width)) {
             return false;
         }
 
-        reader->f64(u);
+        reader->f64(v, user);
         return true;
     }
     }
@@ -785,131 +788,134 @@ reader_emit_flt(const flexi_reader_s *reader, const flexi_cursor_s *cursor)
 /******************************************************************************/
 
 static bool
-reader_emit_string(const flexi_reader_s *reader, const flexi_cursor_s *cursor)
+reader_emit_string(const flexi_parser_s *reader, const flexi_cursor_s *cursor,
+    void *user)
 {
     size_t len;
     if (!cursor_get_len(cursor, &len)) {
         return false;
     }
 
-    reader->string(cursor->cursor, len);
+    reader->string(cursor->cursor, len, user);
     return true;
 }
 
 /******************************************************************************/
 
 static bool
-reader_emit_map(const flexi_reader_s *reader, const flexi_cursor_s *cursor)
+reader_emit_map(const flexi_parser_s *reader, const flexi_cursor_s *cursor,
+    void *user)
 {
     size_t len;
     if (!cursor_get_len(cursor, &len)) {
         return false;
     }
 
-    reader->map_begin(len);
+    reader->map_begin(len, user);
     for (size_t i = 0; i < len; i++) {
         const char *key;
         if (!cursor_map_key_at_index(cursor, i, &key)) {
             return false;
         }
 
-        reader->map_key(key);
+        reader->map_key(key, user);
 
         flexi_cursor_s value;
         if (!cursor_seek_vector_index(cursor, i, &value)) {
             return false;
         }
-        if (!flexi_read(reader, &value)) {
+        if (!flexi_parse_cursor(reader, &value, user)) {
             return false;
         }
     }
 
-    reader->map_end();
+    reader->map_end(user);
     return true;
 }
 
 /******************************************************************************/
 
 static bool
-reader_emit_vector(const flexi_reader_s *reader, const flexi_cursor_s *cursor)
+reader_emit_vector(const flexi_parser_s *reader, const flexi_cursor_s *cursor,
+    void *user)
 {
     size_t len;
     if (!cursor_get_len(cursor, &len)) {
         return false;
     }
 
-    reader->vector_begin(len);
+    reader->vector_begin(len, user);
     for (size_t i = 0; i < len; i++) {
         flexi_cursor_s value;
         if (!cursor_seek_vector_index(cursor, i, &value)) {
             return false;
         }
-        if (!flexi_read(reader, &value)) {
+        if (!flexi_parse_cursor(reader, &value, user)) {
             return false;
         }
     }
 
-    reader->vector_end();
+    reader->vector_end(user);
     return true;
 }
 
 /******************************************************************************/
 
 static bool
-reader_emit_vector_sint(const flexi_reader_s *reader,
-    const flexi_cursor_s *cursor)
+reader_emit_vector_sint(const flexi_parser_s *reader,
+    const flexi_cursor_s *cursor, void *user)
 {
     size_t len;
     if (!cursor_get_len(cursor, &len)) {
         return false;
     }
 
-    reader->typed_vector_sint(cursor->cursor, cursor->width, len);
+    reader->typed_vector_sint(cursor->cursor, cursor->width, len, user);
     return true;
 }
 
 /******************************************************************************/
 
 static bool
-reader_emit_vector_uint(const flexi_reader_s *reader,
-    const flexi_cursor_s *cursor)
+reader_emit_vector_uint(const flexi_parser_s *reader,
+    const flexi_cursor_s *cursor, void *user)
 {
     size_t len;
     if (!cursor_get_len(cursor, &len)) {
         return false;
     }
 
-    reader->typed_vector_uint(cursor->cursor, cursor->width, len);
+    reader->typed_vector_uint(cursor->cursor, cursor->width, len, user);
     return true;
 }
 
 /******************************************************************************/
 
 static bool
-reader_emit_vector_flt(const flexi_reader_s *reader,
-    const flexi_cursor_s *cursor)
+reader_emit_vector_flt(const flexi_parser_s *reader,
+    const flexi_cursor_s *cursor, void *user)
 {
     size_t len;
     if (!cursor_get_len(cursor, &len)) {
         return false;
     }
 
-    reader->typed_vector_flt(cursor->cursor, cursor->width, len);
+    reader->typed_vector_flt(cursor->cursor, cursor->width, len, user);
     return true;
 }
 
 /******************************************************************************/
 
 static bool
-reader_emit_vector_key(const flexi_reader_s *reader,
-    const flexi_cursor_s *cursor)
+reader_emit_vector_key(const flexi_parser_s *reader,
+    const flexi_cursor_s *cursor, void *user)
 {
     size_t len;
     if (!cursor_get_len(cursor, &len)) {
         return false;
     }
 
-    reader->vector_begin(len);
+    reader->vector_begin(len, user);
     for (size_t i = 0; i < len; i++) {
         // Access the offset by hand.
         uint64_t offset = 0;
@@ -923,40 +929,40 @@ reader_emit_vector_key(const flexi_reader_s *reader,
             return false;
         }
 
-        reader->key(dest);
+        reader->key(dest, user);
     }
 
-    reader->vector_end();
+    reader->vector_end(user);
     return true;
 }
 
 /******************************************************************************/
 
 static bool
-reader_emit_vector_blob(const flexi_reader_s *reader,
-    const flexi_cursor_s *cursor)
+reader_emit_vector_blob(const flexi_parser_s *reader,
+    const flexi_cursor_s *cursor, void *user)
 {
     size_t len;
     if (!cursor_get_len(cursor, &len)) {
         return false;
     }
 
-    reader->blob(cursor->cursor, len);
+    reader->blob(cursor->cursor, len, user);
     return true;
 }
 
 /******************************************************************************/
 
 static bool
-reader_emit_vector_bool(const flexi_reader_s *reader,
-    const flexi_cursor_s *cursor)
+reader_emit_vector_bool(const flexi_parser_s *reader,
+    const flexi_cursor_s *cursor, void *user)
 {
     size_t len;
     if (!cursor_get_len(cursor, &len)) {
         return false;
     }
 
-    reader->typed_vector_bool((const bool *)cursor->cursor, len);
+    reader->typed_vector_bool((const bool *)cursor->cursor, len, user);
     return true;
 }
 
@@ -1246,7 +1252,7 @@ flexi_make_buffer(const void *buffer, size_t len)
 /******************************************************************************/
 
 FLEXI_NODISCARD bool
-flexi_buffer_open(const flexi_buffer_s *buffer, flexi_cursor_s *cursor)
+flexi_open_buffer(const flexi_buffer_s *buffer, flexi_cursor_s *cursor)
 {
     if (buffer->length < 3 || buffer->length > PTRDIFF_MAX) {
         // Shortest length we can discard without checking.
@@ -1338,36 +1344,36 @@ flexi_cursor_length(const flexi_cursor_s *cursor, size_t *len)
 /******************************************************************************/
 
 FLEXI_NODISCARD bool
-flexi_cursor_bool(const flexi_cursor_s *cursor, bool *v)
+flexi_cursor_bool(const flexi_cursor_s *cursor, bool *val)
 {
     if (type_is_anyint(cursor->type)) {
-        uint64_t u;
-        if (!read_uint_by_width(&u, cursor->cursor, cursor->width)) {
+        uint64_t v;
+        if (!read_uint_by_width(&v, cursor->cursor, cursor->width)) {
             return false;
         }
 
-        *v = (bool)u;
+        *val = (bool)v;
         return true;
     } else if (cursor->type == FLEXI_TYPE_FLOAT &&
                cursor->width == sizeof(float)) {
-        float u;
-        if (!read_f32(&u, cursor->cursor, cursor->width)) {
+        float v;
+        if (!read_f32(&v, cursor->cursor, cursor->width)) {
             return false;
         }
 
-        *v = (bool)u;
+        *val = (bool)v;
         return true;
     } else if (cursor->type == FLEXI_TYPE_FLOAT &&
                cursor->width == sizeof(double)) {
-        double u;
-        if (!read_f64(&u, cursor->cursor, cursor->width)) {
+        double v;
+        if (!read_f64(&v, cursor->cursor, cursor->width)) {
             return false;
         }
 
-        *v = (bool)u;
+        *val = (bool)v;
         return true;
     } else if (cursor->type == FLEXI_TYPE_BOOL) {
-        *v = *(const bool *)(cursor->cursor);
+        *val = *(const bool *)(cursor->cursor);
         return true;
     } else {
         return false;
@@ -1377,34 +1383,34 @@ flexi_cursor_bool(const flexi_cursor_s *cursor, bool *v)
 /******************************************************************************/
 
 FLEXI_NODISCARD bool
-flexi_cursor_sint(const flexi_cursor_s *cursor, int64_t *v)
+flexi_cursor_sint(const flexi_cursor_s *cursor, int64_t *val)
 {
     if (type_is_anyint(cursor->type)) {
-        int64_t u;
-        if (!read_sint_by_width(&u, cursor->cursor, cursor->width)) {
+        int64_t v;
+        if (!read_sint_by_width(&v, cursor->cursor, cursor->width)) {
             return false;
         }
 
-        *v = u;
+        *val = v;
         return true;
     } else if (type_is_flt(cursor->type) && cursor->width == 4) {
-        float u;
-        if (!read_f32(&u, cursor->cursor, cursor->width)) {
+        float v;
+        if (!read_f32(&v, cursor->cursor, cursor->width)) {
             return false;
         }
 
-        *v = (int64_t)u;
+        *val = (int64_t)v;
         return true;
     } else if (type_is_flt(cursor->type) && cursor->width == 8) {
-        double u;
-        if (!read_f64(&u, cursor->cursor, cursor->width)) {
+        double v;
+        if (!read_f64(&v, cursor->cursor, cursor->width)) {
             return false;
         }
 
-        *v = (int64_t)u;
+        *val = (int64_t)v;
         return true;
     } else if (cursor->type == FLEXI_TYPE_BOOL && cursor->width == 1) {
-        *v = *(const bool *)(cursor->cursor);
+        *val = *(const bool *)(cursor->cursor);
         return true;
     } else {
         return false;
@@ -1414,36 +1420,34 @@ flexi_cursor_sint(const flexi_cursor_s *cursor, int64_t *v)
 /******************************************************************************/
 
 FLEXI_NODISCARD bool
-flexi_cursor_uint(const flexi_cursor_s *cursor, uint64_t *v)
+flexi_cursor_uint(const flexi_cursor_s *cursor, uint64_t *val)
 {
     if (type_is_anyint(cursor->type)) {
-        uint64_t u;
-        if (!read_uint_by_width(&u, cursor->cursor, cursor->width)) {
+        uint64_t v;
+        if (!read_uint_by_width(&v, cursor->cursor, cursor->width)) {
             return false;
         }
 
-        *v = u;
+        *val = v;
         return true;
     } else if (type_is_flt(cursor->type) && cursor->width == 4) {
-        float u;
-        if (!read_f32(&u, cursor->cursor, cursor->width)) {
+        float v;
+        if (!read_f32(&v, cursor->cursor, cursor->width)) {
             return false;
         }
 
-        *v = (uint64_t)u;
+        *val = (uint64_t)v;
         return true;
     } else if (type_is_flt(cursor->type) && cursor->width == 8) {
-        double u;
-        if (!read_f64(&u, cursor->cursor, cursor->width)) {
+        double v;
+        if (!read_f64(&v, cursor->cursor, cursor->width)) {
             return false;
         }
 
-        *v = (uint64_t)u;
+        *val = (uint64_t)v;
         return true;
-    }
-
-    else if (cursor->type == FLEXI_TYPE_BOOL && cursor->width == 1) {
-        *v = *(const bool *)(cursor->cursor);
+    } else if (cursor->type == FLEXI_TYPE_BOOL && cursor->width == 1) {
+        *val = *(const bool *)(cursor->cursor);
         return true;
     } else {
         return false;
@@ -1453,42 +1457,42 @@ flexi_cursor_uint(const flexi_cursor_s *cursor, uint64_t *v)
 /******************************************************************************/
 
 FLEXI_NODISCARD bool
-flexi_cursor_f32(const flexi_cursor_s *cursor, float *v)
+flexi_cursor_f32(const flexi_cursor_s *cursor, float *val)
 {
     if (type_is_sint(cursor->type)) {
-        int64_t u;
-        if (!read_sint_by_width(&u, cursor->cursor, cursor->width)) {
+        int64_t v;
+        if (!read_sint_by_width(&v, cursor->cursor, cursor->width)) {
             return false;
         }
 
-        *v = (float)u;
+        *val = (float)v;
         return true;
     } else if (type_is_uint(cursor->type)) {
-        uint64_t u;
-        if (!read_uint_by_width(&u, cursor->cursor, cursor->width)) {
+        uint64_t v;
+        if (!read_uint_by_width(&v, cursor->cursor, cursor->width)) {
             return false;
         }
 
-        *v = (float)u;
+        *val = (float)v;
         return true;
     } else if (type_is_flt(cursor->type) && cursor->width == 4) {
-        float u;
-        if (!read_f32(&u, cursor->cursor, cursor->width)) {
+        float v;
+        if (!read_f32(&v, cursor->cursor, cursor->width)) {
             return false;
         }
 
-        *v = u;
+        *val = v;
         return true;
     } else if (type_is_flt(cursor->type) && cursor->width == 8) {
-        double u;
-        if (!read_f64(&u, cursor->cursor, cursor->width)) {
+        double v;
+        if (!read_f64(&v, cursor->cursor, cursor->width)) {
             return false;
         }
 
-        *v = (float)u;
+        *val = (float)v;
         return true;
     } else if (cursor->type == FLEXI_TYPE_BOOL && cursor->width == 1) {
-        *v = (float)*(const bool *)(cursor->cursor);
+        *val = (float)*(const bool *)(cursor->cursor);
         return true;
     } else {
         return false;
@@ -1498,42 +1502,42 @@ flexi_cursor_f32(const flexi_cursor_s *cursor, float *v)
 /******************************************************************************/
 
 FLEXI_NODISCARD bool
-flexi_cursor_f64(const flexi_cursor_s *cursor, double *v)
+flexi_cursor_f64(const flexi_cursor_s *cursor, double *val)
 {
     if (type_is_sint(cursor->type)) {
-        int64_t u;
-        if (!read_sint_by_width(&u, cursor->cursor, cursor->width)) {
+        int64_t v;
+        if (!read_sint_by_width(&v, cursor->cursor, cursor->width)) {
             return false;
         }
 
-        *v = (double)u;
+        *val = (double)v;
         return true;
     } else if (type_is_uint(cursor->type)) {
-        uint64_t u;
-        if (!read_uint_by_width(&u, cursor->cursor, cursor->width)) {
+        uint64_t v;
+        if (!read_uint_by_width(&v, cursor->cursor, cursor->width)) {
             return false;
         }
 
-        *v = (double)u;
+        *val = (double)v;
         return true;
     } else if (type_is_flt(cursor->type) && cursor->width == 4) {
-        float u;
-        if (!read_f32(&u, cursor->cursor, cursor->width)) {
+        float v;
+        if (!read_f32(&v, cursor->cursor, cursor->width)) {
             return false;
         }
 
-        *v = u;
+        *val = v;
         return true;
     } else if (type_is_flt(cursor->type) && cursor->width == 8) {
-        double u;
-        if (!read_f64(&u, cursor->cursor, cursor->width)) {
+        double v;
+        if (!read_f64(&v, cursor->cursor, cursor->width)) {
             return false;
         }
 
-        *v = u;
+        *val = v;
         return true;
     } else if (cursor->type == FLEXI_TYPE_BOOL && cursor->width == 1) {
-        *v = (double)*(const bool *)(cursor->cursor);
+        *val = (double)*(const bool *)(cursor->cursor);
         return true;
     } else {
         return false;
@@ -1660,56 +1664,65 @@ flexi_cursor_seek_map_key(const flexi_cursor_s *cursor, const char *key,
 /******************************************************************************/
 
 FLEXI_NODISCARD bool
-flexi_read(const flexi_reader_s *reader, const flexi_cursor_s *cursor)
+flexi_parse_cursor(const flexi_parser_s *reader, const flexi_cursor_s *cursor,
+    void *user)
 {
     switch (cursor->type) {
-    case FLEXI_TYPE_NULL: reader->null(); return true;
+    case FLEXI_TYPE_NULL: reader->null(user); return true;
     case FLEXI_TYPE_SINT:
-    case FLEXI_TYPE_INDIRECT_SINT: return reader_emit_sint(reader, cursor);
+    case FLEXI_TYPE_INDIRECT_SINT:
+        return reader_emit_sint(reader, cursor, user);
     case FLEXI_TYPE_UINT:
-    case FLEXI_TYPE_INDIRECT_UINT: return reader_emit_uint(reader, cursor);
+    case FLEXI_TYPE_INDIRECT_UINT:
+        return reader_emit_uint(reader, cursor, user);
     case FLEXI_TYPE_FLOAT:
-    case FLEXI_TYPE_INDIRECT_FLOAT: return reader_emit_flt(reader, cursor);
-    case FLEXI_TYPE_KEY: reader->key(cursor->cursor); return true;
-    case FLEXI_TYPE_STRING: return reader_emit_string(reader, cursor);
-    case FLEXI_TYPE_MAP: return reader_emit_map(reader, cursor);
-    case FLEXI_TYPE_VECTOR: return reader_emit_vector(reader, cursor);
-    case FLEXI_TYPE_VECTOR_SINT: return reader_emit_vector_sint(reader, cursor);
-    case FLEXI_TYPE_VECTOR_UINT: return reader_emit_vector_uint(reader, cursor);
-    case FLEXI_TYPE_VECTOR_FLOAT: return reader_emit_vector_flt(reader, cursor);
-    case FLEXI_TYPE_VECTOR_KEY: return reader_emit_vector_key(reader, cursor);
+    case FLEXI_TYPE_INDIRECT_FLOAT:
+        return reader_emit_flt(reader, cursor, user);
+    case FLEXI_TYPE_KEY: reader->key(cursor->cursor, user); return true;
+    case FLEXI_TYPE_STRING: return reader_emit_string(reader, cursor, user);
+    case FLEXI_TYPE_MAP: return reader_emit_map(reader, cursor, user);
+    case FLEXI_TYPE_VECTOR: return reader_emit_vector(reader, cursor, user);
+    case FLEXI_TYPE_VECTOR_SINT:
+        return reader_emit_vector_sint(reader, cursor, user);
+    case FLEXI_TYPE_VECTOR_UINT:
+        return reader_emit_vector_uint(reader, cursor, user);
+    case FLEXI_TYPE_VECTOR_FLOAT:
+        return reader_emit_vector_flt(reader, cursor, user);
+    case FLEXI_TYPE_VECTOR_KEY:
+        return reader_emit_vector_key(reader, cursor, user);
     case FLEXI_TYPE_VECTOR_SINT2:
-        reader->typed_vector_sint(cursor->cursor, cursor->width, 2);
+        reader->typed_vector_sint(cursor->cursor, cursor->width, 2, user);
         return true;
     case FLEXI_TYPE_VECTOR_UINT2:
-        reader->typed_vector_uint(cursor->cursor, cursor->width, 2);
+        reader->typed_vector_uint(cursor->cursor, cursor->width, 2, user);
         return true;
     case FLEXI_TYPE_VECTOR_FLOAT2:
-        reader->typed_vector_flt(cursor->cursor, cursor->width, 2);
+        reader->typed_vector_flt(cursor->cursor, cursor->width, 2, user);
         return true;
     case FLEXI_TYPE_VECTOR_SINT3:
-        reader->typed_vector_sint(cursor->cursor, cursor->width, 3);
+        reader->typed_vector_sint(cursor->cursor, cursor->width, 3, user);
         return true;
     case FLEXI_TYPE_VECTOR_UINT3:
-        reader->typed_vector_uint(cursor->cursor, cursor->width, 3);
+        reader->typed_vector_uint(cursor->cursor, cursor->width, 3, user);
         return true;
     case FLEXI_TYPE_VECTOR_FLOAT3:
-        reader->typed_vector_flt(cursor->cursor, cursor->width, 3);
+        reader->typed_vector_flt(cursor->cursor, cursor->width, 3, user);
         return true;
     case FLEXI_TYPE_VECTOR_SINT4:
-        reader->typed_vector_sint(cursor->cursor, cursor->width, 4);
+        reader->typed_vector_sint(cursor->cursor, cursor->width, 4, user);
         return true;
     case FLEXI_TYPE_VECTOR_UINT4:
-        reader->typed_vector_uint(cursor->cursor, cursor->width, 4);
+        reader->typed_vector_uint(cursor->cursor, cursor->width, 4, user);
         return true;
     case FLEXI_TYPE_VECTOR_FLOAT4:
-        reader->typed_vector_flt(cursor->cursor, cursor->width, 4);
+        reader->typed_vector_flt(cursor->cursor, cursor->width, 4, user);
         return true;
-    case FLEXI_TYPE_BLOB: return reader_emit_vector_blob(reader, cursor);
+    case FLEXI_TYPE_BLOB: return reader_emit_vector_blob(reader, cursor, user);
     case FLEXI_TYPE_BOOL:
-        reader->boolean(*(const bool *)(cursor->cursor));
+        reader->boolean(*(const bool *)(cursor->cursor), user);
         return true;
-    case FLEXI_TYPE_VECTOR_BOOL: return reader_emit_vector_bool(reader, cursor);
+    case FLEXI_TYPE_VECTOR_BOOL:
+        return reader_emit_vector_bool(reader, cursor, user);
     }
 
     return false;
