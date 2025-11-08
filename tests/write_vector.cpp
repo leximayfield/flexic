@@ -52,10 +52,7 @@ TEST_F(WriteFixture, VectorInts)
 
     ASSERT_EQ(FLEXI_TYPE_VECTOR, flexi_cursor_type(&cursor));
     ASSERT_EQ(2, flexi_cursor_width(&cursor));
-
-    size_t len = 0;
-    ASSERT_TRUE(flexi_cursor_length(&cursor, &len));
-    ASSERT_EQ(len, 5);
+    ASSERT_EQ(5, flexi_cursor_length(&cursor));
 
     flexi_cursor_s vcursor{};
     bool b = false;
@@ -119,10 +116,7 @@ TEST_F(WriteFixture, VectorFloats)
 
     ASSERT_EQ(FLEXI_TYPE_VECTOR, flexi_cursor_type(&cursor));
     ASSERT_EQ(8, flexi_cursor_width(&cursor));
-
-    size_t len = 0;
-    ASSERT_TRUE(flexi_cursor_length(&cursor, &len));
-    ASSERT_EQ(len, 4);
+    ASSERT_EQ(4, flexi_cursor_length(&cursor));
 
     flexi_cursor_s vcursor{};
     float f32 = 0.0f;
@@ -176,26 +170,21 @@ TEST_F(WriteFixture, StringBlob)
 
     ASSERT_EQ(FLEXI_TYPE_VECTOR, flexi_cursor_type(&cursor));
     ASSERT_EQ(1, flexi_cursor_width(&cursor));
-
-    size_t len = 0;
-    ASSERT_TRUE(flexi_cursor_length(&cursor, &len));
-    ASSERT_EQ(len, 2);
+    ASSERT_EQ(2, flexi_cursor_length(&cursor));
 
     flexi_cursor_s vcursor{};
 
     const char *str = nullptr;
     ASSERT_TRUE(flexi_cursor_seek_vector_index(&cursor, 0, &vcursor));
     ASSERT_TRUE(flexi_cursor_string(&vcursor, &str));
-    ASSERT_TRUE(flexi_cursor_length(&vcursor, &len));
-    ASSERT_EQ(len, 5);
+    ASSERT_EQ(5, flexi_cursor_length(&vcursor));
     ASSERT_STREQ(str, "xyzzy");
 
     const uint8_t *blob = nullptr;
     ASSERT_TRUE(flexi_cursor_seek_vector_index(&cursor, 1, &vcursor));
     ASSERT_TRUE(flexi_cursor_blob(&vcursor, &blob));
-    ASSERT_TRUE(flexi_cursor_length(&vcursor, &len));
-    ASSERT_EQ(len, 8);
-    for (size_t i = 0; i < len; i++) {
+    ASSERT_EQ(8, flexi_cursor_length(&vcursor));
+    for (size_t i = 0; i < std::size(BLOB); i++) {
         ASSERT_EQ(blob[i], BLOB[i]);
     }
 }

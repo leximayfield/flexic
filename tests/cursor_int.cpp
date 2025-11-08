@@ -33,9 +33,7 @@ TEST(ReadInt, Int)
     {
         ASSERT_EQ(FLEXI_TYPE_SINT, flexi_cursor_type(&cursor));
         ASSERT_EQ(1, flexi_cursor_width(&cursor));
-
-        size_t len = 0;
-        ASSERT_FALSE(flexi_cursor_length(&cursor, &len));
+        ASSERT_EQ(0, flexi_cursor_length(&cursor));
     }
 
     {

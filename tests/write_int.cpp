@@ -150,10 +150,7 @@ public:
 
         ASSERT_EQ(ex_tyoe, flexi_cursor_type(&cursor));
         ASSERT_EQ(sizeof(T), flexi_cursor_width(&cursor));
-
-        size_t len = 0;
-        ASSERT_TRUE(flexi_cursor_length(&cursor, &len));
-        ASSERT_EQ(ex_values.size(), len);
+        ASSERT_EQ(ex_values.size(), flexi_cursor_length(&cursor));
     }
 };
 

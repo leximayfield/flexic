@@ -25,19 +25,10 @@
 #include <stdbool.h>
 #include <stdint.h>
 
-#if defined(__cplusplus)
-#define FLEXI_NODISCARD [[nodiscard]]
-#elif defined(_MSC_VER)
-#define FLEXI_NODISCARD _Check_return_
-#elif defined(__GNUC__)
-#define FLEXI_NODISCARD __attribute__((warn_unused_result))
-#else
-#define FLEXI_NODISCARD
-#endif
-
 #ifdef __cplusplus
 extern "C" {
 #endif
+
 typedef uint8_t flexi_packed_t;
 typedef int flexi_stack_idx_t;
 
@@ -136,230 +127,245 @@ typedef struct {
     flexi_stack_idx_t head;
 } flexi_writer_s;
 
-FLEXI_NODISCARD flexi_buffer_s
+flexi_buffer_s
 flexi_make_buffer(const void *buffer, size_t len);
 
-FLEXI_NODISCARD bool
+bool
 flexi_open_buffer(const flexi_buffer_s *buffer, flexi_cursor_s *cursor);
 
-FLEXI_NODISCARD flexi_type_e
+flexi_type_e
 flexi_cursor_type(const flexi_cursor_s *cursor);
 
-FLEXI_NODISCARD int
+int
 flexi_cursor_width(const flexi_cursor_s *cursor);
 
-FLEXI_NODISCARD bool
-flexi_cursor_length(const flexi_cursor_s *cursor, size_t *len);
+/**
+ * @brief Obtain length of any vector-like type: vectors, typed vectors,
+ *        strings, and blobs.
+ *
+ * @param[in] cursor Cursor pointing to value to examine.
+ * @return Length of value at cursor.  Set to 0 on invalid type.
+ */
+size_t
+flexi_cursor_length(const flexi_cursor_s *cursor);
 
-FLEXI_NODISCARD bool
+/**
+ * @brief Obtain boolean value from cursor.  Non-booleans are turned into
+ *        booleans on a best-effort basis.
+ *
+ * @param[in] cursor Cursor pointing to value to examine.
+ * @param[out] val Boolean value.  Set to false on error.
+ * @return
+ */
+bool
 flexi_cursor_bool(const flexi_cursor_s *cursor, bool *val);
 
-FLEXI_NODISCARD bool
+bool
 flexi_cursor_sint(const flexi_cursor_s *cursor, int64_t *val);
 
-FLEXI_NODISCARD bool
+bool
 flexi_cursor_uint(const flexi_cursor_s *cursor, uint64_t *val);
 
-FLEXI_NODISCARD bool
+bool
 flexi_cursor_f32(const flexi_cursor_s *cursor, float *val);
 
-FLEXI_NODISCARD bool
+bool
 flexi_cursor_f64(const flexi_cursor_s *cursor, double *val);
 
-FLEXI_NODISCARD bool
+bool
 flexi_cursor_string(const flexi_cursor_s *cursor, const char **str);
 
-FLEXI_NODISCARD bool
+bool
 flexi_cursor_key(const flexi_cursor_s *cursor, const char **str);
 
-FLEXI_NODISCARD bool
+bool
 flexi_cursor_blob(const flexi_cursor_s *cursor, const uint8_t **blob);
 
-FLEXI_NODISCARD bool
+bool
 flexi_cursor_typed_vector_data(const flexi_cursor_s *cursor, const void **data);
 
-FLEXI_NODISCARD bool
+bool
 flexi_cursor_vector_types(const flexi_cursor_s *cursor,
     const flexi_packed_t **packed);
 
-FLEXI_NODISCARD bool
+bool
 flexi_cursor_seek_vector_index(const flexi_cursor_s *cursor, size_t index,
     flexi_cursor_s *dest);
 
-FLEXI_NODISCARD bool
+bool
 flexi_cursor_map_key_at_index(const flexi_cursor_s *cursor, size_t index,
     const char **str);
 
-FLEXI_NODISCARD bool
+bool
 flexi_cursor_seek_map_key(const flexi_cursor_s *cursor, const char *key,
     flexi_cursor_s *dest);
 
-FLEXI_NODISCARD bool
+bool
 flexi_parse_cursor(const flexi_parser_s *reader, const flexi_cursor_s *cursor,
     void *user);
 
-FLEXI_NODISCARD bool
+bool
 flexi_write_null_keyed(flexi_writer_s *writer, const char *key);
 
-FLEXI_NODISCARD bool
+bool
 flexi_write_bool_keyed(flexi_writer_s *writer, const char *key, bool val);
 
-FLEXI_NODISCARD bool
+bool
 flexi_write_sint_keyed(flexi_writer_s *writer, const char *key, int64_t val);
 
-FLEXI_NODISCARD bool
+bool
 flexi_write_uint_keyed(flexi_writer_s *writer, const char *key, uint64_t v);
 
-FLEXI_NODISCARD bool
+bool
 flexi_write_f32_keyed(flexi_writer_s *writer, const char *key, float val);
 
-FLEXI_NODISCARD bool
+bool
 flexi_write_f64_keyed(flexi_writer_s *writer, const char *key, double val);
 
-FLEXI_NODISCARD bool
+bool
 flexi_write_string_keyed(flexi_writer_s *writer, const char *key,
     const char *str);
 
-FLEXI_NODISCARD bool
+bool
 flexi_write_key_keyed(flexi_writer_s *writer, const char *key, const char *str);
 
-FLEXI_NODISCARD bool
+bool
 flexi_write_blob_keyed(flexi_writer_s *writer, const char *key, const void *ptr,
     size_t len);
 
-FLEXI_NODISCARD bool
+bool
 flexi_write_indirect_sint_keyed(flexi_writer_s *writer, const char *key,
     int64_t val);
 
-FLEXI_NODISCARD bool
+bool
 flexi_write_indirect_uint_keyed(flexi_writer_s *writer, const char *key,
     uint64_t val);
 
-FLEXI_NODISCARD bool
+bool
 flexi_write_indirect_f32_keyed(flexi_writer_s *writer, const char *key,
     float val);
 
-FLEXI_NODISCARD bool
+bool
 flexi_write_indirect_f64_keyed(flexi_writer_s *writer, const char *key,
     double val);
 
-FLEXI_NODISCARD bool
+bool
 flexi_write_map_keys(flexi_writer_s *writer, size_t len, flexi_width_e stride,
     flexi_stack_idx_t *keyset);
 
-FLEXI_NODISCARD bool
+bool
 flexi_write_map_keyed(flexi_writer_s *writer, const char *key,
     flexi_stack_idx_t keyset, size_t len, flexi_width_e stride);
 
-FLEXI_NODISCARD bool
+bool
 flexi_write_vector_keyed(flexi_writer_s *writer, const char *key, size_t len,
     flexi_width_e stride);
 
-FLEXI_NODISCARD bool
+bool
 flexi_write_typed_vector_sint_keyed(flexi_writer_s *writer, const char *key,
     const void *ptr, flexi_width_e stride, size_t len);
 
-FLEXI_NODISCARD bool
+bool
 flexi_write_typed_vector_uint_keyed(flexi_writer_s *writer, const char *key,
     const void *ptr, flexi_width_e stride, size_t len);
 
-FLEXI_NODISCARD bool
+bool
 flexi_write_typed_vector_flt_keyed(flexi_writer_s *writer, const char *key,
     const void *ptr, flexi_width_e stride, size_t len);
 
-FLEXI_NODISCARD bool
+bool
 flexi_write_typed_vector_bool_keyed(flexi_writer_s *writer, const char *key,
     const bool *ptr, size_t len);
 
-FLEXI_NODISCARD bool
+bool
 flexi_write_finalize(flexi_writer_s *writer);
 
-FLEXI_NODISCARD static inline bool
+static inline bool
 flexi_write_null(flexi_writer_s *writer)
 {
     return flexi_write_null_keyed(writer, NULL);
 }
 
-FLEXI_NODISCARD static inline bool
+static inline bool
 flexi_write_bool(flexi_writer_s *writer, bool val)
 {
     return flexi_write_bool_keyed(writer, NULL, val);
 }
 
-FLEXI_NODISCARD static inline bool
+static inline bool
 flexi_write_sint(flexi_writer_s *writer, int64_t val)
 {
     return flexi_write_sint_keyed(writer, NULL, val);
 }
 
-FLEXI_NODISCARD static inline bool
+static inline bool
 flexi_write_uint(flexi_writer_s *writer, uint64_t val)
 {
     return flexi_write_uint_keyed(writer, NULL, val);
 }
 
-FLEXI_NODISCARD static inline bool
+static inline bool
 flexi_write_f32(flexi_writer_s *writer, float val)
 {
     return flexi_write_f32_keyed(writer, NULL, val);
 }
 
-FLEXI_NODISCARD static inline bool
+static inline bool
 flexi_write_f64(flexi_writer_s *writer, double val)
 {
     return flexi_write_f64_keyed(writer, NULL, val);
 }
 
-FLEXI_NODISCARD static inline bool
+static inline bool
 flexi_write_string(flexi_writer_s *writer, const char *str)
 {
     return flexi_write_string_keyed(writer, NULL, str);
 }
 
-FLEXI_NODISCARD static inline bool
+static inline bool
 flexi_write_key(flexi_writer_s *writer, const char *str)
 {
     return flexi_write_key_keyed(writer, NULL, str);
 }
 
-FLEXI_NODISCARD static inline bool
+static inline bool
 flexi_write_blob(flexi_writer_s *writer, const void *ptr, size_t len)
 {
     return flexi_write_blob_keyed(writer, NULL, ptr, len);
 }
 
-FLEXI_NODISCARD static inline bool
+static inline bool
 flexi_write_indirect_sint(flexi_writer_s *writer, int64_t val)
 {
     return flexi_write_indirect_sint_keyed(writer, NULL, val);
 }
 
-FLEXI_NODISCARD static inline bool
+static inline bool
 flexi_write_indirect_uint(flexi_writer_s *writer, uint64_t val)
 {
     return flexi_write_indirect_uint_keyed(writer, NULL, val);
 }
 
-FLEXI_NODISCARD static inline bool
+static inline bool
 flexi_write_indirect_f32(flexi_writer_s *writer, float val)
 {
     return flexi_write_indirect_f32_keyed(writer, NULL, val);
 }
 
-FLEXI_NODISCARD static inline bool
+static inline bool
 flexi_write_indirect_f64(flexi_writer_s *writer, double val)
 {
     return flexi_write_indirect_f64_keyed(writer, NULL, val);
 }
 
-FLEXI_NODISCARD static inline bool
+static inline bool
 flexi_write_map(flexi_writer_s *writer, flexi_stack_idx_t keyset, size_t len,
     flexi_width_e stride)
 {
     return flexi_write_map_keyed(writer, NULL, keyset, len, stride);
 }
 
-FLEXI_NODISCARD static inline bool
+static inline bool
 flexi_write_vector(flexi_writer_s *writer, size_t len, flexi_width_e stride)
 {
     return flexi_write_vector_keyed(writer, NULL, len, stride);

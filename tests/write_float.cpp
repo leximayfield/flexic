@@ -167,9 +167,7 @@ TEST_P(WriteVecF32Fixture, WriteAndRead)
 
     ASSERT_EQ(ex_type, flexi_cursor_type(&cursor));
     ASSERT_EQ(ex_width, flexi_cursor_width(&cursor));
-
-    size_t len = 0;
-    ASSERT_TRUE(flexi_cursor_length(&cursor, &len));
+    ASSERT_EQ(ex_values.size(), flexi_cursor_length(&cursor));
 
     const void *out_ptr = nullptr;
     ASSERT_TRUE(flexi_cursor_typed_vector_data(&cursor, &out_ptr));
@@ -243,9 +241,7 @@ TEST_P(WriteVecF64Fixture, WriteAndRead)
 
     ASSERT_EQ(ex_type, flexi_cursor_type(&cursor));
     ASSERT_EQ(ex_width, flexi_cursor_width(&cursor));
-
-    size_t len = 0;
-    ASSERT_TRUE(flexi_cursor_length(&cursor, &len));
+    ASSERT_EQ(ex_values.size(), flexi_cursor_length(&cursor));
 
     const void *out_ptr = nullptr;
     ASSERT_TRUE(flexi_cursor_typed_vector_data(&cursor, &out_ptr));
