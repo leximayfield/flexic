@@ -70,12 +70,12 @@ typedef enum {
 } flexi_type_e;
 
 typedef struct {
-    int64_t length;
     const char *data;
+    size_t length;
 } flexi_buffer_s;
 
 typedef struct {
-    const flexi_buffer_s *buffer;
+    flexi_buffer_s buffer;
     const char *cursor;
     flexi_type_e type;
     int width;
@@ -155,7 +155,7 @@ flexi_cursor_length(const flexi_cursor_s *cursor);
  *
  * @param[in] cursor Cursor pointing to value to examine.
  * @param[out] val Boolean value.  Set to false on error.
- * @return
+ * @return True if read was successful.
  */
 bool
 flexi_cursor_bool(const flexi_cursor_s *cursor, bool *val);

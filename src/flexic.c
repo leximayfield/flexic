@@ -153,22 +153,102 @@ type_is_vector(flexi_type_e type)
 }
 
 /**
+ * @brief Safely seek backwards in the buffer.
+ *
+ * @param [in] buffer Buffer to constrain offset resolution.
+ * @param [in] src Starting point for offset.
+ * @param [in] offset Extent of offset in the negative direction.
+ * @param [out] dest Output destination value.
+ * @return True if offset was resolved.
+ */
+static bool
+buffer_seek_back(const flexi_buffer_s *buffer, const char *src, size_t offset,
+    const char **dest)
+{
+    size_t max_offset = src - buffer->data;
+    if (offset > max_offset) {
+        return false;
+    }
+
+    *dest = src - offset;
+    return true;
+}
+
+/**
+ * @brief Read an unsigned integer from the passed buffer of at most size_t
+ *        width.
+ *
+ * @note Values of width < size bytes will be promoted to size_t.
+ *
+ * @pre Width must be a valid width in bytes.
+ *
+ * @param[in] buffer Buffer to constrain read inside.
+ * @param[in] src Pointer to data to read from.
+ * @param[in] width Width of data to read.
+ * @param[out] dst Output value.
+ * @return True if read was successful, false if read would have gone out
+ *         of range of the buffer.
+ */
+static bool
+buffer_read_size_by_width(const flexi_buffer_s *buffer, const char *src,
+    int width, size_t *dst)
+{
+    ASSERT(width == 1 || width == 2 || width == 4 || width == 8);
+    ASSERT(src >= buffer->data &&
+           src + width - 1 < buffer->data + buffer->length);
+
+    switch (width) {
+    case 1: {
+        uint8_t v;
+        memcpy(&v, src, 1);
+        *dst = v;
+        return true;
+    }
+    case 2: {
+        uint16_t v;
+        memcpy(&v, src, 2);
+        *dst = v;
+        return true;
+    }
+    case 4: {
+        uint32_t v;
+        memcpy(&v, src, 4);
+        *dst = v;
+        return true;
+    }
+    case 8: {
+        uint64_t v;
+        memcpy(&v, src, 8);
+#if (SIZE_MAX == UINT32_MAX)
+        *dst = (size_t)v;
+        return v <= SIZE_MAX;
+#else
+        *dst = v;
+        return true;
+#endif
+    }
+    }
+    return false;
+}
+
+/**
  * @brief Read a signed integer from the passed buffer.
  *
  * @note Values of width < 8 bytes will be promoted to int64_t.
  *
- * @param[out] dst Output value.
- * @param[in] Buffer to constrain read with.
+ * @param[in] buffer Buffer to constrain read inside.
  * @param[in] src Pointer to data to read from.
  * @param[in] width Width of data to read.
+ * @param[out] dst Output value.
  * @return True if read was successful.
  */
 static bool
-read_sint_by_width(int64_t *dst, const flexi_buffer_s *buffer, const char *src,
-    int width)
+buffer_read_sint(const flexi_buffer_s *buffer, const char *src, int width,
+    int64_t *dst)
 {
-    (void)buffer; // TODO
     ASSERT(width == 1 || width == 2 || width == 4 || width == 8);
+    ASSERT(src >= buffer->data &&
+           src + width - 1 < buffer->data + buffer->length);
 
     switch (width) {
     case 1: {
@@ -191,6 +271,129 @@ read_sint_by_width(int64_t *dst, const flexi_buffer_s *buffer, const char *src,
     }
     case 8: {
         int64_t v;
+        memcpy(&v, src, 8);
+        *dst = v;
+        return true;
+    }
+    }
+    return false;
+}
+
+/**
+ * @brief Read an unsigned integer from the passed buffer.
+ *
+ * @note Values of width < 8 bytes will be promoted to uint64_t.
+ *
+ * @pre Width must be a valid width in bytes.
+ *
+ * @param[in] buffer Buffer to constrain read inside.
+ * @param[in] src Pointer to data to read from.
+ * @param[in] width Width of data to read.
+ * @param[out] dst Output value.
+ * @return True if read was successful, false if read would have gone out
+ *         of range of the buffer.
+ */
+static bool
+buffer_read_uint(const flexi_buffer_s *buffer, const char *src, int width,
+    uint64_t *dst)
+{
+    ASSERT(width == 1 || width == 2 || width == 4 || width == 8);
+    ASSERT(src >= buffer->data &&
+           src + width - 1 < buffer->data + buffer->length);
+
+    switch (width) {
+    case 1: {
+        uint8_t v;
+        memcpy(&v, src, 1);
+        *dst = v;
+        return true;
+    }
+    case 2: {
+        uint16_t v;
+        memcpy(&v, src, 2);
+        *dst = v;
+        return true;
+    }
+    case 4: {
+        uint32_t v;
+        memcpy(&v, src, 4);
+        *dst = v;
+        return true;
+    }
+    case 8: {
+        uint64_t v;
+        memcpy(&v, src, 8);
+        *dst = v;
+        return true;
+    }
+    }
+    return false;
+}
+
+/**
+ * @brief Read a 4-byte float from the passed buffer.
+ *
+ * @note Floats of width != 4 bytes will be converted.
+ *
+ * @param[in] buffer Buffer to constrain read inside.
+ * @param[in] src Pointer to data to read from.
+ * @param[in] width Width of data to read.
+ * @param[out] dst Output value.
+ * @return True if read was successful.
+ */
+static bool
+buffer_read_f32(const flexi_buffer_s *buffer, const char *src, int width,
+    float *dst)
+{
+    ASSERT(width == 4 || width == 8);
+    ASSERT(src >= buffer->data &&
+           src + width - 1 < buffer->data + buffer->length);
+
+    switch (width) {
+    case 4: {
+        float v;
+        memcpy(&v, src, 4);
+        *dst = v;
+        return true;
+    }
+    case 8: {
+        double v;
+        memcpy(&v, src, 8);
+        *dst = (float)v;
+        return true;
+    }
+    }
+    return false;
+}
+
+/**
+ * @brief Read an 8-byte float from the passed buffer.
+ *
+ * @note Floats of width != 8 bytes will be converted.
+ *
+ * @param[in] buffer Buffer to constrain read inside.
+ * @param[in] src Pointer to data to read from.
+ * @param[in] width Width of data to read.
+ * @param[out] dst Output value.
+ * @return True if read was successful.
+ */
+static bool
+buffer_read_f64(const flexi_buffer_s *buffer, const char *src, int width,
+    double *dst)
+{
+    ASSERT(width == 4 || width == 8);
+    ASSERT(src >= buffer->data &&
+           src + width - 1 < buffer->data + buffer->length);
+
+    switch (width) {
+    case 4: {
+        float v;
+        memcpy(&v, src, 4);
+        *dst = v;
+        return true;
+    }
+    case 8: {
+        double v;
         memcpy(&v, src, 8);
         *dst = v;
         return true;
@@ -287,56 +490,6 @@ write_sint_by_width(flexi_writer_s *writer, int64_t v, int width)
 }
 
 /**
- * @brief Read an unsigned integer from the passed buffer.
- *
- * @note Values of width < 8 bytes will be promoted to uint64_t.
- *
- * @pre Width must be a valid width in bytes.
- *
- * @param[out] dst Output value.
- * @param[in] Buffer to constrain read with.
- * @param[in] src Pointer to data to read from.
- * @param[in] width Width of data to read.
- * @return True if read was successful, false if read would have gone out
- *         of range of the buffer.
- */
-static bool
-read_uint_by_width(uint64_t *dst, const flexi_buffer_s *buffer, const char *src,
-    int width)
-{
-    (void)buffer; // TODO
-    ASSERT(width == 1 || width == 2 || width == 4 || width == 8);
-
-    switch (width) {
-    case 1: {
-        uint8_t v;
-        memcpy(&v, src, 1);
-        *dst = v;
-        return true;
-    }
-    case 2: {
-        uint16_t v;
-        memcpy(&v, src, 2);
-        *dst = v;
-        return true;
-    }
-    case 4: {
-        uint32_t v;
-        memcpy(&v, src, 4);
-        *dst = v;
-        return true;
-    }
-    case 8: {
-        uint64_t v;
-        memcpy(&v, src, 8);
-        *dst = v;
-        return true;
-    }
-    }
-    return false;
-}
-
-/**
  * @brief Write an unsigned integer to the passed writer.
  *
  * @note Values will first be converted to the equivalent integer of the
@@ -384,38 +537,6 @@ write_uint_by_width(flexi_writer_s *writer, uint64_t v, int width)
 }
 
 /**
- * @brief Read a 4-byte float from the passed buffer.
- *
- * @note Floats of width != 4 bytes will be converted.
- *
- * @param dst Output value.
- * @param src Pointer to data to read from.
- * @param width Width of data to read.
- * @return True if read was successful.
- */
-static bool
-read_f32(float *dst, const char *src, int width)
-{
-    ASSERT(width == 4 || width == 8);
-
-    switch (width) {
-    case 4: {
-        float v;
-        memcpy(&v, src, 4);
-        *dst = v;
-        return true;
-    }
-    case 8: {
-        double v;
-        memcpy(&v, src, 8);
-        *dst = (float)v;
-        return true;
-    }
-    }
-    return false;
-}
-
-/**
  * @brief Write a 4-byte float to the passed writer.
  *
  * @note Floats of width != 4 bytes will be converted.
@@ -435,38 +556,6 @@ write_f32(flexi_writer_s *writer, float v, int width)
     case 8: {
         double vv = v;
         return writer_write(writer, &vv, sizeof(double));
-    }
-    }
-    return false;
-}
-
-/**
- * @brief Read an 8-byte float from the passed buffer.
- *
- * @note Floats of width != 8 bytes will be converted.
- *
- * @param dst Output value.
- * @param src Pointer to data to read from.
- * @param width Width of data to read.
- * @return True if read was successful.
- */
-static bool
-read_f64(double *dst, const char *src, int width)
-{
-    ASSERT(width == 4 || width == 8);
-
-    switch (width) {
-    case 4: {
-        float v;
-        memcpy(&v, src, 4);
-        *dst = v;
-        return true;
-    }
-    case 8: {
-        double v;
-        memcpy(&v, src, 8);
-        *dst = v;
-        return true;
     }
     }
     return false;
@@ -498,33 +587,6 @@ write_f64(flexi_writer_s *writer, double v, int width)
 }
 
 /**
- * @brief Safely resolve an offset value to a new position in the buffer.
- *
- * @param dest Output destination value.
- * @param buffer Buffer to constrain offset resolution.
- * @param src Starting point for offset.
- * @param offset Extent of offset in the negative direction.
- * @return True if offset was resolved.
- */
-static bool
-cursor_resolve_offset(const char **dest, const flexi_buffer_s *buffer,
-    const char *src, uint64_t offset)
-{
-    if (offset > PTRDIFF_MAX) {
-        return false;
-    }
-
-    ptrdiff_t move = (ptrdiff_t)offset;
-    ptrdiff_t max_move = src - buffer->data;
-    if (move > max_move) {
-        return false;
-    }
-
-    *dest = src - move;
-    return true;
-}
-
-/**
  * @brief Given a cursor pointing at the base of a vector or vector-like
  *        type, obtain its length.
  *
@@ -544,14 +606,8 @@ cursor_get_len(const flexi_cursor_s *cursor, size_t *len)
            cursor->type == FLEXI_TYPE_BLOB ||
            cursor->type == FLEXI_TYPE_VECTOR_BOOL);
 
-    uint64_t v;
-    if (!read_uint_by_width(&v, cursor->buffer, cursor->cursor - cursor->width,
-            cursor->width)) {
-        return false;
-    }
-
-    *len = (size_t)v;
-    return true;
+    return buffer_read_uint(&cursor->buffer, cursor->cursor - cursor->width,
+        cursor->width, len);
 }
 
 /**
@@ -608,15 +664,14 @@ cursor_seek_vector_index(const flexi_cursor_s *cursor, size_t index,
         return true;
     }
 
-    uint64_t offset = 0;
+    size_t offset = 0;
     const char *offset_ptr = cursor->cursor + (index * (size_t)cursor->width);
-    if (!read_uint_by_width(&offset, cursor->buffer, offset_ptr,
-            cursor->width)) {
+    if (!buffer_read_size_by_width(&cursor->buffer, offset_ptr, cursor->width,
+            &offset)) {
         return false;
     }
 
-    if (!cursor_resolve_offset(&dest->cursor, cursor->buffer, offset_ptr,
-            offset)) {
+    if (!buffer_seek_back(&cursor->buffer, offset_ptr, offset, &dest->cursor)) {
         return false;
     }
 
@@ -643,13 +698,13 @@ cursor_map_key_at_index(const flexi_cursor_s *cursor, size_t index,
 
     // Figure out offset and width of keys vector.
     uint64_t keys_offset, keys_width;
-    if (!read_uint_by_width(&keys_offset, cursor->buffer,
-            cursor->cursor - (cursor->width * 3), cursor->width)) {
+    if (!buffer_read_uint(&cursor->buffer, cursor->cursor - (cursor->width * 3),
+            cursor->width, &keys_offset)) {
         return false;
     }
 
-    if (!read_uint_by_width(&keys_width, cursor->buffer,
-            cursor->cursor - (cursor->width * 2), cursor->width)) {
+    if (!buffer_read_uint(&cursor->buffer, cursor->cursor - (cursor->width * 2),
+            cursor->width, &keys_width)) {
         return false;
     }
 
@@ -658,14 +713,14 @@ cursor_map_key_at_index(const flexi_cursor_s *cursor, size_t index,
         cursor->cursor - ((3 * cursor->width) + keys_offset);
 
     // Resolve the key.
-    uint64_t offset;
+    size_t offset = 0;
     const char *offset_ptr = keys_base + (index * (size_t)keys_width);
-    if (!read_uint_by_width(&offset, cursor->buffer, offset_ptr,
-            (int)keys_width)) {
+    if (!buffer_read_size_by_width(&cursor->buffer, offset_ptr, (int)keys_width,
+            &offset)) {
         return false;
     }
 
-    return cursor_resolve_offset(str, cursor->buffer, offset_ptr, offset);
+    return buffer_seek_back(&cursor->buffer, offset_ptr, offset, str);
 }
 
 /**
@@ -744,8 +799,7 @@ reader_emit_sint(const flexi_parser_s *reader, const flexi_cursor_s *cursor,
     void *user)
 {
     int64_t v;
-    if (!read_sint_by_width(&v, cursor->buffer, cursor->cursor,
-            cursor->width)) {
+    if (!buffer_read_sint(&cursor->buffer, cursor->cursor, cursor->width, &v)) {
         return false;
     }
 
@@ -760,8 +814,7 @@ reader_emit_uint(const flexi_parser_s *reader, const flexi_cursor_s *cursor,
     void *user)
 {
     uint64_t v;
-    if (!read_uint_by_width(&v, cursor->buffer, cursor->cursor,
-            cursor->width)) {
+    if (!buffer_read_uint(&cursor->buffer, cursor->cursor, cursor->width, &v)) {
         return false;
     }
 
@@ -778,7 +831,8 @@ reader_emit_flt(const flexi_parser_s *reader, const flexi_cursor_s *cursor,
     switch (cursor->width) {
     case 4: {
         float v;
-        if (!read_f32(&v, cursor->cursor, cursor->width)) {
+        if (!buffer_read_f32(&cursor->buffer, cursor->cursor, cursor->width,
+                &v)) {
             return false;
         }
 
@@ -787,7 +841,8 @@ reader_emit_flt(const flexi_parser_s *reader, const flexi_cursor_s *cursor,
     }
     case 8: {
         double v;
-        if (!read_f64(&v, cursor->cursor, cursor->width)) {
+        if (!buffer_read_f64(&cursor->buffer, cursor->cursor, cursor->width,
+                &v)) {
             return false;
         }
 
@@ -931,15 +986,15 @@ reader_emit_vector_key(const flexi_parser_s *reader,
     reader->vector_begin(len, user);
     for (size_t i = 0; i < len; i++) {
         // Access the offset by hand.
-        uint64_t offset = 0;
+        size_t offset = 0;
         const char *offset_ptr = cursor->cursor + (i * (size_t)cursor->width);
-        if (!read_uint_by_width(&offset, cursor->buffer, offset_ptr,
-                cursor->width)) {
+        if (!buffer_read_size_by_width(&cursor->buffer, offset_ptr,
+                cursor->width, &offset)) {
             return false;
         }
 
         const char *dest = NULL;
-        if (!cursor_resolve_offset(&dest, cursor->buffer, offset_ptr, offset)) {
+        if (!buffer_seek_back(&cursor->buffer, offset_ptr, offset, &dest)) {
             return false;
         }
 
@@ -1260,7 +1315,7 @@ flexi_make_buffer(const void *buffer, size_t len)
 {
     flexi_buffer_s rvo;
     rvo.data = (const char *)buffer;
-    rvo.length = (ptrdiff_t)len;
+    rvo.length = len;
     return rvo;
 }
 
@@ -1269,16 +1324,16 @@ flexi_make_buffer(const void *buffer, size_t len)
 bool
 flexi_open_buffer(const flexi_buffer_s *buffer, flexi_cursor_s *cursor)
 {
-    if (buffer->length < 3 || buffer->length > PTRDIFF_MAX) {
+    if (buffer->length < 3) {
         // Shortest length we can discard without checking.
         return false;
     }
 
     // Width of root object.
-    cursor->buffer = buffer;
+    cursor->buffer = *buffer;
     cursor->cursor = buffer->data + buffer->length - 1;
     uint8_t root_bytes = *(const uint8_t *)(cursor->cursor);
-    if (buffer->length < root_bytes + 2) {
+    if (buffer->length < root_bytes + 2u) {
         return false;
     }
 
@@ -1297,14 +1352,14 @@ flexi_open_buffer(const flexi_buffer_s *buffer, flexi_cursor_s *cursor)
     }
 
     // We're pointing at an offset, resolve it.
-    uint64_t offset;
-    if (!read_uint_by_width(&offset, cursor->buffer, cursor->cursor,
-            root_bytes)) {
+    size_t offset = 0;
+    if (!buffer_read_size_by_width(&cursor->buffer, cursor->cursor, root_bytes,
+            &offset)) {
         return false;
     }
 
     const char *dest = NULL;
-    if (!cursor_resolve_offset(&dest, cursor->buffer, cursor->cursor, offset)) {
+    if (!buffer_seek_back(&cursor->buffer, cursor->cursor, offset, &dest)) {
         return false;
     }
 
@@ -1370,8 +1425,8 @@ flexi_cursor_bool(const flexi_cursor_s *cursor, bool *val)
 {
     if (type_is_anyint(cursor->type)) {
         uint64_t v;
-        if (!read_uint_by_width(&v, cursor->buffer, cursor->cursor,
-                cursor->width)) {
+        if (!buffer_read_uint(&cursor->buffer, cursor->cursor, cursor->width,
+                &v)) {
             *val = false;
             return false;
         }
@@ -1381,7 +1436,8 @@ flexi_cursor_bool(const flexi_cursor_s *cursor, bool *val)
     } else if (cursor->type == FLEXI_TYPE_FLOAT &&
                cursor->width == sizeof(float)) {
         float v;
-        if (!read_f32(&v, cursor->cursor, cursor->width)) {
+        if (!buffer_read_f32(&cursor->buffer, cursor->cursor, cursor->width,
+                &v)) {
             *val = false;
             return false;
         }
@@ -1391,7 +1447,8 @@ flexi_cursor_bool(const flexi_cursor_s *cursor, bool *val)
     } else if (cursor->type == FLEXI_TYPE_FLOAT &&
                cursor->width == sizeof(double)) {
         double v;
-        if (!read_f64(&v, cursor->cursor, cursor->width)) {
+        if (!buffer_read_f64(&cursor->buffer, cursor->cursor, cursor->width,
+                &v)) {
             *val = false;
             return false;
         }
@@ -1414,8 +1471,8 @@ flexi_cursor_sint(const flexi_cursor_s *cursor, int64_t *val)
 {
     if (type_is_anyint(cursor->type)) {
         int64_t v;
-        if (!read_sint_by_width(&v, cursor->buffer, cursor->cursor,
-                cursor->width)) {
+        if (!buffer_read_sint(&cursor->buffer, cursor->cursor, cursor->width,
+                &v)) {
             return false;
         }
 
@@ -1423,7 +1480,8 @@ flexi_cursor_sint(const flexi_cursor_s *cursor, int64_t *val)
         return true;
     } else if (type_is_flt(cursor->type) && cursor->width == 4) {
         float v;
-        if (!read_f32(&v, cursor->cursor, cursor->width)) {
+        if (!buffer_read_f32(&cursor->buffer, cursor->cursor, cursor->width,
+                &v)) {
             return false;
         }
 
@@ -1431,7 +1489,8 @@ flexi_cursor_sint(const flexi_cursor_s *cursor, int64_t *val)
         return true;
     } else if (type_is_flt(cursor->type) && cursor->width == 8) {
         double v;
-        if (!read_f64(&v, cursor->cursor, cursor->width)) {
+        if (!buffer_read_f64(&cursor->buffer, cursor->cursor, cursor->width,
+                &v)) {
             return false;
         }
 
@@ -1452,8 +1511,8 @@ flexi_cursor_uint(const flexi_cursor_s *cursor, uint64_t *val)
 {
     if (type_is_anyint(cursor->type)) {
         uint64_t v;
-        if (!read_uint_by_width(&v, cursor->buffer, cursor->cursor,
-                cursor->width)) {
+        if (!buffer_read_uint(&cursor->buffer, cursor->cursor, cursor->width,
+                &v)) {
             return false;
         }
 
@@ -1461,7 +1520,8 @@ flexi_cursor_uint(const flexi_cursor_s *cursor, uint64_t *val)
         return true;
     } else if (type_is_flt(cursor->type) && cursor->width == 4) {
         float v;
-        if (!read_f32(&v, cursor->cursor, cursor->width)) {
+        if (!buffer_read_f32(&cursor->buffer, cursor->cursor, cursor->width,
+                &v)) {
             return false;
         }
 
@@ -1469,7 +1529,8 @@ flexi_cursor_uint(const flexi_cursor_s *cursor, uint64_t *val)
         return true;
     } else if (type_is_flt(cursor->type) && cursor->width == 8) {
         double v;
-        if (!read_f64(&v, cursor->cursor, cursor->width)) {
+        if (!buffer_read_f64(&cursor->buffer, cursor->cursor, cursor->width,
+                &v)) {
             return false;
         }
 
@@ -1490,8 +1551,8 @@ flexi_cursor_f32(const flexi_cursor_s *cursor, float *val)
 {
     if (type_is_sint(cursor->type)) {
         int64_t v;
-        if (!read_sint_by_width(&v, cursor->buffer, cursor->cursor,
-                cursor->width)) {
+        if (!buffer_read_sint(&cursor->buffer, cursor->cursor, cursor->width,
+                &v)) {
             return false;
         }
 
@@ -1499,8 +1560,8 @@ flexi_cursor_f32(const flexi_cursor_s *cursor, float *val)
         return true;
     } else if (type_is_uint(cursor->type)) {
         uint64_t v;
-        if (!read_uint_by_width(&v, cursor->buffer, cursor->cursor,
-                cursor->width)) {
+        if (!buffer_read_uint(&cursor->buffer, cursor->cursor, cursor->width,
+                &v)) {
             return false;
         }
 
@@ -1508,7 +1569,8 @@ flexi_cursor_f32(const flexi_cursor_s *cursor, float *val)
         return true;
     } else if (type_is_flt(cursor->type) && cursor->width == 4) {
         float v;
-        if (!read_f32(&v, cursor->cursor, cursor->width)) {
+        if (!buffer_read_f32(&cursor->buffer, cursor->cursor, cursor->width,
+                &v)) {
             return false;
         }
 
@@ -1516,7 +1578,8 @@ flexi_cursor_f32(const flexi_cursor_s *cursor, float *val)
         return true;
     } else if (type_is_flt(cursor->type) && cursor->width == 8) {
         double v;
-        if (!read_f64(&v, cursor->cursor, cursor->width)) {
+        if (!buffer_read_f64(&cursor->buffer, cursor->cursor, cursor->width,
+                &v)) {
             return false;
         }
 
@@ -1537,8 +1600,8 @@ flexi_cursor_f64(const flexi_cursor_s *cursor, double *val)
 {
     if (type_is_sint(cursor->type)) {
         int64_t v;
-        if (!read_sint_by_width(&v, cursor->buffer, cursor->cursor,
-                cursor->width)) {
+        if (!buffer_read_sint(&cursor->buffer, cursor->cursor, cursor->width,
+                &v)) {
             return false;
         }
 
@@ -1546,8 +1609,8 @@ flexi_cursor_f64(const flexi_cursor_s *cursor, double *val)
         return true;
     } else if (type_is_uint(cursor->type)) {
         uint64_t v;
-        if (!read_uint_by_width(&v, cursor->buffer, cursor->cursor,
-                cursor->width)) {
+        if (!buffer_read_uint(&cursor->buffer, cursor->cursor, cursor->width,
+                &v)) {
             return false;
         }
 
@@ -1555,7 +1618,8 @@ flexi_cursor_f64(const flexi_cursor_s *cursor, double *val)
         return true;
     } else if (type_is_flt(cursor->type) && cursor->width == 4) {
         float v;
-        if (!read_f32(&v, cursor->cursor, cursor->width)) {
+        if (!buffer_read_f32(&cursor->buffer, cursor->cursor, cursor->width,
+                &v)) {
             return false;
         }
 
@@ -1563,7 +1627,8 @@ flexi_cursor_f64(const flexi_cursor_s *cursor, double *val)
         return true;
     } else if (type_is_flt(cursor->type) && cursor->width == 8) {
         double v;
-        if (!read_f64(&v, cursor->cursor, cursor->width)) {
+        if (!buffer_read_f64(&cursor->buffer, cursor->cursor, cursor->width,
+                &v)) {
             return false;
         }
 

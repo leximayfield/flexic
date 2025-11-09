@@ -1,7 +1,7 @@
 # Testing enables warnings
 
 if(MSVC)
-    target_compile_options(flexic PRIVATE /W4 /we4013 /w44062 /w44388)
+    target_compile_options(flexic PRIVATE /W4 /we4013 /we4024 /we4047 /we4133 /w44062 /w44388)
 else()
     target_compile_options(flexic PRIVATE -Wall -Wextra)
 endif()
