@@ -33,9 +33,9 @@
 #define INT64_PATTERN (INT64_C(-4822678189205112))
 
 #define UINT8_PATTERN (UINT8_C(0x88))
-#define UINT16_PATTERN (UINT16_C(0x8899))
-#define UINT32_PATTERN (UINT32_C(0x8899aabb))
-#define UINT64_PATTERN (UINT64_C(0x8899aabbccddeeff))
+#define UINT16_PATTERN (UINT16_C(0x9988))
+#define UINT32_PATTERN (UINT32_C(0xbbaa9988))
+#define UINT64_PATTERN (UINT64_C(0xffeeddccbbaa9988))
 
 #define PI_VALUE (3.14159265358979323846)
 
@@ -118,6 +118,6 @@ protected:
         ASSERT_TRUE(m_actual.Tell(&offset));
 
         auto buffer = flexi_make_buffer(m_actual.DataAt(0), offset);
-        ASSERT_TRUE(flexi_open_buffer(&buffer, cursor));
+        ASSERT_EQ(FLEXI_OK, flexi_open_buffer(&buffer, cursor));
     }
 };

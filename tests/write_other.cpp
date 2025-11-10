@@ -52,6 +52,6 @@ TEST_F(WriteFixture, Bool)
     ASSERT_EQ(1, flexi_cursor_width(&cursor));
 
     bool value = false;
-    ASSERT_TRUE(flexi_cursor_bool(&cursor, &value));
+    ASSERT_EQ(FLEXI_OK, flexi_cursor_bool(&cursor, &value));
     ASSERT_EQ(true, value);
 }

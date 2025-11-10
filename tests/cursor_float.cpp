@@ -23,302 +23,316 @@
 #include "tests.hpp"
 
 static void
-GetCursorInt64Pattern(flexi_cursor_s &cursor)
+GetCursorPiValue32(flexi_cursor_s &cursor)
 {
-    static std::array<uint8_t, 10> s_data = {
-        0x88, 0x99, 0xaa, 0xbb, 0xcc, 0xdd, 0xee, 0xff, 0x07, 0x08};
+    static std::array<uint8_t, 6> s_data = {0xdb, 0x0f, 0x49, 0x40, 0x0e, 0x04};
 
     auto buffer = flexi_make_buffer(s_data.data(), s_data.size());
     ASSERT_EQ(FLEXI_OK, flexi_open_buffer(&buffer, &cursor));
 }
 
 static void
-GetCursorUint64Pattern(flexi_cursor_s &cursor)
+GetCursorInf32(flexi_cursor_s &cursor)
 {
-    static std::array<uint8_t, 10> s_data = {
-        0x88, 0x99, 0xaa, 0xbb, 0xcc, 0xdd, 0xee, 0xff, 0x0b, 0x08};
+    static std::array<uint8_t, 6> s_data = {0x00, 0x00, 0x80, 0x7f, 0x0e, 0x04};
 
     auto buffer = flexi_make_buffer(s_data.data(), s_data.size());
     ASSERT_EQ(FLEXI_OK, flexi_open_buffer(&buffer, &cursor));
 }
 
-TEST(CursorInt, Types_Int64Pattern)
+static void
+GetCursorPiValue64(flexi_cursor_s &cursor)
+{
+    static std::array<uint8_t, 10> s_data = {
+        0x18, 0x2d, 0x44, 0x54, 0xfb, 0x21, 0x09, 0x40, 0x0f, 0x08};
+
+    auto buffer = flexi_make_buffer(s_data.data(), s_data.size());
+    ASSERT_EQ(FLEXI_OK, flexi_open_buffer(&buffer, &cursor));
+}
+
+TEST(CursorFloat, Types_PiValue32)
 {
     flexi_cursor_s cursor{};
-    GetCursorInt64Pattern(cursor);
+    GetCursorPiValue32(cursor);
 
-    ASSERT_EQ(FLEXI_TYPE_SINT, flexi_cursor_type(&cursor));
-    ASSERT_EQ(8, flexi_cursor_width(&cursor));
+    ASSERT_EQ(FLEXI_TYPE_FLOAT, flexi_cursor_type(&cursor));
+    ASSERT_EQ(4, flexi_cursor_width(&cursor));
     ASSERT_EQ(0, flexi_cursor_length(&cursor));
 }
 
-TEST(CursorInt, Sint_Int64Pattern)
+TEST(CursorFloat, Sint_PiValue32)
 {
     flexi_cursor_s cursor{};
-    GetCursorInt64Pattern(cursor);
+    GetCursorPiValue32(cursor);
 
     int64_t v = 0;
     ASSERT_EQ(FLEXI_OK, flexi_cursor_sint(&cursor, &v));
-    ASSERT_EQ(INT64_PATTERN, v);
+    ASSERT_EQ(3, v);
 }
 
-TEST(CursorInt, Uint_Int64Pattern)
+TEST(CursorFloat, Sint_Inf32)
 {
     flexi_cursor_s cursor{};
-    GetCursorInt64Pattern(cursor);
+    GetCursorInf32(cursor);
 
-    uint64_t v = 1;
-    ASSERT_EQ(FLEXI_ERR_RANGE, flexi_cursor_uint(&cursor, &v));
-    ASSERT_EQ(0, v);
+    int64_t v = 0;
+    ASSERT_EQ(FLEXI_ERR_RANGE, flexi_cursor_sint(&cursor, &v));
+    ASSERT_EQ(INT64_MAX, v);
 }
 
-TEST(CursorInt, Float32_Int64Pattern)
+TEST(CursorFloat, Uint_PiValue32)
 {
     flexi_cursor_s cursor{};
-    GetCursorInt64Pattern(cursor);
+    GetCursorPiValue32(cursor);
 
-    constexpr float ex = float(INT64_PATTERN);
+    uint64_t v = 0;
+    ASSERT_EQ(FLEXI_OK, flexi_cursor_uint(&cursor, &v));
+    ASSERT_EQ(3, v);
+}
+
+TEST(CursorFloat, Float32_PiValue32)
+{
+    flexi_cursor_s cursor{};
+    GetCursorPiValue32(cursor);
+
     float v = 0;
     ASSERT_EQ(FLEXI_OK, flexi_cursor_f32(&cursor, &v));
-    ASSERT_EQ(ex, v);
+    ASSERT_FLOAT_EQ(PI_VALUE, v);
 }
 
-TEST(CursorInt, Float64_Int64Pattern)
+TEST(CursorFloat, Float64_PiValue32)
 {
     flexi_cursor_s cursor{};
-    GetCursorInt64Pattern(cursor);
+    GetCursorPiValue32(cursor);
 
-    constexpr double ex = double(INT64_PATTERN);
     double v = 0;
     ASSERT_EQ(FLEXI_OK, flexi_cursor_f64(&cursor, &v));
-    ASSERT_EQ(ex, v);
+    ASSERT_FLOAT_EQ(PI_VALUE, v);
 }
 
-TEST(CursorInt, Key_Int64Pattern)
+TEST(CursorFloat, Key_PiValue32)
 {
     flexi_cursor_s cursor{};
-    GetCursorInt64Pattern(cursor);
+    GetCursorPiValue32(cursor);
 
     const char *v = nullptr;
     ASSERT_EQ(FLEXI_ERR_BADTYPE, flexi_cursor_key(&cursor, &v));
     ASSERT_STREQ("", v);
 }
 
-TEST(CursorInt, String_Int64Pattern)
+TEST(CursorFloat, String_PiValue32)
 {
     flexi_cursor_s cursor{};
-    GetCursorInt64Pattern(cursor);
+    GetCursorPiValue32(cursor);
 
     const char *v = nullptr;
     ASSERT_EQ(FLEXI_ERR_BADTYPE, flexi_cursor_string(&cursor, &v));
     ASSERT_STREQ("", v);
 }
 
-TEST(CursorInt, TypedVectorData_Int64Pattern)
+TEST(CursorFloat, TypedVectorData_PiValue32)
 {
     flexi_cursor_s cursor{};
-    GetCursorInt64Pattern(cursor);
+    GetCursorPiValue32(cursor);
 
     const void *v = nullptr;
     ASSERT_EQ(FLEXI_ERR_BADTYPE, flexi_cursor_typed_vector_data(&cursor, &v));
     ASSERT_STREQ("", static_cast<const char *>(v));
 }
 
-TEST(CursorInt, VectorTypes_Int64Pattern)
+TEST(CursorFloat, VectorTypes_PiValue32)
 {
     flexi_cursor_s cursor{};
-    GetCursorInt64Pattern(cursor);
+    GetCursorPiValue32(cursor);
 
     const flexi_packed_t *v = nullptr;
     ASSERT_EQ(FLEXI_ERR_BADTYPE, flexi_cursor_vector_types(&cursor, &v));
     ASSERT_EQ(nullptr, v);
 }
 
-TEST(CursorInt, Blob_Int64Pattern)
+TEST(CursorFloat, Blob_PiValue32)
 {
     flexi_cursor_s cursor{};
-    GetCursorInt64Pattern(cursor);
+    GetCursorPiValue32(cursor);
 
     const uint8_t *v = nullptr;
     ASSERT_EQ(FLEXI_ERR_BADTYPE, flexi_cursor_blob(&cursor, &v));
     ASSERT_STREQ("", reinterpret_cast<const char *>(v));
 }
 
-TEST(CursorInt, Bool_Int64Pattern)
+TEST(CursorFloat, Bool_PiValue32)
 {
     flexi_cursor_s cursor{};
-    GetCursorInt64Pattern(cursor);
+    GetCursorPiValue32(cursor);
 
     bool v = false;
     ASSERT_EQ(FLEXI_OK, flexi_cursor_bool(&cursor, &v));
     ASSERT_EQ(true, v);
 }
 
-TEST(CursorInt, SeekVectorIndex_Int64Pattern)
+TEST(CursorFloat, SeekVectorIndex_PiValue32)
 {
     flexi_cursor_s cursor{};
-    GetCursorInt64Pattern(cursor);
+    GetCursorPiValue32(cursor);
 
     flexi_cursor_s v{};
     ASSERT_EQ(FLEXI_ERR_BADTYPE,
         flexi_cursor_seek_vector_index(&cursor, 0, &v));
 }
 
-TEST(CursorInt, MapKeyAtIndex_Int64Pattern)
+TEST(CursorFloat, MapKeyAtIndex_PiValue32)
 {
     flexi_cursor_s cursor{};
-    GetCursorInt64Pattern(cursor);
+    GetCursorPiValue32(cursor);
 
     const char *v = nullptr;
     ASSERT_EQ(FLEXI_ERR_BADTYPE, flexi_cursor_map_key_at_index(&cursor, 0, &v));
     ASSERT_STREQ("", v);
 }
 
-TEST(CursorInt, SeekMapKey_Int64Pattern)
+TEST(CursorFloat, SeekMapKey_PiValue32)
 {
     flexi_cursor_s cursor{};
-    GetCursorInt64Pattern(cursor);
+    GetCursorPiValue32(cursor);
 
     flexi_cursor_s v{};
     ASSERT_EQ(FLEXI_ERR_BADTYPE, flexi_cursor_seek_map_key(&cursor, "", &v));
 }
 
-TEST(CursorInt, Types_Uint64Pattern)
+TEST(CursorFloat, Types_PiValue64)
 {
     flexi_cursor_s cursor{};
-    GetCursorUint64Pattern(cursor);
+    GetCursorPiValue64(cursor);
 
-    ASSERT_EQ(FLEXI_TYPE_UINT, flexi_cursor_type(&cursor));
+    ASSERT_EQ(FLEXI_TYPE_FLOAT, flexi_cursor_type(&cursor));
     ASSERT_EQ(8, flexi_cursor_width(&cursor));
     ASSERT_EQ(0, flexi_cursor_length(&cursor));
 }
 
-TEST(CursorInt, Sint_Uint64Pattern)
+TEST(CursorFloat, Sint_PiValue64)
 {
     flexi_cursor_s cursor{};
-    GetCursorUint64Pattern(cursor);
+    GetCursorPiValue64(cursor);
 
-    int64_t v = 1;
-    ASSERT_EQ(FLEXI_ERR_RANGE, flexi_cursor_sint(&cursor, &v));
-    ASSERT_EQ(INT64_MAX, v);
+    int64_t v = 0;
+    ASSERT_EQ(FLEXI_OK, flexi_cursor_sint(&cursor, &v));
+    ASSERT_EQ(3, v);
 }
 
-TEST(CursorInt, Uint_Uint64Pattern)
+TEST(CursorFloat, Uint_PiValue64)
 {
     flexi_cursor_s cursor{};
-    GetCursorUint64Pattern(cursor);
+    GetCursorPiValue64(cursor);
 
     uint64_t v = 0;
     ASSERT_EQ(FLEXI_OK, flexi_cursor_uint(&cursor, &v));
-    ASSERT_EQ(UINT64_PATTERN, v);
+    ASSERT_EQ(3, v);
 }
 
-TEST(CursorInt, Float32_Uint64Pattern)
+TEST(CursorFloat, Float32_PiValue64)
 {
     flexi_cursor_s cursor{};
-    GetCursorUint64Pattern(cursor);
+    GetCursorPiValue64(cursor);
 
-    constexpr float ex = float(UINT64_PATTERN);
     float v = 0;
     ASSERT_EQ(FLEXI_OK, flexi_cursor_f32(&cursor, &v));
-    ASSERT_EQ(ex, v);
+    ASSERT_FLOAT_EQ(PI_VALUE, v);
 }
 
-TEST(CursorInt, Float64_Uint64Pattern)
+TEST(CursorFloat, Float64_PiValue64)
 {
     flexi_cursor_s cursor{};
-    GetCursorUint64Pattern(cursor);
+    GetCursorPiValue64(cursor);
 
-    constexpr double ex = double(UINT64_PATTERN);
     double v = 0;
     ASSERT_EQ(FLEXI_OK, flexi_cursor_f64(&cursor, &v));
-    ASSERT_EQ(ex, v);
+    ASSERT_EQ(PI_VALUE, v);
 }
 
-TEST(CursorInt, Key_Uint64Pattern)
+TEST(CursorFloat, Key_PiValue64)
 {
     flexi_cursor_s cursor{};
-    GetCursorUint64Pattern(cursor);
+    GetCursorPiValue64(cursor);
 
     const char *v = nullptr;
     ASSERT_EQ(FLEXI_ERR_BADTYPE, flexi_cursor_key(&cursor, &v));
     ASSERT_STREQ("", v);
 }
 
-TEST(CursorInt, String_Uint64Pattern)
+TEST(CursorFloat, String_PiValue64)
 {
     flexi_cursor_s cursor{};
-    GetCursorUint64Pattern(cursor);
+    GetCursorPiValue64(cursor);
 
     const char *v = nullptr;
     ASSERT_EQ(FLEXI_ERR_BADTYPE, flexi_cursor_string(&cursor, &v));
     ASSERT_STREQ("", v);
 }
 
-TEST(CursorInt, TypedVectorData_Uint64Pattern)
+TEST(CursorFloat, TypedVectorData_PiValue64)
 {
     flexi_cursor_s cursor{};
-    GetCursorUint64Pattern(cursor);
+    GetCursorPiValue64(cursor);
 
     const void *v = nullptr;
     ASSERT_EQ(FLEXI_ERR_BADTYPE, flexi_cursor_typed_vector_data(&cursor, &v));
     ASSERT_STREQ("", static_cast<const char *>(v));
 }
 
-TEST(CursorInt, VectorTypes_Uint64Pattern)
+TEST(CursorFloat, VectorTypes_PiValue64)
 {
     flexi_cursor_s cursor{};
-    GetCursorUint64Pattern(cursor);
+    GetCursorPiValue64(cursor);
 
     const flexi_packed_t *v = nullptr;
     ASSERT_EQ(FLEXI_ERR_BADTYPE, flexi_cursor_vector_types(&cursor, &v));
     ASSERT_EQ(nullptr, v);
 }
 
-TEST(CursorInt, Blob_Uint64Pattern)
+TEST(CursorFloat, Blob_PiValue64)
 {
     flexi_cursor_s cursor{};
-    GetCursorUint64Pattern(cursor);
+    GetCursorPiValue64(cursor);
 
     const uint8_t *v = nullptr;
     ASSERT_EQ(FLEXI_ERR_BADTYPE, flexi_cursor_blob(&cursor, &v));
     ASSERT_STREQ("", reinterpret_cast<const char *>(v));
 }
 
-TEST(CursorInt, Bool_Uint64Pattern)
+TEST(CursorFloat, Bool_PiValue64)
 {
     flexi_cursor_s cursor{};
-    GetCursorUint64Pattern(cursor);
+    GetCursorPiValue64(cursor);
 
     bool v = false;
     ASSERT_EQ(FLEXI_OK, flexi_cursor_bool(&cursor, &v));
     ASSERT_EQ(true, v);
 }
 
-TEST(CursorInt, SeekVectorIndex_Uint64Pattern)
+TEST(CursorFloat, SeekVectorIndex_PiValue64)
 {
     flexi_cursor_s cursor{};
-    GetCursorUint64Pattern(cursor);
+    GetCursorPiValue64(cursor);
 
     flexi_cursor_s v{};
     ASSERT_EQ(FLEXI_ERR_BADTYPE,
         flexi_cursor_seek_vector_index(&cursor, 0, &v));
 }
 
-TEST(CursorInt, MapKeyAtIndex_Uint64Pattern)
+TEST(CursorFloat, MapKeyAtIndex_PiValue64)
 {
     flexi_cursor_s cursor{};
-    GetCursorUint64Pattern(cursor);
+    GetCursorPiValue64(cursor);
 
     const char *v = nullptr;
     ASSERT_EQ(FLEXI_ERR_BADTYPE, flexi_cursor_map_key_at_index(&cursor, 0, &v));
     ASSERT_STREQ("", v);
 }
 
-TEST(CursorInt, SeekMapKey_Uint64Pattern)
+TEST(CursorFloat, SeekMapKey_PiValue64)
 {
     flexi_cursor_s cursor{};
-    GetCursorUint64Pattern(cursor);
+    GetCursorPiValue64(cursor);
 
     flexi_cursor_s v{};
     ASSERT_EQ(FLEXI_ERR_BADTYPE, flexi_cursor_seek_map_key(&cursor, "", &v));

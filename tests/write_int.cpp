@@ -53,12 +53,12 @@ TEST_P(WriteSintFixture, WriteAndRead)
 
     flexi_cursor_s cursor{};
     auto buffer = flexi_make_buffer(m_actual.DataAt(0), offset);
-    ASSERT_TRUE(flexi_open_buffer(&buffer, &cursor));
+    ASSERT_EQ(FLEXI_OK, flexi_open_buffer(&buffer, &cursor));
     ASSERT_EQ(FLEXI_TYPE_SINT, flexi_cursor_type(&cursor));
     ASSERT_EQ(ex_width, flexi_cursor_width(&cursor));
 
     int64_t actual_value = 0;
-    ASSERT_TRUE(flexi_cursor_sint(&cursor, &actual_value));
+    ASSERT_EQ(FLEXI_OK, flexi_cursor_sint(&cursor, &actual_value));
     ASSERT_EQ(value, actual_value);
 }
 
@@ -104,12 +104,12 @@ TEST_P(WriteUintFixture, WriteAndRead)
 
     flexi_cursor_s cursor{};
     auto buffer = flexi_make_buffer(m_actual.DataAt(0), offset);
-    ASSERT_TRUE(flexi_open_buffer(&buffer, &cursor));
+    ASSERT_EQ(FLEXI_OK, flexi_open_buffer(&buffer, &cursor));
     ASSERT_EQ(FLEXI_TYPE_UINT, flexi_cursor_type(&cursor));
     ASSERT_EQ(ex_width, flexi_cursor_width(&cursor));
 
     uint64_t actual_value = 0;
-    ASSERT_TRUE(flexi_cursor_uint(&cursor, &actual_value));
+    ASSERT_EQ(FLEXI_OK, flexi_cursor_uint(&cursor, &actual_value));
     ASSERT_EQ(value, actual_value);
 }
 
@@ -117,11 +117,11 @@ INSTANTIATE_TEST_SUITE_P(WriteUint, WriteUintFixture,
     testing::Values(
         WriteUintParams{UINT8_PATTERN, direct_e::direct, {0x88, 0x08, 0x01}, 1},
         WriteUintParams{
-            UINT16_PATTERN, direct_e::direct, {0x99, 0x88, 0x09, 0x02}, 2},
+            UINT16_PATTERN, direct_e::direct, {0x88, 0x99, 0x09, 0x02}, 2},
         WriteUintParams{UINT32_PATTERN, direct_e::direct,
-            {0xbb, 0xaa, 0x99, 0x88, 0x0a, 0x04}, 4},
+            {0x88, 0x99, 0xaa, 0xbb, 0x0a, 0x04}, 4},
         WriteUintParams{UINT64_PATTERN, direct_e::direct,
-            {0xff, 0xee, 0xdd, 0xcc, 0xbb, 0xaa, 0x99, 0x88, 0x0b, 0x08}, 8}));
+            {0x88, 0x99, 0xaa, 0xbb, 0xcc, 0xdd, 0xee, 0xff, 0x0b, 0x08}, 8}));
 
 /******************************************************************************/
 

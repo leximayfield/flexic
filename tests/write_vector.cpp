@@ -57,26 +57,26 @@ TEST_F(WriteFixture, VectorInts)
     flexi_cursor_s vcursor{};
     bool b = false;
 
-    ASSERT_TRUE(flexi_cursor_seek_vector_index(&cursor, 0, &vcursor));
-    ASSERT_TRUE(flexi_cursor_bool(&vcursor, &b));
+    ASSERT_EQ(FLEXI_OK, flexi_cursor_seek_vector_index(&cursor, 0, &vcursor));
+    ASSERT_EQ(FLEXI_OK, flexi_cursor_bool(&vcursor, &b));
     ASSERT_EQ(b, true);
 
     int64_t s64 = 0;
 
-    ASSERT_TRUE(flexi_cursor_seek_vector_index(&cursor, 1, &vcursor));
-    ASSERT_TRUE(flexi_cursor_sint(&vcursor, &s64));
+    ASSERT_EQ(FLEXI_OK, flexi_cursor_seek_vector_index(&cursor, 1, &vcursor));
+    ASSERT_EQ(FLEXI_OK, flexi_cursor_sint(&vcursor, &s64));
     ASSERT_EQ(s64, INT16_MAX);
-    ASSERT_TRUE(flexi_cursor_seek_vector_index(&cursor, 2, &vcursor));
-    ASSERT_TRUE(flexi_cursor_sint(&vcursor, &s64));
+    ASSERT_EQ(FLEXI_OK, flexi_cursor_seek_vector_index(&cursor, 2, &vcursor));
+    ASSERT_EQ(FLEXI_OK, flexi_cursor_sint(&vcursor, &s64));
     ASSERT_EQ(s64, INT32_MAX);
 
     uint64_t u64 = 0;
 
-    ASSERT_TRUE(flexi_cursor_seek_vector_index(&cursor, 3, &vcursor));
-    ASSERT_TRUE(flexi_cursor_uint(&vcursor, &u64));
+    ASSERT_EQ(FLEXI_OK, flexi_cursor_seek_vector_index(&cursor, 3, &vcursor));
+    ASSERT_EQ(FLEXI_OK, flexi_cursor_uint(&vcursor, &u64));
     ASSERT_EQ(u64, UINT16_MAX);
-    ASSERT_TRUE(flexi_cursor_seek_vector_index(&cursor, 4, &vcursor));
-    ASSERT_TRUE(flexi_cursor_uint(&vcursor, &u64));
+    ASSERT_EQ(FLEXI_OK, flexi_cursor_seek_vector_index(&cursor, 4, &vcursor));
+    ASSERT_EQ(FLEXI_OK, flexi_cursor_uint(&vcursor, &u64));
     ASSERT_EQ(u64, UINT32_MAX);
 }
 
@@ -121,20 +121,20 @@ TEST_F(WriteFixture, VectorFloats)
     flexi_cursor_s vcursor{};
     float f32 = 0.0f;
 
-    ASSERT_TRUE(flexi_cursor_seek_vector_index(&cursor, 0, &vcursor));
-    ASSERT_TRUE(flexi_cursor_f32(&vcursor, &f32));
+    ASSERT_EQ(FLEXI_OK, flexi_cursor_seek_vector_index(&cursor, 0, &vcursor));
+    ASSERT_EQ(FLEXI_OK, flexi_cursor_f32(&vcursor, &f32));
     ASSERT_FLOAT_EQ(f32, PI_VALUE);
-    ASSERT_TRUE(flexi_cursor_seek_vector_index(&cursor, 1, &vcursor));
-    ASSERT_TRUE(flexi_cursor_f32(&vcursor, &f32));
+    ASSERT_EQ(FLEXI_OK, flexi_cursor_seek_vector_index(&cursor, 1, &vcursor));
+    ASSERT_EQ(FLEXI_OK, flexi_cursor_f32(&vcursor, &f32));
     ASSERT_FLOAT_EQ(f32, PI_VALUE);
 
     double f64 = 0.0;
 
-    ASSERT_TRUE(flexi_cursor_seek_vector_index(&cursor, 2, &vcursor));
-    ASSERT_TRUE(flexi_cursor_f64(&vcursor, &f64));
+    ASSERT_EQ(FLEXI_OK, flexi_cursor_seek_vector_index(&cursor, 2, &vcursor));
+    ASSERT_EQ(FLEXI_OK, flexi_cursor_f64(&vcursor, &f64));
     ASSERT_DOUBLE_EQ(f64, PI_VALUE);
-    ASSERT_TRUE(flexi_cursor_seek_vector_index(&cursor, 3, &vcursor));
-    ASSERT_TRUE(flexi_cursor_f64(&vcursor, &f64));
+    ASSERT_EQ(FLEXI_OK, flexi_cursor_seek_vector_index(&cursor, 3, &vcursor));
+    ASSERT_EQ(FLEXI_OK, flexi_cursor_f64(&vcursor, &f64));
     ASSERT_DOUBLE_EQ(f64, PI_VALUE);
 }
 
@@ -175,14 +175,14 @@ TEST_F(WriteFixture, StringBlob)
     flexi_cursor_s vcursor{};
 
     const char *str = nullptr;
-    ASSERT_TRUE(flexi_cursor_seek_vector_index(&cursor, 0, &vcursor));
-    ASSERT_TRUE(flexi_cursor_string(&vcursor, &str));
+    ASSERT_EQ(FLEXI_OK, flexi_cursor_seek_vector_index(&cursor, 0, &vcursor));
+    ASSERT_EQ(FLEXI_OK, flexi_cursor_string(&vcursor, &str));
     ASSERT_EQ(5, flexi_cursor_length(&vcursor));
     ASSERT_STREQ(str, "xyzzy");
 
     const uint8_t *blob = nullptr;
-    ASSERT_TRUE(flexi_cursor_seek_vector_index(&cursor, 1, &vcursor));
-    ASSERT_TRUE(flexi_cursor_blob(&vcursor, &blob));
+    ASSERT_EQ(FLEXI_OK, flexi_cursor_seek_vector_index(&cursor, 1, &vcursor));
+    ASSERT_EQ(FLEXI_OK, flexi_cursor_blob(&vcursor, &blob));
     ASSERT_EQ(8, flexi_cursor_length(&vcursor));
     for (size_t i = 0; i < std::size(BLOB); i++) {
         ASSERT_EQ(blob[i], BLOB[i]);

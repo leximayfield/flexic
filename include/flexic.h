@@ -29,17 +29,28 @@
 extern "C" {
 #endif
 
+typedef enum flexi_result_e {
+    FLEXI_OK = 0,
+    FLEXI_ERR_INTERNAL = -1,
+    FLEXI_ERR_RANGE = -2,
+    FLEXI_ERR_BADTYPE = -3,
+    FLEXI_ERR_BADREAD = -4,
+} flexi_result_e;
+
+#define FLEXI_SUCCESS(x) (FLEXI_OK <= (x))
+#define FLEXI_ERROR(x) (FLEXI_OK > (x))
+
 typedef uint8_t flexi_packed_t;
 typedef int flexi_stack_idx_t;
 
-typedef enum {
+typedef enum flexi_width_e {
     FLEXI_WIDTH_1B,
     FLEXI_WIDTH_2B,
     FLEXI_WIDTH_4B,
     FLEXI_WIDTH_8B,
 } flexi_width_e;
 
-typedef enum {
+typedef enum flexi_type_e {
     FLEXI_TYPE_NULL = 0,
     FLEXI_TYPE_SINT = 1,
     FLEXI_TYPE_UINT = 2,
@@ -69,43 +80,37 @@ typedef enum {
     FLEXI_TYPE_VECTOR_BOOL = 36,
 } flexi_type_e;
 
-typedef struct {
+typedef struct flexi_buffer_s {
     const char *data;
     size_t length;
 } flexi_buffer_s;
 
-typedef struct {
+typedef struct flexi_cursor_s {
     flexi_buffer_s buffer;
     const char *cursor;
     flexi_type_e type;
     int width;
 } flexi_cursor_s;
 
-typedef struct {
-    void (*null)(void *user);
-    void (*sint)(int64_t, void *user);
-    void (*uint)(uint64_t, void *user);
-    void (*f32)(float, void *user);
-    void (*f64)(double, void *user);
-    void (*key)(const char *str, void *user);
-    void (*string)(const char *str, size_t len, void *user);
-    void (*blob)(const void *ptr, size_t len, void *user);
-    void (*map_begin)(size_t len, void *user);
-    void (*map_key)(const char *str, void *user);
+typedef struct flexi_parser_s {
+    void (*null)(const char *key, void *user);
+    void (*sint)(const char *key, int64_t value, void *user);
+    void (*uint)(const char *key, uint64_t value, void *user);
+    void (*f32)(const char *key, float value, void *user);
+    void (*f64)(const char *key, double value, void *user);
+    void (*key)(const char *key, const char *str, void *user);
+    void (*string)(const char *key, const char *str, size_t len, void *user);
+    void (*map_begin)(const char *key, size_t len, void *user);
     void (*map_end)(void *user);
-    void (*vector_begin)(size_t len, void *user);
+    void (*vector_begin)(const char *key, size_t len, void *user);
     void (*vector_end)(void *user);
-    void (*typed_vector_sint)(const void *ptr, int width, size_t len,
-        void *user);
-    void (*typed_vector_uint)(const void *ptr, int width, size_t len,
-        void *user);
-    void (*typed_vector_flt)(const void *ptr, int width, size_t len,
-        void *user);
-    void (*boolean)(bool val, void *user);
-    void (*typed_vector_bool)(const bool *ptr, size_t len, void *user);
+    void (*typed_vector)(const char *key, const void *ptr, size_t len,
+        flexi_type_e type, int width, void *user);
+    void (*blob)(const char *key, const void *ptr, size_t len, void *user);
+    void (*boolean)(const char *key, bool val, void *user);
 } flexi_parser_s;
 
-typedef struct {
+typedef struct flexi_value_s {
     union {
         int64_t s64;
         uint64_t u64;
@@ -118,7 +123,7 @@ typedef struct {
     int width;
 } flexi_value_s;
 
-typedef struct {
+typedef struct flexi_writer_s {
     flexi_value_s stack[256];
     bool (*write_func)(const void *ptr, size_t len, void *user);
     const void *(*data_at_func)(size_t index, void *user);
@@ -130,7 +135,7 @@ typedef struct {
 flexi_buffer_s
 flexi_make_buffer(const void *buffer, size_t len);
 
-bool
+flexi_result_e
 flexi_open_buffer(const flexi_buffer_s *buffer, flexi_cursor_s *cursor);
 
 flexi_type_e
@@ -157,51 +162,75 @@ flexi_cursor_length(const flexi_cursor_s *cursor);
  * @param[out] val Boolean value.  Set to false on error.
  * @return True if read was successful.
  */
-bool
+flexi_result_e
 flexi_cursor_bool(const flexi_cursor_s *cursor, bool *val);
 
-bool
+/**
+ * @brief Obtain signed int value from cursor.  Types that aren't signed ints
+ *        are turned into signed ints on a best-effort basis.
+ *
+ * @param[in] cursor Cursor pointing to value to examine.
+ * @param[out] val Boolean value.  Set to 0 on error.
+ * @return True if read was successful.
+ */
+flexi_result_e
 flexi_cursor_sint(const flexi_cursor_s *cursor, int64_t *val);
 
-bool
+/**
+ * @brief Obtain unsigned int value from cursor.  Types that aren't unsigned
+ *        ints are turned into unsigned ints on a best-effort basis.
+ *
+ * @param[in] cursor Cursor pointing to value to examine.
+ * @param[out] val Boolean value.  Set to 0 on error.
+ * @return True if read was successful.
+ */
+flexi_result_e
 flexi_cursor_uint(const flexi_cursor_s *cursor, uint64_t *val);
 
-bool
+/**
+ * @brief Obtain 32-bit float value from cursor.  Types that aren't 32-bit
+ *        floats are turned into 32-bit floats on a best-effort basis.
+ *
+ * @param[in] cursor Cursor pointing to value to examine.
+ * @param[out] val Boolean value.  Set to 0.0f on error.
+ * @return True if read was successful.
+ */
+flexi_result_e
 flexi_cursor_f32(const flexi_cursor_s *cursor, float *val);
 
-bool
+flexi_result_e
 flexi_cursor_f64(const flexi_cursor_s *cursor, double *val);
 
-bool
+flexi_result_e
 flexi_cursor_string(const flexi_cursor_s *cursor, const char **str);
 
-bool
+flexi_result_e
 flexi_cursor_key(const flexi_cursor_s *cursor, const char **str);
 
-bool
+flexi_result_e
 flexi_cursor_blob(const flexi_cursor_s *cursor, const uint8_t **blob);
 
-bool
+flexi_result_e
 flexi_cursor_typed_vector_data(const flexi_cursor_s *cursor, const void **data);
 
-bool
+flexi_result_e
 flexi_cursor_vector_types(const flexi_cursor_s *cursor,
     const flexi_packed_t **packed);
 
-bool
+flexi_result_e
 flexi_cursor_seek_vector_index(const flexi_cursor_s *cursor, size_t index,
     flexi_cursor_s *dest);
 
-bool
+flexi_result_e
 flexi_cursor_map_key_at_index(const flexi_cursor_s *cursor, size_t index,
     const char **str);
 
-bool
+flexi_result_e
 flexi_cursor_seek_map_key(const flexi_cursor_s *cursor, const char *key,
     flexi_cursor_s *dest);
 
 bool
-flexi_parse_cursor(const flexi_parser_s *reader, const flexi_cursor_s *cursor,
+flexi_parse_cursor(const flexi_parser_s *parser, const flexi_cursor_s *cursor,
     void *user);
 
 bool

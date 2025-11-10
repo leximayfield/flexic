@@ -58,6 +58,10 @@
         : (w) == 4 ? (flexi_packed_t)(2)                                       \
                    : (flexi_packed_t)(3))
 
+static bool
+parse_cursor(const flexi_parser_s *reader, const char *key,
+    const flexi_cursor_s *cursor, void *user);
+
 /**
  * @brief Return true if the type is any signed integer type.
  */
@@ -795,38 +799,38 @@ cursor_seek_map_key_bsearch(const flexi_cursor_s *cursor, size_t len,
 /******************************************************************************/
 
 static bool
-reader_emit_sint(const flexi_parser_s *reader, const flexi_cursor_s *cursor,
-    void *user)
+parser_emit_sint(const flexi_parser_s *reader, const char *key,
+    const flexi_cursor_s *cursor, void *user)
 {
     int64_t v;
     if (!buffer_read_sint(&cursor->buffer, cursor->cursor, cursor->width, &v)) {
         return false;
     }
 
-    reader->sint(v, user);
+    reader->sint(key, v, user);
     return true;
 }
 
 /******************************************************************************/
 
 static bool
-reader_emit_uint(const flexi_parser_s *reader, const flexi_cursor_s *cursor,
-    void *user)
+parser_emit_uint(const flexi_parser_s *reader, const char *key,
+    const flexi_cursor_s *cursor, void *user)
 {
     uint64_t v;
     if (!buffer_read_uint(&cursor->buffer, cursor->cursor, cursor->width, &v)) {
         return false;
     }
 
-    reader->uint(v, user);
+    reader->uint(key, v, user);
     return true;
 }
 
 /******************************************************************************/
 
 static bool
-reader_emit_flt(const flexi_parser_s *reader, const flexi_cursor_s *cursor,
-    void *user)
+parser_emit_flt(const flexi_parser_s *reader, const char *key,
+    const flexi_cursor_s *cursor, void *user)
 {
     switch (cursor->width) {
     case 4: {
@@ -836,7 +840,7 @@ reader_emit_flt(const flexi_parser_s *reader, const flexi_cursor_s *cursor,
             return false;
         }
 
-        reader->f32(v, user);
+        reader->f32(key, v, user);
         return true;
     }
     case 8: {
@@ -846,7 +850,7 @@ reader_emit_flt(const flexi_parser_s *reader, const flexi_cursor_s *cursor,
             return false;
         }
 
-        reader->f64(v, user);
+        reader->f64(key, v, user);
         return true;
     }
     }
@@ -856,43 +860,41 @@ reader_emit_flt(const flexi_parser_s *reader, const flexi_cursor_s *cursor,
 /******************************************************************************/
 
 static bool
-reader_emit_string(const flexi_parser_s *reader, const flexi_cursor_s *cursor,
-    void *user)
+parser_emit_string(const flexi_parser_s *reader, const char *key,
+    const flexi_cursor_s *cursor, void *user)
 {
     size_t len;
     if (!cursor_get_len(cursor, &len)) {
         return false;
     }
 
-    reader->string(cursor->cursor, len, user);
+    reader->string(key, cursor->cursor, len, user);
     return true;
 }
 
 /******************************************************************************/
 
 static bool
-reader_emit_map(const flexi_parser_s *reader, const flexi_cursor_s *cursor,
-    void *user)
+parser_emit_map(const flexi_parser_s *reader, const char *key,
+    const flexi_cursor_s *cursor, void *user)
 {
     size_t len;
     if (!cursor_get_len(cursor, &len)) {
         return false;
     }
 
-    reader->map_begin(len, user);
+    reader->map_begin(key, len, user);
     for (size_t i = 0; i < len; i++) {
-        const char *key;
-        if (!cursor_map_key_at_index(cursor, i, &key)) {
+        const char *str;
+        if (!cursor_map_key_at_index(cursor, i, &str)) {
             return false;
         }
-
-        reader->map_key(key, user);
 
         flexi_cursor_s value;
         if (!cursor_seek_vector_index(cursor, i, &value)) {
             return false;
         }
-        if (!flexi_parse_cursor(reader, &value, user)) {
+        if (!parse_cursor(reader, str, &value, user)) {
             return false;
         }
     }
@@ -904,15 +906,15 @@ reader_emit_map(const flexi_parser_s *reader, const flexi_cursor_s *cursor,
 /******************************************************************************/
 
 static bool
-reader_emit_vector(const flexi_parser_s *reader, const flexi_cursor_s *cursor,
-    void *user)
+parser_emit_vector(const flexi_parser_s *reader, const char *key,
+    const flexi_cursor_s *cursor, void *user)
 {
     size_t len;
     if (!cursor_get_len(cursor, &len)) {
         return false;
     }
 
-    reader->vector_begin(len, user);
+    reader->vector_begin(key, len, user);
     for (size_t i = 0; i < len; i++) {
         flexi_cursor_s value;
         if (!cursor_seek_vector_index(cursor, i, &value)) {
@@ -930,7 +932,7 @@ reader_emit_vector(const flexi_parser_s *reader, const flexi_cursor_s *cursor,
 /******************************************************************************/
 
 static bool
-reader_emit_vector_sint(const flexi_parser_s *reader,
+parser_emit_typed_vector(const flexi_parser_s *reader, const char *key,
     const flexi_cursor_s *cursor, void *user)
 {
     size_t len;
@@ -938,14 +940,15 @@ reader_emit_vector_sint(const flexi_parser_s *reader,
         return false;
     }
 
-    reader->typed_vector_sint(cursor->cursor, cursor->width, len, user);
+    reader->typed_vector(key, cursor->cursor, len, cursor->type, cursor->width,
+        user);
     return true;
 }
 
 /******************************************************************************/
 
 static bool
-reader_emit_vector_uint(const flexi_parser_s *reader,
+parser_emit_vector_key(const flexi_parser_s *reader, const char *key,
     const flexi_cursor_s *cursor, void *user)
 {
     size_t len;
@@ -953,37 +956,7 @@ reader_emit_vector_uint(const flexi_parser_s *reader,
         return false;
     }
 
-    reader->typed_vector_uint(cursor->cursor, cursor->width, len, user);
-    return true;
-}
-
-/******************************************************************************/
-
-static bool
-reader_emit_vector_flt(const flexi_parser_s *reader,
-    const flexi_cursor_s *cursor, void *user)
-{
-    size_t len;
-    if (!cursor_get_len(cursor, &len)) {
-        return false;
-    }
-
-    reader->typed_vector_flt(cursor->cursor, cursor->width, len, user);
-    return true;
-}
-
-/******************************************************************************/
-
-static bool
-reader_emit_vector_key(const flexi_parser_s *reader,
-    const flexi_cursor_s *cursor, void *user)
-{
-    size_t len;
-    if (!cursor_get_len(cursor, &len)) {
-        return false;
-    }
-
-    reader->vector_begin(len, user);
+    reader->vector_begin(key, len, user);
     for (size_t i = 0; i < len; i++) {
         // Access the offset by hand.
         size_t offset = 0;
@@ -998,7 +971,7 @@ reader_emit_vector_key(const flexi_parser_s *reader,
             return false;
         }
 
-        reader->key(dest, user);
+        reader->key(key, dest, user);
     }
 
     reader->vector_end(user);
@@ -1008,7 +981,7 @@ reader_emit_vector_key(const flexi_parser_s *reader,
 /******************************************************************************/
 
 static bool
-reader_emit_vector_blob(const flexi_parser_s *reader,
+parser_emit_vector_blob(const flexi_parser_s *reader, const char *key,
     const flexi_cursor_s *cursor, void *user)
 {
     size_t len;
@@ -1016,14 +989,14 @@ reader_emit_vector_blob(const flexi_parser_s *reader,
         return false;
     }
 
-    reader->blob(cursor->cursor, len, user);
+    reader->blob(key, cursor->cursor, len, user);
     return true;
 }
 
 /******************************************************************************/
 
 static bool
-reader_emit_vector_bool(const flexi_parser_s *reader,
+parser_emit_vector_bool(const flexi_parser_s *reader, const char *key,
     const flexi_cursor_s *cursor, void *user)
 {
     size_t len;
@@ -1031,8 +1004,67 @@ reader_emit_vector_bool(const flexi_parser_s *reader,
         return false;
     }
 
-    reader->typed_vector_bool((const bool *)cursor->cursor, len, user);
+    reader->typed_vector(key, cursor->cursor, len, FLEXI_TYPE_VECTOR_BOOL, 1,
+        user);
     return true;
+}
+
+/******************************************************************************/
+
+static bool
+parse_cursor(const flexi_parser_s *reader, const char *key,
+    const flexi_cursor_s *cursor, void *user)
+{
+    switch (cursor->type) {
+    case FLEXI_TYPE_NULL: reader->null(key, user); return true;
+    case FLEXI_TYPE_SINT:
+    case FLEXI_TYPE_INDIRECT_SINT:
+        return parser_emit_sint(reader, key, cursor, user);
+    case FLEXI_TYPE_UINT:
+    case FLEXI_TYPE_INDIRECT_UINT:
+        return parser_emit_uint(reader, key, cursor, user);
+    case FLEXI_TYPE_FLOAT:
+    case FLEXI_TYPE_INDIRECT_FLOAT:
+        return parser_emit_flt(reader, key, cursor, user);
+    case FLEXI_TYPE_KEY: reader->key(key, cursor->cursor, user); return true;
+    case FLEXI_TYPE_STRING:
+        return parser_emit_string(reader, key, cursor, user);
+    case FLEXI_TYPE_MAP: return parser_emit_map(reader, key, cursor, user);
+    case FLEXI_TYPE_VECTOR:
+        return parser_emit_vector(reader, key, cursor, user);
+    case FLEXI_TYPE_VECTOR_SINT:
+    case FLEXI_TYPE_VECTOR_UINT:
+    case FLEXI_TYPE_VECTOR_FLOAT:
+    case FLEXI_TYPE_VECTOR_BOOL:
+        return parser_emit_typed_vector(reader, key, cursor, user);
+    case FLEXI_TYPE_VECTOR_KEY:
+        return parser_emit_vector_key(reader, key, cursor, user);
+    case FLEXI_TYPE_VECTOR_SINT2:
+    case FLEXI_TYPE_VECTOR_UINT2:
+    case FLEXI_TYPE_VECTOR_FLOAT2:
+        reader->typed_vector(key, cursor->cursor, 2, cursor->type,
+            cursor->width, user);
+        return true;
+    case FLEXI_TYPE_VECTOR_SINT3:
+    case FLEXI_TYPE_VECTOR_UINT3:
+    case FLEXI_TYPE_VECTOR_FLOAT3:
+        reader->typed_vector(key, cursor->cursor, 3, cursor->type,
+            cursor->width, user);
+        return true;
+    case FLEXI_TYPE_VECTOR_SINT4:
+    case FLEXI_TYPE_VECTOR_UINT4:
+    case FLEXI_TYPE_VECTOR_FLOAT4:
+        reader->typed_vector(key, cursor->cursor, 4, cursor->type,
+            cursor->width, user);
+        return true;
+    case FLEXI_TYPE_BLOB:
+        return parser_emit_vector_blob(reader, key, cursor, user);
+    case FLEXI_TYPE_BOOL:
+        reader->boolean(key, *(const bool *)(cursor->cursor), user);
+        return true;
+    }
+
+    return false;
 }
 
 /******************************************************************************/
@@ -1321,12 +1353,12 @@ flexi_make_buffer(const void *buffer, size_t len)
 
 /******************************************************************************/
 
-bool
+flexi_result_e
 flexi_open_buffer(const flexi_buffer_s *buffer, flexi_cursor_s *cursor)
 {
     if (buffer->length < 3) {
         // Shortest length we can discard without checking.
-        return false;
+        return FLEXI_ERR_BADREAD;
     }
 
     // Width of root object.
@@ -1334,7 +1366,7 @@ flexi_open_buffer(const flexi_buffer_s *buffer, flexi_cursor_s *cursor)
     cursor->cursor = buffer->data + buffer->length - 1;
     uint8_t root_bytes = *(const uint8_t *)(cursor->cursor);
     if (buffer->length < root_bytes + 2u) {
-        return false;
+        return FLEXI_ERR_BADREAD;
     }
 
     // Obtain the packed type.
@@ -1348,25 +1380,25 @@ flexi_open_buffer(const flexi_buffer_s *buffer, flexi_cursor_s *cursor)
         // No need to resolve an offset, we're done.
         cursor->type = type;
         cursor->width = root_bytes;
-        return true;
+        return FLEXI_OK;
     }
 
     // We're pointing at an offset, resolve it.
     size_t offset = 0;
     if (!buffer_read_size_by_width(&cursor->buffer, cursor->cursor, root_bytes,
             &offset)) {
-        return false;
+        return FLEXI_ERR_BADREAD;
     }
 
     const char *dest = NULL;
     if (!buffer_seek_back(&cursor->buffer, cursor->cursor, offset, &dest)) {
-        return false;
+        return FLEXI_ERR_INTERNAL;
     }
 
     cursor->cursor = dest;
     cursor->type = type;
     cursor->width = WIDTH_TO_BYTES(UNPACK_WIDTH(packed));
-    return true;
+    return FLEXI_OK;
 }
 
 /******************************************************************************/
@@ -1420,7 +1452,7 @@ flexi_cursor_length(const flexi_cursor_s *cursor)
 
 /******************************************************************************/
 
-bool
+flexi_result_e
 flexi_cursor_bool(const flexi_cursor_s *cursor, bool *val)
 {
     if (type_is_anyint(cursor->type)) {
@@ -1428,402 +1460,415 @@ flexi_cursor_bool(const flexi_cursor_s *cursor, bool *val)
         if (!buffer_read_uint(&cursor->buffer, cursor->cursor, cursor->width,
                 &v)) {
             *val = false;
-            return false;
+            return FLEXI_ERR_BADREAD;
         }
 
         *val = (bool)v;
-        return true;
+        return FLEXI_OK;
     } else if (cursor->type == FLEXI_TYPE_FLOAT &&
                cursor->width == sizeof(float)) {
         float v;
         if (!buffer_read_f32(&cursor->buffer, cursor->cursor, cursor->width,
                 &v)) {
             *val = false;
-            return false;
+            return FLEXI_ERR_BADREAD;
         }
 
         *val = (bool)v;
-        return true;
+        return FLEXI_OK;
     } else if (cursor->type == FLEXI_TYPE_FLOAT &&
                cursor->width == sizeof(double)) {
         double v;
         if (!buffer_read_f64(&cursor->buffer, cursor->cursor, cursor->width,
                 &v)) {
             *val = false;
-            return false;
+            return FLEXI_ERR_BADREAD;
         }
 
         *val = (bool)v;
-        return true;
+        return FLEXI_OK;
     } else if (cursor->type == FLEXI_TYPE_BOOL) {
         *val = *(const bool *)(cursor->cursor);
-        return true;
-    } else {
-        *val = false;
-        return false;
+        return FLEXI_OK;
     }
+
+    *val = false;
+    return FLEXI_ERR_BADTYPE;
 }
 
 /******************************************************************************/
 
-bool
+flexi_result_e
 flexi_cursor_sint(const flexi_cursor_s *cursor, int64_t *val)
 {
-    if (type_is_anyint(cursor->type)) {
+    if (type_is_sint(cursor->type)) {
         int64_t v;
         if (!buffer_read_sint(&cursor->buffer, cursor->cursor, cursor->width,
                 &v)) {
-            return false;
+            *val = 0;
+            return FLEXI_ERR_BADREAD;
         }
 
         *val = v;
-        return true;
-    } else if (type_is_flt(cursor->type) && cursor->width == 4) {
-        float v;
-        if (!buffer_read_f32(&cursor->buffer, cursor->cursor, cursor->width,
-                &v)) {
-            return false;
-        }
-
-        *val = (int64_t)v;
-        return true;
-    } else if (type_is_flt(cursor->type) && cursor->width == 8) {
-        double v;
-        if (!buffer_read_f64(&cursor->buffer, cursor->cursor, cursor->width,
-                &v)) {
-            return false;
-        }
-
-        *val = (int64_t)v;
-        return true;
-    } else if (cursor->type == FLEXI_TYPE_BOOL && cursor->width == 1) {
-        *val = *(const bool *)(cursor->cursor);
-        return true;
-    } else {
-        return false;
-    }
-}
-
-/******************************************************************************/
-
-bool
-flexi_cursor_uint(const flexi_cursor_s *cursor, uint64_t *val)
-{
-    if (type_is_anyint(cursor->type)) {
+        return FLEXI_OK;
+    } else if (type_is_uint(cursor->type)) {
         uint64_t v;
         if (!buffer_read_uint(&cursor->buffer, cursor->cursor, cursor->width,
                 &v)) {
-            return false;
+            *val = 0;
+            return FLEXI_ERR_BADREAD;
+        }
+        if (v > INT64_MAX) {
+            *val = INT64_MAX;
+            return FLEXI_ERR_RANGE;
         }
 
-        *val = v;
-        return true;
+        *val = (int64_t)v;
+        return FLEXI_OK;
     } else if (type_is_flt(cursor->type) && cursor->width == 4) {
         float v;
         if (!buffer_read_f32(&cursor->buffer, cursor->cursor, cursor->width,
                 &v)) {
-            return false;
+            *val = 0;
+            return FLEXI_ERR_BADREAD;
+        }
+        if (v > INT64_MAX) {
+            *val = INT64_MAX;
+            return FLEXI_ERR_RANGE;
+        }
+        if (v < INT64_MIN) {
+            *val = INT64_MIN;
+            return FLEXI_ERR_RANGE;
         }
 
-        *val = (uint64_t)v;
-        return true;
+        *val = (int64_t)v;
+        return FLEXI_OK;
     } else if (type_is_flt(cursor->type) && cursor->width == 8) {
         double v;
         if (!buffer_read_f64(&cursor->buffer, cursor->cursor, cursor->width,
                 &v)) {
-            return false;
+            *val = 0;
+            return FLEXI_ERR_BADREAD;
+        }
+        if (v > INT64_MAX) {
+            *val = INT64_MAX;
+            return FLEXI_ERR_RANGE;
+        }
+        if (v < INT64_MIN) {
+            *val = INT64_MIN;
+            return FLEXI_ERR_RANGE;
         }
 
-        *val = (uint64_t)v;
-        return true;
+        *val = (int64_t)v;
+        return FLEXI_OK;
     } else if (cursor->type == FLEXI_TYPE_BOOL && cursor->width == 1) {
         *val = *(const bool *)(cursor->cursor);
-        return true;
-    } else {
-        return false;
+        return FLEXI_OK;
     }
+
+    *val = 0;
+    return FLEXI_ERR_BADTYPE;
 }
 
 /******************************************************************************/
 
-bool
+flexi_result_e
+flexi_cursor_uint(const flexi_cursor_s *cursor, uint64_t *val)
+{
+    if (type_is_sint(cursor->type)) {
+        int64_t v;
+        if (!buffer_read_sint(&cursor->buffer, cursor->cursor, cursor->width,
+                &v)) {
+            *val = 0;
+            return FLEXI_ERR_BADREAD;
+        }
+        if (v < 0) {
+            *val = 0;
+            return FLEXI_ERR_RANGE;
+        }
+
+        *val = (uint64_t)v;
+        return FLEXI_OK;
+    } else if (type_is_uint(cursor->type)) {
+        uint64_t v;
+        if (!buffer_read_uint(&cursor->buffer, cursor->cursor, cursor->width,
+                &v)) {
+            *val = 0;
+            return FLEXI_ERR_BADREAD;
+        }
+
+        *val = v;
+        return FLEXI_OK;
+    } else if (type_is_flt(cursor->type) && cursor->width == 4) {
+        float v;
+        if (!buffer_read_f32(&cursor->buffer, cursor->cursor, cursor->width,
+                &v)) {
+            *val = 0;
+            return FLEXI_ERR_BADREAD;
+        }
+
+        *val = (uint64_t)v;
+        return FLEXI_OK;
+    } else if (type_is_flt(cursor->type) && cursor->width == 8) {
+        double v;
+        if (!buffer_read_f64(&cursor->buffer, cursor->cursor, cursor->width,
+                &v)) {
+            *val = 0;
+            return FLEXI_ERR_BADREAD;
+        }
+
+        *val = (uint64_t)v;
+        return FLEXI_OK;
+    } else if (cursor->type == FLEXI_TYPE_BOOL && cursor->width == 1) {
+        *val = *(const bool *)(cursor->cursor);
+        return FLEXI_OK;
+    }
+
+    *val = 0;
+    return FLEXI_ERR_BADTYPE;
+}
+
+/******************************************************************************/
+
+flexi_result_e
 flexi_cursor_f32(const flexi_cursor_s *cursor, float *val)
 {
     if (type_is_sint(cursor->type)) {
         int64_t v;
         if (!buffer_read_sint(&cursor->buffer, cursor->cursor, cursor->width,
                 &v)) {
-            return false;
+            *val = 0.0f;
+            return FLEXI_ERR_BADREAD;
         }
 
         *val = (float)v;
-        return true;
+        return FLEXI_OK;
     } else if (type_is_uint(cursor->type)) {
         uint64_t v;
         if (!buffer_read_uint(&cursor->buffer, cursor->cursor, cursor->width,
                 &v)) {
-            return false;
+            *val = 0.0f;
+            return FLEXI_ERR_BADREAD;
         }
 
         *val = (float)v;
-        return true;
+        return FLEXI_OK;
     } else if (type_is_flt(cursor->type) && cursor->width == 4) {
         float v;
         if (!buffer_read_f32(&cursor->buffer, cursor->cursor, cursor->width,
                 &v)) {
-            return false;
+            *val = 0.0f;
+            return FLEXI_ERR_BADREAD;
         }
 
         *val = v;
-        return true;
+        return FLEXI_OK;
     } else if (type_is_flt(cursor->type) && cursor->width == 8) {
         double v;
         if (!buffer_read_f64(&cursor->buffer, cursor->cursor, cursor->width,
                 &v)) {
-            return false;
+            *val = 0.0f;
+            return FLEXI_ERR_BADREAD;
         }
 
         *val = (float)v;
-        return true;
+        return FLEXI_OK;
     } else if (cursor->type == FLEXI_TYPE_BOOL && cursor->width == 1) {
         *val = (float)*(const bool *)(cursor->cursor);
-        return true;
-    } else {
-        return false;
+        return FLEXI_OK;
     }
+
+    *val = 0.0f;
+    return FLEXI_ERR_BADTYPE;
 }
 
 /******************************************************************************/
 
-bool
+flexi_result_e
 flexi_cursor_f64(const flexi_cursor_s *cursor, double *val)
 {
     if (type_is_sint(cursor->type)) {
         int64_t v;
         if (!buffer_read_sint(&cursor->buffer, cursor->cursor, cursor->width,
                 &v)) {
-            return false;
+            return FLEXI_ERR_BADREAD;
         }
 
         *val = (double)v;
-        return true;
+        return FLEXI_OK;
     } else if (type_is_uint(cursor->type)) {
         uint64_t v;
         if (!buffer_read_uint(&cursor->buffer, cursor->cursor, cursor->width,
                 &v)) {
-            return false;
+            return FLEXI_ERR_BADREAD;
         }
 
         *val = (double)v;
-        return true;
+        return FLEXI_OK;
     } else if (type_is_flt(cursor->type) && cursor->width == 4) {
         float v;
         if (!buffer_read_f32(&cursor->buffer, cursor->cursor, cursor->width,
                 &v)) {
-            return false;
+            return FLEXI_ERR_BADREAD;
         }
 
         *val = v;
-        return true;
+        return FLEXI_OK;
     } else if (type_is_flt(cursor->type) && cursor->width == 8) {
         double v;
         if (!buffer_read_f64(&cursor->buffer, cursor->cursor, cursor->width,
                 &v)) {
-            return false;
+            return FLEXI_ERR_BADREAD;
         }
 
         *val = v;
-        return true;
+        return FLEXI_OK;
     } else if (cursor->type == FLEXI_TYPE_BOOL && cursor->width == 1) {
         *val = (double)*(const bool *)(cursor->cursor);
-        return true;
-    } else {
-        return false;
+        return FLEXI_OK;
     }
+
+    *val = 0.0;
+    return FLEXI_ERR_BADTYPE;
 }
 
 /******************************************************************************/
 
-bool
+flexi_result_e
 flexi_cursor_string(const flexi_cursor_s *cursor, const char **str)
 {
     switch (cursor->type) {
     case FLEXI_TYPE_STRING: break;
     case FLEXI_TYPE_KEY: break;
-    default: return false;
+    default: *str = ""; return FLEXI_ERR_BADTYPE;
     }
 
     *str = cursor->cursor;
-    return true;
+    return FLEXI_OK;
 }
 
 /******************************************************************************/
 
-bool
+flexi_result_e
 flexi_cursor_key(const flexi_cursor_s *cursor, const char **str)
 {
     switch (cursor->type) {
     case FLEXI_TYPE_STRING: break;
     case FLEXI_TYPE_KEY: break;
-    default: return false;
+    default: *str = ""; return FLEXI_ERR_BADTYPE;
     }
 
     *str = cursor->cursor;
-    return true;
+    return FLEXI_OK;
 }
 
 /******************************************************************************/
 
-bool
+flexi_result_e
 flexi_cursor_blob(const flexi_cursor_s *cursor, const uint8_t **blob)
 {
     if (cursor->type != FLEXI_TYPE_BLOB) {
-        return false;
+        *blob = (const uint8_t *)"";
+        return FLEXI_ERR_BADTYPE;
     }
 
     *blob = (const uint8_t *)cursor->cursor;
-    return true;
+    return FLEXI_OK;
 }
 
 /******************************************************************************/
 
-bool
+flexi_result_e
 flexi_cursor_typed_vector_data(const flexi_cursor_s *cursor, const void **data)
 {
     if (cursor->type == FLEXI_TYPE_VECTOR || !type_is_vector(cursor->type)) {
-        return false;
+        *data = "";
+        return FLEXI_ERR_BADTYPE;
     }
 
     *data = cursor->cursor;
-    return true;
+    return FLEXI_OK;
 }
 
 /******************************************************************************/
 
-bool
+flexi_result_e
 flexi_cursor_vector_types(const flexi_cursor_s *cursor,
     const flexi_packed_t **packed)
 {
     if (cursor->type != FLEXI_TYPE_VECTOR && cursor->type != FLEXI_TYPE_MAP) {
-        return false;
+        return FLEXI_ERR_BADTYPE;
     }
 
-    return cursor_vector_types(cursor, packed);
+    return cursor_vector_types(cursor, packed) ? FLEXI_OK : FLEXI_ERR_INTERNAL;
 }
 
 /******************************************************************************/
 
-bool
+flexi_result_e
 flexi_cursor_seek_vector_index(const flexi_cursor_s *cursor, size_t index,
     flexi_cursor_s *dest)
 {
     if (cursor->type != FLEXI_TYPE_VECTOR && cursor->type != FLEXI_TYPE_MAP) {
-        return false;
+        return FLEXI_ERR_BADTYPE;
     }
 
-    return cursor_seek_vector_index(cursor, index, dest);
+    return cursor_seek_vector_index(cursor, index, dest) ? FLEXI_OK
+                                                         : FLEXI_ERR_INTERNAL;
 }
 
 /******************************************************************************/
 
-bool
+flexi_result_e
 flexi_cursor_map_key_at_index(const flexi_cursor_s *cursor, size_t index,
     const char **str)
 {
     if (cursor->type != FLEXI_TYPE_MAP) {
-        return false;
+        *str = "";
+        return FLEXI_ERR_BADTYPE;
     }
 
-    return cursor_map_key_at_index(cursor, index, str);
+    if (!cursor_map_key_at_index(cursor, index, str)) {
+        *str = "";
+        return FLEXI_ERR_INTERNAL;
+    }
+
+    return FLEXI_OK;
 }
 
 /******************************************************************************/
 
-bool
+flexi_result_e
 flexi_cursor_seek_map_key(const flexi_cursor_s *cursor, const char *key,
     flexi_cursor_s *dest)
 {
     if (cursor->type != FLEXI_TYPE_MAP) {
-        return false;
+        return FLEXI_ERR_BADTYPE;
     }
 
     size_t len = 0;
     if (!cursor_get_len(cursor, &len)) {
-        return false;
+        return FLEXI_ERR_INTERNAL;
     }
 
     if (len <= 16) {
-        return cursor_seek_map_key_linear(cursor, len, key, dest);
+        return cursor_seek_map_key_linear(cursor, len, key, dest)
+                   ? FLEXI_OK
+                   : FLEXI_ERR_INTERNAL;
     } else {
-        return cursor_seek_map_key_bsearch(cursor, len, key, dest);
+        return cursor_seek_map_key_bsearch(cursor, len, key, dest)
+                   ? FLEXI_OK
+                   : FLEXI_ERR_INTERNAL;
     }
 }
 
 /******************************************************************************/
 
 bool
-flexi_parse_cursor(const flexi_parser_s *reader, const flexi_cursor_s *cursor,
+flexi_parse_cursor(const flexi_parser_s *parser, const flexi_cursor_s *cursor,
     void *user)
 {
-    switch (cursor->type) {
-    case FLEXI_TYPE_NULL: reader->null(user); return true;
-    case FLEXI_TYPE_SINT:
-    case FLEXI_TYPE_INDIRECT_SINT:
-        return reader_emit_sint(reader, cursor, user);
-    case FLEXI_TYPE_UINT:
-    case FLEXI_TYPE_INDIRECT_UINT:
-        return reader_emit_uint(reader, cursor, user);
-    case FLEXI_TYPE_FLOAT:
-    case FLEXI_TYPE_INDIRECT_FLOAT:
-        return reader_emit_flt(reader, cursor, user);
-    case FLEXI_TYPE_KEY: reader->key(cursor->cursor, user); return true;
-    case FLEXI_TYPE_STRING: return reader_emit_string(reader, cursor, user);
-    case FLEXI_TYPE_MAP: return reader_emit_map(reader, cursor, user);
-    case FLEXI_TYPE_VECTOR: return reader_emit_vector(reader, cursor, user);
-    case FLEXI_TYPE_VECTOR_SINT:
-        return reader_emit_vector_sint(reader, cursor, user);
-    case FLEXI_TYPE_VECTOR_UINT:
-        return reader_emit_vector_uint(reader, cursor, user);
-    case FLEXI_TYPE_VECTOR_FLOAT:
-        return reader_emit_vector_flt(reader, cursor, user);
-    case FLEXI_TYPE_VECTOR_KEY:
-        return reader_emit_vector_key(reader, cursor, user);
-    case FLEXI_TYPE_VECTOR_SINT2:
-        reader->typed_vector_sint(cursor->cursor, cursor->width, 2, user);
-        return true;
-    case FLEXI_TYPE_VECTOR_UINT2:
-        reader->typed_vector_uint(cursor->cursor, cursor->width, 2, user);
-        return true;
-    case FLEXI_TYPE_VECTOR_FLOAT2:
-        reader->typed_vector_flt(cursor->cursor, cursor->width, 2, user);
-        return true;
-    case FLEXI_TYPE_VECTOR_SINT3:
-        reader->typed_vector_sint(cursor->cursor, cursor->width, 3, user);
-        return true;
-    case FLEXI_TYPE_VECTOR_UINT3:
-        reader->typed_vector_uint(cursor->cursor, cursor->width, 3, user);
-        return true;
-    case FLEXI_TYPE_VECTOR_FLOAT3:
-        reader->typed_vector_flt(cursor->cursor, cursor->width, 3, user);
-        return true;
-    case FLEXI_TYPE_VECTOR_SINT4:
-        reader->typed_vector_sint(cursor->cursor, cursor->width, 4, user);
-        return true;
-    case FLEXI_TYPE_VECTOR_UINT4:
-        reader->typed_vector_uint(cursor->cursor, cursor->width, 4, user);
-        return true;
-    case FLEXI_TYPE_VECTOR_FLOAT4:
-        reader->typed_vector_flt(cursor->cursor, cursor->width, 4, user);
-        return true;
-    case FLEXI_TYPE_BLOB: return reader_emit_vector_blob(reader, cursor, user);
-    case FLEXI_TYPE_BOOL:
-        reader->boolean(*(const bool *)(cursor->cursor), user);
-        return true;
-    case FLEXI_TYPE_VECTOR_BOOL:
-        return reader_emit_vector_bool(reader, cursor, user);
-    }
-
-    return false;
+    return parse_cursor(parser, NULL, cursor, user);
 }
 
 /******************************************************************************/

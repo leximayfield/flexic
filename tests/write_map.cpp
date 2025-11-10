@@ -82,23 +82,25 @@ TEST_F(WriteFixture, WriteMapInts)
     flexi_cursor_s value{};
 
     bool vbool = false;
-    ASSERT_TRUE(flexi_cursor_seek_map_key(&cursor, "bool", &value));
-    ASSERT_TRUE(flexi_cursor_bool(&value, &vbool));
+    ASSERT_EQ(FLEXI_OK, flexi_cursor_seek_map_key(&cursor, "bool", &value));
+    ASSERT_EQ(FLEXI_OK, flexi_cursor_bool(&value, &vbool));
     ASSERT_EQ(true, vbool);
 
     int64_t vsint = 0;
-    ASSERT_TRUE(flexi_cursor_seek_map_key(&cursor, "sint", &value));
-    ASSERT_TRUE(flexi_cursor_sint(&value, &vsint));
+    ASSERT_EQ(FLEXI_OK, flexi_cursor_seek_map_key(&cursor, "sint", &value));
+    ASSERT_EQ(FLEXI_OK, flexi_cursor_sint(&value, &vsint));
     ASSERT_EQ(INT16_MAX, vsint);
-    ASSERT_TRUE(flexi_cursor_seek_map_key(&cursor, "indirect_sint", &value));
-    ASSERT_TRUE(flexi_cursor_sint(&value, &vsint));
+    ASSERT_EQ(FLEXI_OK,
+        flexi_cursor_seek_map_key(&cursor, "indirect_sint", &value));
+    ASSERT_EQ(FLEXI_OK, flexi_cursor_sint(&value, &vsint));
     ASSERT_EQ(INT32_MAX, vsint);
 
     uint64_t vuint = 0;
-    ASSERT_TRUE(flexi_cursor_seek_map_key(&cursor, "uint", &value));
-    ASSERT_TRUE(flexi_cursor_uint(&value, &vuint));
+    ASSERT_EQ(FLEXI_OK, flexi_cursor_seek_map_key(&cursor, "uint", &value));
+    ASSERT_EQ(FLEXI_OK, flexi_cursor_uint(&value, &vuint));
     ASSERT_EQ(UINT16_MAX, vuint);
-    ASSERT_TRUE(flexi_cursor_seek_map_key(&cursor, "indirect_uint", &value));
-    ASSERT_TRUE(flexi_cursor_uint(&value, &vuint));
+    ASSERT_EQ(FLEXI_OK,
+        flexi_cursor_seek_map_key(&cursor, "indirect_uint", &value));
+    ASSERT_EQ(FLEXI_OK, flexi_cursor_uint(&value, &vuint));
     ASSERT_EQ(UINT32_MAX, vuint);
 }

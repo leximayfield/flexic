@@ -40,29 +40,25 @@ main(const int, const char *[])
     flexi_buffer_s view = flexi_make_buffer(buffer.data(), buffer.length());
 
     flexi_cursor_s cursor;
-    if (!flexi_open_buffer(&view, &cursor)) {
+    if (FLEXI_ERROR(flexi_open_buffer(&view, &cursor))) {
         throw "assert";
     }
 
     flexi_parser_s parser{
-        [](void *) {},
-        [](int64_t, void *) {},
-        [](uint64_t, void *) {},
-        [](float, void *) {},
-        [](double, void *) {},
         [](const char *, void *) {},
+        [](const char *, int64_t, void *) {},
+        [](const char *, uint64_t, void *) {},
+        [](const char *, float, void *) {},
+        [](const char *, double, void *) {},
+        [](const char *, const char *, void *) {},
+        [](const char *, const char *, size_t, void *) {},
         [](const char *, size_t, void *) {},
-        [](const void *, size_t, void *) {},
-        [](size_t, void *) {},
-        [](const char *, void *) {},
         [](void *) {},
-        [](size_t, void *) {},
+        [](const char *, size_t, void *) {},
         [](void *) {},
-        [](const void *, int, size_t, void *) {},
-        [](const void *, int, size_t, void *) {},
-        [](const void *, int, size_t, void *) {},
-        [](bool, void *) {},
-        [](const bool *, size_t, void *) {},
+        [](const char *, const void *, size_t, flexi_type_e, int, void *) {},
+        [](const char *, const void *, size_t, void *) {},
+        [](const char *, bool, void *) {},
     };
 
     flexi_cursor_s dest;

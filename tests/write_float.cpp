@@ -55,7 +55,7 @@ TEST_P(WriteF32Fixture, WriteAndRead)
 
     flexi_cursor_s cursor{};
     auto buffer = flexi_make_buffer(m_actual.DataAt(0), offset);
-    ASSERT_TRUE(flexi_open_buffer(&buffer, &cursor));
+    ASSERT_EQ(FLEXI_OK, flexi_open_buffer(&buffer, &cursor));
     if (direct == direct_e::direct) {
         ASSERT_EQ(FLEXI_TYPE_FLOAT, flexi_cursor_type(&cursor));
     } else {
@@ -64,7 +64,7 @@ TEST_P(WriteF32Fixture, WriteAndRead)
     ASSERT_EQ(ex_width, flexi_cursor_width(&cursor));
 
     float actual_value = 0;
-    ASSERT_TRUE(flexi_cursor_f32(&cursor, &actual_value));
+    ASSERT_EQ(FLEXI_OK, flexi_cursor_f32(&cursor, &actual_value));
     ASSERT_EQ(value, actual_value);
 }
 
@@ -109,7 +109,7 @@ TEST_P(WriteF64Fixture, WriteAndRead)
 
     flexi_cursor_s cursor{};
     auto buffer = flexi_make_buffer(m_actual.DataAt(0), offset);
-    ASSERT_TRUE(flexi_open_buffer(&buffer, &cursor));
+    ASSERT_EQ(FLEXI_OK, flexi_open_buffer(&buffer, &cursor));
     if (direct == direct_e::direct) {
         ASSERT_EQ(FLEXI_TYPE_FLOAT, flexi_cursor_type(&cursor));
     } else {
@@ -118,7 +118,7 @@ TEST_P(WriteF64Fixture, WriteAndRead)
     ASSERT_EQ(ex_width, flexi_cursor_width(&cursor));
 
     double actual_value = 0;
-    ASSERT_TRUE(flexi_cursor_f64(&cursor, &actual_value));
+    ASSERT_EQ(FLEXI_OK, flexi_cursor_f64(&cursor, &actual_value));
     ASSERT_EQ(value, actual_value);
 }
 
@@ -163,14 +163,14 @@ TEST_P(WriteVecF32Fixture, WriteAndRead)
 
     flexi_cursor_s cursor{};
     auto buffer = flexi_make_buffer(m_actual.DataAt(0), offset);
-    ASSERT_TRUE(flexi_open_buffer(&buffer, &cursor));
+    ASSERT_EQ(FLEXI_OK, flexi_open_buffer(&buffer, &cursor));
 
     ASSERT_EQ(ex_type, flexi_cursor_type(&cursor));
     ASSERT_EQ(ex_width, flexi_cursor_width(&cursor));
     ASSERT_EQ(ex_values.size(), flexi_cursor_length(&cursor));
 
     const void *out_ptr = nullptr;
-    ASSERT_TRUE(flexi_cursor_typed_vector_data(&cursor, &out_ptr));
+    ASSERT_EQ(FLEXI_OK, flexi_cursor_typed_vector_data(&cursor, &out_ptr));
 
     auto out_values = static_cast<const float *>(out_ptr);
     for (size_t i = 0; i < ex_values.size(); i++) {
@@ -237,14 +237,14 @@ TEST_P(WriteVecF64Fixture, WriteAndRead)
 
     flexi_cursor_s cursor{};
     auto buffer = flexi_make_buffer(m_actual.DataAt(0), offset);
-    ASSERT_TRUE(flexi_open_buffer(&buffer, &cursor));
+    ASSERT_EQ(FLEXI_OK, flexi_open_buffer(&buffer, &cursor));
 
     ASSERT_EQ(ex_type, flexi_cursor_type(&cursor));
     ASSERT_EQ(ex_width, flexi_cursor_width(&cursor));
     ASSERT_EQ(ex_values.size(), flexi_cursor_length(&cursor));
 
     const void *out_ptr = nullptr;
-    ASSERT_TRUE(flexi_cursor_typed_vector_data(&cursor, &out_ptr));
+    ASSERT_EQ(FLEXI_OK, flexi_cursor_typed_vector_data(&cursor, &out_ptr));
 
     auto out_values = static_cast<const double *>(out_ptr);
     for (size_t i = 0; i < ex_values.size(); i++) {
