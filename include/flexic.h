@@ -22,6 +22,18 @@
 
 #pragma once
 
+#ifndef FLEXI_CONFIG_STACK_LENGTH
+/**
+ * @brief The size of the stack used by a flexi_writer_s.
+ *
+ * @details When writing vectors or maps, you push the values you want in
+ *          the container onto the stack first.  This stack is hardcoded to
+ *          a fixed size, which means that you are limited to this many values
+ *          in a single vector or map.
+ */
+#define FLEXI_CONFIG_STACK_LENGTH (64)
+#endif
+
 #include <stdbool.h>
 #include <stdint.h>
 
@@ -29,21 +41,95 @@
 extern "C" {
 #endif
 
+/**
+ * @brief Possible error results.  Note that the only guarantee is that
+ *        success returns will be > 0 and errors are < 0, exact values of
+ *        specific errors are not stable and subject to change.
+ */
 typedef enum flexi_result_e {
-    FLEXI_OK = 0,
-    FLEXI_ERR_INTERNAL = -1,
+    /**
+     * @brief An invalid return value.
+     */
+    FLEXI_INVALID = 0,
+
+    /**
+     * @brief Success.
+     */
+    FLEXI_OK = 1,
+
+    /**
+     * @brief The user passed an invalid parameter.
+     */
+    FLEXI_ERR_PARAM = -1,
+
+    /**
+     * @brief The value at the cursor was out of range for the specified type.
+     *        The output value has been populated with the closest value
+     *        to the underlying value.
+     */
     FLEXI_ERR_RANGE = -2,
+
+    /**
+     * @brief Key or index was not found in map or vector.
+     */
     FLEXI_ERR_NOTFOUND = -3,
+
+    /**
+     * @brief Cursor is not pointing at a valid type for the function that
+     *        was called.
+     */
     FLEXI_ERR_BADTYPE = -4,
+
+    /**
+     * @brief Attempting to read the cursor value or parse the FlexBuffer
+     *        resulted in an attempt to read from an invalid location in
+     *        said buffer.
+     *
+     * @details This is usually indicitive of a corrupt or maliciously-
+     *          constructed FlexBuffer.
+     */
     FLEXI_ERR_BADREAD = -5,
-    FLEXI_ERR_BADSTACK = -6,
-    FLEXI_ERR_BADWRITE = -7,
-    FLEXI_ERR_STREAM = -8,
-    FLEXI_ERR_NOTKEYS = -9,
+
+    /**
+     * @brief Attempting to parse data resulted in hitting one of the
+     *        configured parse limits.
+     *
+     * @details This is usually indicitive of a corrupt or maliciously-
+     *          constructed FlexBuffer, though it could also happen if you
+     *          cram one too many vectors or maps in a single FlexBuffer.
+     */
+    FLEXI_ERR_PARSELIMIT = -6,
+
+    /**
+     * @brief While writing data, an invalid stack operation was attempted.
+     */
+    FLEXI_ERR_BADSTACK = -7,
+
+    /**
+     * @brief Attempting to write to the output stream failed.
+     */
+    FLEXI_ERR_BADWRITE = -8,
+
+    /**
+     * @brief A non-write stream operation failed.
+     */
+    FLEXI_ERR_STREAM = -9,
+
+    /**
+     * @brief When creating a map, one of the values in the key array wasn't
+     *        actually a key.
+     */
+    FLEXI_ERR_NOTKEYS = -10,
+
+    /**
+     * @brief An internal precondition failed.  End users should never see
+     *        this error - if you do, please file a bug.
+     */
+    FLEXI_ERR_INTERNAL = -11,
 } flexi_result_e;
 
-#define FLEXI_SUCCESS(x) (FLEXI_OK <= (x))
-#define FLEXI_ERROR(x) (FLEXI_OK > (x))
+#define FLEXI_SUCCESS(x) (FLEXI_INVALID < (x))
+#define FLEXI_ERROR(x) (FLEXI_INVALID > (x))
 
 typedef uint8_t flexi_packed_t;
 typedef int flexi_stack_idx_t;
@@ -129,7 +215,7 @@ typedef struct flexi_value_s {
 } flexi_value_s;
 
 typedef struct flexi_writer_s {
-    flexi_value_s stack[256];
+    flexi_value_s stack[FLEXI_CONFIG_STACK_LENGTH];
     bool (*write_func)(const void *ptr, size_t len, void *user);
     const void *(*data_at_func)(size_t index, void *user);
     bool (*tell_func)(size_t *offset, void *user);
@@ -165,10 +251,7 @@ flexi_cursor_length(const flexi_cursor_s *cursor);
  *
  * @param[in] cursor Cursor pointing to value to examine.
  * @param[out] val Obtained value.  Set to 0 on error.
- * @return FLEXI_OK Successful read.
- * @return FLEXI_ERR_RANGE Value is out of range for int64_t.
- * @return FLEXI_ERR_BADTYPE Value isn't convertable to int64_t.
- * @return FLEXI_ERR_BADREAD Out-of-bounds read.
+ * @return FLEXI_OK | FLEXI_ERR_RANGE | FLEXI_ERR_BADTYPE | FLEXI_ERR_BADREAD
  */
 flexi_result_e
 flexi_cursor_sint(const flexi_cursor_s *cursor, int64_t *val);
@@ -179,10 +262,7 @@ flexi_cursor_sint(const flexi_cursor_s *cursor, int64_t *val);
  *
  * @param[in] cursor Cursor pointing to value to examine.
  * @param[out] val Obtained value.  Set to 0 on error.
- * @return FLEXI_OK Successful read.
- * @return FLEXI_ERR_RANGE Value is out of range for uint64_t.
- * @return FLEXI_ERR_BADTYPE Value isn't convertable to uint64_t.
- * @return FLEXI_ERR_BADREAD Out-of-bounds read.
+ * @return FLEXI_OK | FLEXI_ERR_RANGE | FLEXI_ERR_BADTYPE | FLEXI_ERR_BADREAD
  */
 flexi_result_e
 flexi_cursor_uint(const flexi_cursor_s *cursor, uint64_t *val);
@@ -193,9 +273,7 @@ flexi_cursor_uint(const flexi_cursor_s *cursor, uint64_t *val);
  *
  * @param[in] cursor Cursor pointing to value to examine.
  * @param[out] val Obtained value.  Set to 0.0f on error.
- * @return FLEXI_OK Successful read.
- * @return FLEXI_ERR_BADTYPE Value isn't convertable to float.
- * @return FLEXI_ERR_BADREAD Out-of-bounds read.
+ * @return FLEXI_OK | FLEXI_ERR_BADTYPE | FLEXI_ERR_BADREAD
  */
 flexi_result_e
 flexi_cursor_f32(const flexi_cursor_s *cursor, float *val);
@@ -206,9 +284,7 @@ flexi_cursor_f32(const flexi_cursor_s *cursor, float *val);
  *
  * @param[in] cursor Cursor pointing to value to examine.
  * @param[out] val Obtained value.  Set to 0.0 on error.
- * @return FLEXI_OK Successful read.
- * @return FLEXI_ERR_BADTYPE Value isn't convertable to double.
- * @return FLEXI_ERR_BADREAD Out-of-bounds read.
+ * @return FLEXI_OK | FLEXI_ERR_BADTYPE | FLEXI_ERR_BADREAD
  */
 flexi_result_e
 flexi_cursor_f64(const flexi_cursor_s *cursor, double *val);
@@ -218,9 +294,7 @@ flexi_cursor_f64(const flexi_cursor_s *cursor, double *val);
  *
  * @param[in] cursor Cursor pointing to value to examine.
  * @param[out] str Obtained string.  Set to "" on error.
- * @return FLEXI_OK Successful read.
- * @return FLEXI_ERR_BADTYPE Value isn't convertable to key.
- * @return FLEXI_ERR_BADREAD Out-of-bounds read.
+ * @return FLEXI_OK | FLEXI_ERR_BADTYPE | FLEXI_ERR_BADREAD
  */
 flexi_result_e
 flexi_cursor_key(const flexi_cursor_s *cursor, const char **str);
@@ -230,9 +304,7 @@ flexi_cursor_key(const flexi_cursor_s *cursor, const char **str);
  *
  * @param[in] cursor Cursor pointing to value to examine.
  * @param[out] str Obtained string.  Set to "" on error.
- * @return FLEXI_OK Successful read.
- * @return FLEXI_ERR_BADTYPE Value isn't convertable to string.
- * @return FLEXI_ERR_BADREAD Out-of-bounds read.
+ * @return FLEXI_OK | FLEXI_ERR_BADTYPE | FLEXI_ERR_BADREAD
  */
 flexi_result_e
 flexi_cursor_string(const flexi_cursor_s *cursor, const char **str);
@@ -247,8 +319,7 @@ flexi_cursor_string(const flexi_cursor_s *cursor, const char **str);
  * @param[in] cursor Cursor pointing to map to examine.
  * @param[in] index Index to look up.
  * @param[out] str Key string located at the given index.
- * @return FLEXI_OK Successful read.
- * @return FLEXI_BADTYPE Cursor is not pointing at a map.
+ * @return FLEXI_OK | FLEXI_ERR_BADTYPE
  */
 flexi_result_e
 flexi_cursor_map_key_at_index(const flexi_cursor_s *cursor, size_t index,
@@ -265,10 +336,7 @@ flexi_cursor_map_key_at_index(const flexi_cursor_s *cursor, size_t index,
  * @param[in] cursor Cursor pointing to map to examine.
  * @param[in] key Key to look up.
  * @param[out] dest Cursor pointing at value for the given key.
- * @return FLEXI_OK Successful seek.
- * @return FLEXI_NOTFOUND Key does not exist in the map.
- * @return FLEXI_BADTYPE Cursor is not pointing at a map.
- * @return FLEXI_BADREAD Read error during lookup.
+ * @return FLEXI_OK | FLEXI_NOTFOUND | FLEXI_BADTYPE | FLEXI_BADREAD
  */
 flexi_result_e
 flexi_cursor_seek_map_key(const flexi_cursor_s *cursor, const char *key,
@@ -374,21 +442,68 @@ flexi_result_e
 flexi_write_vector_keyed(flexi_writer_s *writer, const char *key, size_t len,
     flexi_width_e stride);
 
+/**
+ * @brief Write a typed vector of signed ints to the stream.  Pushes an offset
+ *        to the vector onto the stack.
+ *
+ * @param[in,out] writer Writer to operate on.
+ * @param[in] key Key for use in a map.  NULL if there is no key.
+ * @param[in] ptr Pointer to int array to be written.
+ * @param[in] stride Width of each individual int.
+ * @param[in] len Number of elements in the array.
+ * @return FLEXI_OK | FLEXI_ERR_BADWRITE.
+ */
 flexi_result_e
 flexi_write_typed_vector_sint_keyed(flexi_writer_s *writer, const char *key,
     const void *ptr, flexi_width_e stride, size_t len);
 
+/**
+ * @brief Write a typed vector of unsigned ints to the stream.  Pushes an
+ *        offset to the vector onto the stack.
+ *
+ * @param[in,out] writer Writer to operate on.
+ * @param[in] key Key for use in a map.  NULL if there is no key.
+ * @param[in] ptr Pointer to int array to be written.
+ * @param[in] stride Width of each individual int.
+ * @param[in] len Number of elements in the array.
+ * @return FLEXI_OK | FLEXI_ERR_BADWRITE.
+ */
 flexi_result_e
 flexi_write_typed_vector_uint_keyed(flexi_writer_s *writer, const char *key,
     const void *ptr, flexi_width_e stride, size_t len);
 
+/**
+ * @brief Write a typed vector of unsigned ints to the stream.  Pushes an
+ *        offset to the vector onto the stack.
+ *
+ * @param[in,out] writer Writer to operate on.
+ * @param[in] key Key for use in a map.  NULL if there is no key.
+ * @param[in] ptr Pointer to int array to be written.
+ * @param[in] stride Width of each individual int.
+ * @param[in] len Number of elements in the array.
+ * @return FLEXI_OK | FLEXI_ERR_BADWRITE.
+ */
 flexi_result_e
 flexi_write_typed_vector_flt_keyed(flexi_writer_s *writer, const char *key,
     const void *ptr, flexi_width_e stride, size_t len);
 
+/**
+ * @brief Write a binary blob to the stream.  Pushes an offset to the blob
+ *        onto the stack.
+ *
+ * @details Passing a value for align other than 1 will pad the start of
+ *          the blob data to the nearest even multiple of the align value.
+ *
+ * @param[in,out] writer Writer to operate on.
+ * @param[in] key Key for use in a map.  NULL if there is no key.
+ * @param[in] ptr Pointer to data to be written.
+ * @param[in] len Length of data to be written.
+ * @param[in] align Desired alignment of blob data, in bytes.
+ * @return FLEXI_OK | FLEXI_ERR_BADWRITE | FLEXI_ERR_STREAM.
+ */
 flexi_result_e
 flexi_write_blob_keyed(flexi_writer_s *writer, const char *key, const void *ptr,
-    size_t len);
+    size_t len, int align);
 
 flexi_result_e
 flexi_write_bool_keyed(flexi_writer_s *writer, const char *key, bool val);
@@ -479,10 +594,23 @@ flexi_write_vector(flexi_writer_s *writer, size_t len, flexi_width_e stride)
     return flexi_write_vector_keyed(writer, NULL, len, stride);
 }
 
+/**
+ * @brief Write a binary blob to the stream.  Pushes an offset to the blob
+ *        onto the stack.
+ *
+ * @details Passing a value for align other than 1 will pad the start of
+ *          the blob data to the nearest even multiple of the align value.
+ *
+ * @param[in,out] writer Writer to operate on.
+ * @param[in] ptr Pointer to data to be written.
+ * @param[in] len Length of data to be written.
+ * @param[in] align Desired alignment of blob data, in bytes.
+ * @return FLEXI_OK | FLEXI_ERR_BADWRITE | FLEXI_ERR_STREAM.
+ */
 static inline flexi_result_e
-flexi_write_blob(flexi_writer_s *writer, const void *ptr, size_t len)
+flexi_write_blob(flexi_writer_s *writer, const void *ptr, size_t len, int align)
 {
-    return flexi_write_blob_keyed(writer, NULL, ptr, len);
+    return flexi_write_blob_keyed(writer, NULL, ptr, len, align);
 }
 
 static inline flexi_result_e

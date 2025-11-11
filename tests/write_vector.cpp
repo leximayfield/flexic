@@ -146,7 +146,8 @@ TEST_F(WriteFixture, StringBlob)
         0xD0, 0xCF, 0x11, 0xE0, 0xA1, 0xB1, 0x1A, 0xE1};
 
     ASSERT_EQ(FLEXI_OK, flexi_write_string(&m_writer, "xyzzy"));
-    ASSERT_EQ(FLEXI_OK, flexi_write_blob(&m_writer, &BLOB[0], std::size(BLOB)));
+    ASSERT_EQ(FLEXI_OK,
+        flexi_write_blob(&m_writer, &BLOB[0], std::size(BLOB), 1));
     ASSERT_EQ(FLEXI_OK, flexi_write_vector(&m_writer, 2, FLEXI_WIDTH_1B));
     ASSERT_EQ(FLEXI_OK, flexi_write_finalize(&m_writer));
 
@@ -158,6 +159,114 @@ TEST_F(WriteFixture, StringBlob)
         0x02,
         // [0] String offset
         0x10,
+        // [1] Blob offset
+        0x0a,
+        // Vector types
+        0x14, 0x64,
+        // Root
+        0x04, 0x28, 0x01};
+
+    AssertData(expected);
+
+    flexi_cursor_s cursor{};
+    GetCursor(&cursor);
+
+    ASSERT_EQ(FLEXI_TYPE_VECTOR, flexi_cursor_type(&cursor));
+    ASSERT_EQ(1, flexi_cursor_width(&cursor));
+    ASSERT_EQ(2, flexi_cursor_length(&cursor));
+
+    flexi_cursor_s vcursor{};
+
+    const char *str = nullptr;
+    ASSERT_EQ(FLEXI_OK, flexi_cursor_seek_vector_index(&cursor, 0, &vcursor));
+    ASSERT_EQ(FLEXI_OK, flexi_cursor_string(&vcursor, &str));
+    ASSERT_EQ(5, flexi_cursor_length(&vcursor));
+    ASSERT_STREQ(str, "xyzzy");
+
+    const uint8_t *blob = nullptr;
+    ASSERT_EQ(FLEXI_OK, flexi_cursor_seek_vector_index(&cursor, 1, &vcursor));
+    ASSERT_EQ(FLEXI_OK, flexi_cursor_blob(&vcursor, &blob));
+    ASSERT_EQ(8, flexi_cursor_length(&vcursor));
+    for (size_t i = 0; i < std::size(BLOB); i++) {
+        ASSERT_EQ(blob[i], BLOB[i]);
+    }
+}
+
+TEST_F(WriteFixture, AlignedBlob4)
+{
+    constexpr std::array<uint8_t, 8> BLOB = {
+        0xD0, 0xCF, 0x11, 0xE0, 0xA1, 0xB1, 0x1A, 0xE1};
+
+    ASSERT_EQ(FLEXI_OK, flexi_write_string(&m_writer, "xyzzy"));
+    ASSERT_EQ(FLEXI_OK,
+        flexi_write_blob(&m_writer, &BLOB[0], std::size(BLOB), 4));
+    ASSERT_EQ(FLEXI_OK, flexi_write_vector(&m_writer, 2, FLEXI_WIDTH_1B));
+    ASSERT_EQ(FLEXI_OK, flexi_write_finalize(&m_writer));
+
+    std::vector<uint8_t> expected = {// String
+        0x05, 'x', 'y', 'z', 'z', 'y', '\0',
+        // Padding
+        0x00,
+        // Blob
+        0x08, 0xD0, 0xCF, 0x11, 0xE0, 0xA1, 0xB1, 0x1A, 0xE1,
+        // Vector length (stride 1)
+        0x02,
+        // [0] String offset
+        0x11,
+        // [1] Blob offset
+        0x0a,
+        // Vector types
+        0x14, 0x64,
+        // Root
+        0x04, 0x28, 0x01};
+
+    AssertData(expected);
+
+    flexi_cursor_s cursor{};
+    GetCursor(&cursor);
+
+    ASSERT_EQ(FLEXI_TYPE_VECTOR, flexi_cursor_type(&cursor));
+    ASSERT_EQ(1, flexi_cursor_width(&cursor));
+    ASSERT_EQ(2, flexi_cursor_length(&cursor));
+
+    flexi_cursor_s vcursor{};
+
+    const char *str = nullptr;
+    ASSERT_EQ(FLEXI_OK, flexi_cursor_seek_vector_index(&cursor, 0, &vcursor));
+    ASSERT_EQ(FLEXI_OK, flexi_cursor_string(&vcursor, &str));
+    ASSERT_EQ(5, flexi_cursor_length(&vcursor));
+    ASSERT_STREQ(str, "xyzzy");
+
+    const uint8_t *blob = nullptr;
+    ASSERT_EQ(FLEXI_OK, flexi_cursor_seek_vector_index(&cursor, 1, &vcursor));
+    ASSERT_EQ(FLEXI_OK, flexi_cursor_blob(&vcursor, &blob));
+    ASSERT_EQ(8, flexi_cursor_length(&vcursor));
+    for (size_t i = 0; i < std::size(BLOB); i++) {
+        ASSERT_EQ(blob[i], BLOB[i]);
+    }
+}
+
+TEST_F(WriteFixture, AlignedBlob16)
+{
+    constexpr std::array<uint8_t, 8> BLOB = {
+        0xD0, 0xCF, 0x11, 0xE0, 0xA1, 0xB1, 0x1A, 0xE1};
+
+    ASSERT_EQ(FLEXI_OK, flexi_write_string(&m_writer, "xyzzy"));
+    ASSERT_EQ(FLEXI_OK,
+        flexi_write_blob(&m_writer, &BLOB[0], std::size(BLOB), 16));
+    ASSERT_EQ(FLEXI_OK, flexi_write_vector(&m_writer, 2, FLEXI_WIDTH_1B));
+    ASSERT_EQ(FLEXI_OK, flexi_write_finalize(&m_writer));
+
+    std::vector<uint8_t> expected = {// String
+        0x05, 'x', 'y', 'z', 'z', 'y', '\0',
+        // Padding
+        0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+        // Blob
+        0x08, 0xD0, 0xCF, 0x11, 0xE0, 0xA1, 0xB1, 0x1A, 0xE1,
+        // Vector length (stride 1)
+        0x02,
+        // [0] String offset
+        0x19,
         // [1] Blob offset
         0x0a,
         // Vector types

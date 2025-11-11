@@ -26,14 +26,39 @@
 
 /******************************************************************************/
 
-#ifndef FLEXI_MAX_DEPTH
-#define FLEXI_MAX_DEPTH (32)
+#ifndef FLEXI_CONFIG_MAX_DEPTH
+/**
+ * @brief The maximum number of nested vectors or maps before the parse fails.
+ *
+ * @details A maliciously-formed FlexBuffer could nest vectors inside vectors
+ *          and crash the parser with a stack overflow.  This limit prevents
+ *          excessive nesting which would result in such a crash.
+ */
+#define FLEXI_CONFIG_MAX_DEPTH (32)
+#endif
+
+#ifndef FLEXI_CONFIG_MAX_ITERABLES
+/**
+ * @brief The maximum number of non-typed vectors and maps to parse before
+ *        failing.
+ *
+ * @details FlexBuffers allow for a single value to be referenced from multiple
+ *          places in the message.  However, this feature has the potential
+ *          for misuse in maliciously-designed "FlexBuffer bomb" inputs where
+ *          iterable containers are shared and nested in ways that take a
+ *          long time to parse.
+ *
+ *          Note that this limit does not count typed vectors, as these do
+ *          not allow nesting other iterables inside them.
+ */
+#define FLEXI_CONFIG_MAX_ITERABLES (2048)
 #endif
 
 #define ASSERT(cond) (void)0
 
 /******************************************************************************/
 
+#define MIN(a, b) ((b) < (a) ? (b) : (a))
 #define MAX(a, b) ((a) < (b) ? (b) : (a))
 #define COUNTOF(arr) (sizeof(arr) / sizeof((arr)[0]))
 
@@ -56,9 +81,14 @@
         : (w) == 4 ? (flexi_packed_t)(2)                                       \
                    : (flexi_packed_t)(3))
 
+typedef struct parse_limits_s {
+    int depth;
+    int iterables;
+} parse_limits_s;
+
 static flexi_result_e
 parse_cursor(const flexi_parser_s *parser, const char *key,
-    const flexi_cursor_s *cursor, void *user, int depth);
+    const flexi_cursor_s *cursor, void *user, parse_limits_s *limits);
 
 /**
  * @brief Checked multiply.
@@ -68,6 +98,30 @@ checked_mul(uint64_t *z, uint64_t x, uint64_t y)
 {
     *z = x * y;
     return !(x && *z / x != y);
+}
+
+/**
+ * @brief Returns true if the value has a single bit set, making it a
+ *        power-of-two.
+ */
+static bool
+has_single_bit32(uint32_t x)
+{
+    return x && !(x & (x - 1));
+}
+
+/**
+ * @brief Round value to the nearest multiple.  Multiple must be a power
+ *        of two.
+ *
+ * @param x Value to round.
+ * @param m Multiple.
+ * @return Rounded multiple.
+ */
+static uint64_t
+round_to_pow2_mul64(uint64_t x, uint64_t m)
+{
+    return (x + (m - 1)) & ~(m - 1);
 }
 
 /**
@@ -474,14 +528,17 @@ writer_tell(flexi_writer_s *writer, size_t *offset)
  * @brief Align stream to nearest multiple of width.
  *
  * @param[in] writer Writer to align.
+ * @param[in] prefix Number of bytes before the address we want to align.
  * @param[in] width Width to align to.
  * @param[out] offset Position of the stream.
  * @return True if stream was in a valid state and returned an offset.
  */
 static bool
-write_padding(flexi_writer_s *writer, int width, size_t *offset)
+write_padding(flexi_writer_s *writer, int prefix, int width, size_t *offset)
 {
-    ASSERT(width == 1 || width == 2 || width == 4 || width == 8);
+    if (!has_single_bit32((uint32_t)width)) {
+        return false;
+    }
 
     size_t src_offset;
     if (!writer->tell_func(&src_offset, writer->user)) {
@@ -489,15 +546,19 @@ write_padding(flexi_writer_s *writer, int width, size_t *offset)
     }
 
     // Round offset to nearest multiple.
-    size_t dst_offset = (src_offset + (width >> 1)) & ~(width - 1);
-    size_t padding_len = dst_offset - src_offset;
+    size_t dst_offset = round_to_pow2_mul64(src_offset, (uint64_t)width);
+    ptrdiff_t padding_len = (ptrdiff_t)(dst_offset - src_offset);
 
+    // Loop, writing 8 bytes at a time until we're done.
     static const char s_padding[8] = {0};
-    if (!writer->write_func(s_padding, padding_len, writer->user)) {
-        return false;
+    for (; padding_len > 0; padding_len -= 8) {
+        size_t write_len = MIN((size_t)padding_len, 8);
+        if (!writer->write_func(s_padding, write_len, writer->user)) {
+            return false;
+        }
     }
 
-    *offset = dst_offset;
+    *offset = (size_t)prefix + dst_offset;
     return true;
 }
 
@@ -987,19 +1048,20 @@ parser_emit_string(const flexi_parser_s *parser, const char *key,
  * @param[in] key Key of value.
  * @param[in] cursor Location of cursor to read with.
  * @param[in] user User pointer.
- * @param[in] depth Current recursion depth.
+ * @param[in] limits Parse limit tracking.
  * @return FLEXI_OK Successful read.
  * @return FLEXI_ERR_BADREAD Read was invalid.
  */
 static flexi_result_e
 parser_emit_map(const flexi_parser_s *parser, const char *key,
-    const flexi_cursor_s *cursor, void *user, int depth)
+    const flexi_cursor_s *cursor, void *user, parse_limits_s *limits)
 {
     size_t len;
     if (!cursor_get_len(cursor, &len)) {
         return FLEXI_ERR_BADREAD;
     }
 
+    flexi_result_e res;
     parser->map_begin(key, len, user);
     for (size_t i = 0; i < len; i++) {
         const char *str;
@@ -1011,9 +1073,12 @@ parser_emit_map(const flexi_parser_s *parser, const char *key,
         if (!cursor_seek_vector_index(cursor, i, &value)) {
             return FLEXI_ERR_BADREAD;
         }
-        if (FLEXI_ERROR(parse_cursor(parser, str, &value, user, depth + 1))) {
-            return FLEXI_ERR_BADREAD;
+        limits->depth += 1;
+        res = parse_cursor(parser, str, &value, user, limits);
+        if (FLEXI_ERROR(res)) {
+            return res;
         }
+        limits->depth -= 1;
     }
 
     parser->map_end(user);
@@ -1027,28 +1092,33 @@ parser_emit_map(const flexi_parser_s *parser, const char *key,
  * @param[in] key Key of value.
  * @param[in] cursor Location of cursor to read with.
  * @param[in] user User pointer.
- * @param[in] depth Current recursion depth.
+ * @param[in] limits Parse limit tracking.
  * @return FLEXI_OK Successful read.
  * @return FLEXI_ERR_BADREAD Read was invalid.
+ * @return FLEXI_ERR_PARSELIMIT Read hit a configured parse limit.
  */
 static flexi_result_e
 parser_emit_vector(const flexi_parser_s *parser, const char *key,
-    const flexi_cursor_s *cursor, void *user, int depth)
+    const flexi_cursor_s *cursor, void *user, parse_limits_s *limits)
 {
     size_t len;
     if (!cursor_get_len(cursor, &len)) {
         return FLEXI_ERR_BADREAD;
     }
 
+    flexi_result_e res;
     parser->vector_begin(key, len, user);
     for (size_t i = 0; i < len; i++) {
         flexi_cursor_s value;
         if (!cursor_seek_vector_index(cursor, i, &value)) {
             return FLEXI_ERR_BADREAD;
         }
-        if (FLEXI_ERROR(parse_cursor(parser, NULL, &value, user, depth + 1))) {
-            return FLEXI_ERR_BADREAD;
+        limits->depth += 1;
+        res = parse_cursor(parser, NULL, &value, user, limits);
+        if (FLEXI_ERROR(res)) {
+            return res;
         }
+        limits->depth -= 1;
     }
 
     parser->vector_end(user);
@@ -1150,17 +1220,18 @@ parser_emit_vector_blob(const flexi_parser_s *parser, const char *key,
  * @param[in] key Key of cursor.
  * @param[in] cursor Location of cursor to read with.
  * @param[in] user User pointer.
+ * @param[in] limits Parse limit tracking.
  * @return FLEXI_OK Successful parse.
- * @return FLEXI_ERR_BADREAD If read went out of range or recursion limit
- *                           was reached.
+ * @return FLEXI_ERR_BADREAD Read was invalid.
+ * @return FLEXI_ERR_PARSELIMIT Read hit a configured parse limit.
  */
 static flexi_result_e
 parse_cursor(const flexi_parser_s *parser, const char *key,
-    const flexi_cursor_s *cursor, void *user, int depth)
+    const flexi_cursor_s *cursor, void *user, parse_limits_s *limits)
 {
-    if (depth >= FLEXI_MAX_DEPTH) {
+    if (limits->depth >= FLEXI_CONFIG_MAX_DEPTH) {
         // Prevent stack overflows.
-        return FLEXI_ERR_BADREAD;
+        return FLEXI_ERR_PARSELIMIT;
     }
 
     switch (cursor->type) {
@@ -1180,9 +1251,20 @@ parse_cursor(const flexi_parser_s *parser, const char *key,
     case FLEXI_TYPE_STRING:
         return parser_emit_string(parser, key, cursor, user);
     case FLEXI_TYPE_MAP:
-        return parser_emit_map(parser, key, cursor, user, depth);
-    case FLEXI_TYPE_VECTOR:
-        return parser_emit_vector(parser, key, cursor, user, depth);
+        limits->iterables += 1;
+        if (limits->iterables >= FLEXI_CONFIG_MAX_ITERABLES) {
+            // Defuse FlexBuffer "bomb" inputs.
+            return FLEXI_ERR_PARSELIMIT;
+        }
+        return parser_emit_map(parser, key, cursor, user, limits);
+    case FLEXI_TYPE_VECTOR: {
+        limits->iterables += 1;
+        if (limits->iterables >= FLEXI_CONFIG_MAX_ITERABLES) {
+            // Defuse FlexBuffer "bomb" inputs.
+            return FLEXI_ERR_PARSELIMIT;
+        }
+        return parser_emit_vector(parser, key, cursor, user, limits);
+    }
     case FLEXI_TYPE_VECTOR_SINT:
     case FLEXI_TYPE_VECTOR_UINT:
     case FLEXI_TYPE_VECTOR_FLOAT:
@@ -2037,7 +2119,8 @@ flexi_result_e
 flexi_parse_cursor(const flexi_parser_s *parser, const flexi_cursor_s *cursor,
     void *user)
 {
-    return parse_cursor(parser, NULL, cursor, user, 0);
+    parse_limits_s limits = {0};
+    return parse_cursor(parser, NULL, cursor, user, &limits);
 }
 
 /******************************************************************************/
@@ -2206,7 +2289,7 @@ flexi_write_indirect_sint_keyed(flexi_writer_s *writer, const char *k,
 
     // Align to the nearest multiple.
     size_t offset;
-    if (!write_padding(writer, width, &offset)) {
+    if (!write_padding(writer, 0, width, &offset)) {
         return FLEXI_ERR_BADWRITE;
     }
 
@@ -2238,7 +2321,7 @@ flexi_write_indirect_uint_keyed(flexi_writer_s *writer, const char *k,
 
     // Align to the nearest multiple.
     size_t offset;
-    if (!write_padding(writer, width, &offset)) {
+    if (!write_padding(writer, 0, width, &offset)) {
         return FLEXI_ERR_BADWRITE;
     }
 
@@ -2267,7 +2350,7 @@ flexi_write_indirect_f32_keyed(flexi_writer_s *writer, const char *k, float v)
 {
     // Align to the nearest multiple.
     size_t offset;
-    if (!write_padding(writer, sizeof(float), &offset)) {
+    if (!write_padding(writer, 0, sizeof(float), &offset)) {
         return FLEXI_ERR_BADWRITE;
     }
 
@@ -2296,7 +2379,7 @@ flexi_write_indirect_f64_keyed(flexi_writer_s *writer, const char *k, double v)
 {
     // Keep track of the value's position.
     size_t offset;
-    if (!write_padding(writer, sizeof(double), &offset)) {
+    if (!write_padding(writer, 0, sizeof(double), &offset)) {
         return FLEXI_ERR_BADWRITE;
     }
 
@@ -2405,7 +2488,7 @@ flexi_write_map_keyed(flexi_writer_s *writer, const char *k,
 
     // Offset to aligned keys vector.
     size_t current;
-    if (!write_padding(writer, stride_bytes, &current)) {
+    if (!write_padding(writer, 0, stride_bytes, &current)) {
         return FLEXI_ERR_BADWRITE;
     }
 
@@ -2468,7 +2551,7 @@ flexi_write_vector_keyed(flexi_writer_s *writer, const char *k, size_t len,
 
     // Align future writes to the nearest multiple.
     size_t offset;
-    if (!write_padding(writer, stride_bytes, &offset)) {
+    if (!write_padding(writer, stride_bytes, stride_bytes, &offset)) {
         return FLEXI_ERR_BADWRITE;
     }
 
@@ -2476,9 +2559,6 @@ flexi_write_vector_keyed(flexi_writer_s *writer, const char *k, size_t len,
     if (!write_uint_by_width(writer, len, stride_bytes)) {
         return FLEXI_ERR_BADWRITE;
     }
-
-    // Keep track of the base location of the vector.
-    offset += stride_bytes;
 
     // Write values.
     flexi_result_e res = write_vector_values(writer, len, stride_bytes);
@@ -2518,7 +2598,7 @@ flexi_write_typed_vector_sint_keyed(flexi_writer_s *writer, const char *k,
     if (len >= 2 && len <= 4) {
         // Keep track of the aligned base location of the vector.
         size_t offset;
-        if (!write_padding(writer, stride_bytes, &offset)) {
+        if (!write_padding(writer, 0, stride_bytes, &offset)) {
             return FLEXI_ERR_BADWRITE;
         }
 
@@ -2538,7 +2618,7 @@ flexi_write_typed_vector_sint_keyed(flexi_writer_s *writer, const char *k,
     } else {
         // Align future writes to the nearest multiple.
         size_t offset;
-        if (!write_padding(writer, stride_bytes, &offset)) {
+        if (!write_padding(writer, stride_bytes, stride_bytes, &offset)) {
             return FLEXI_ERR_BADWRITE;
         }
 
@@ -2546,9 +2626,6 @@ flexi_write_typed_vector_sint_keyed(flexi_writer_s *writer, const char *k,
         if (!write_uint_by_width(writer, len, stride_bytes)) {
             return FLEXI_ERR_BADWRITE;
         }
-
-        // Keep track of the base location of the vector.
-        offset += stride_bytes;
 
         // Write values.
         if (!writer_write(writer, ptr, len * stride_bytes)) {
@@ -2576,7 +2653,7 @@ flexi_write_typed_vector_uint_keyed(flexi_writer_s *writer, const char *k,
     if (len >= 2 && len <= 4) {
         // Keep track of the aligned base location of the vector.
         size_t offset;
-        if (!write_padding(writer, stride_bytes, &offset)) {
+        if (!write_padding(writer, 0, stride_bytes, &offset)) {
             return FLEXI_ERR_BADWRITE;
         }
 
@@ -2596,7 +2673,7 @@ flexi_write_typed_vector_uint_keyed(flexi_writer_s *writer, const char *k,
     } else {
         // Align future writes to the nearest multiple.
         size_t offset;
-        if (!write_padding(writer, stride_bytes, &offset)) {
+        if (!write_padding(writer, stride_bytes, stride_bytes, &offset)) {
             return FLEXI_ERR_BADWRITE;
         }
 
@@ -2604,9 +2681,6 @@ flexi_write_typed_vector_uint_keyed(flexi_writer_s *writer, const char *k,
         if (!write_uint_by_width(writer, len, stride_bytes)) {
             return FLEXI_ERR_BADWRITE;
         }
-
-        // Keep track of the base location of the vector.
-        offset += stride_bytes;
 
         // Write values.
         if (!writer_write(writer, ptr, len * stride_bytes)) {
@@ -2628,12 +2702,14 @@ flexi_write_typed_vector_flt_keyed(flexi_writer_s *writer, const char *k,
     const void *ptr, flexi_width_e stride, size_t len)
 {
     int stride_bytes = WIDTH_TO_BYTES(stride);
-    ASSERT(stride_bytes >= 4 && stride_bytes <= 8);
+    if (stride_bytes != 4 && stride_bytes != 8) {
+        return FLEXI_ERR_BADTYPE;
+    }
 
     if (len >= 2 && len <= 4) {
         // Keep track of the aligned base location of the vector.
         size_t offset;
-        if (!write_padding(writer, stride_bytes, &offset)) {
+        if (!write_padding(writer, 0, stride_bytes, &offset)) {
             return FLEXI_ERR_BADWRITE;
         }
 
@@ -2653,7 +2729,7 @@ flexi_write_typed_vector_flt_keyed(flexi_writer_s *writer, const char *k,
     } else {
         // Align future writes to the nearest multiple.
         size_t offset;
-        if (!write_padding(writer, stride_bytes, &offset)) {
+        if (!write_padding(writer, stride_bytes, stride_bytes, &offset)) {
             return FLEXI_ERR_BADWRITE;
         }
 
@@ -2661,9 +2737,6 @@ flexi_write_typed_vector_flt_keyed(flexi_writer_s *writer, const char *k,
         if (!write_uint_by_width(writer, len, stride_bytes)) {
             return FLEXI_ERR_BADWRITE;
         }
-
-        // Keep track of the base location of the vector.
-        offset += stride_bytes;
 
         // Write values.
         if (!writer_write(writer, ptr, len * stride_bytes)) {
@@ -2683,18 +2756,19 @@ flexi_write_typed_vector_flt_keyed(flexi_writer_s *writer, const char *k,
 
 flexi_result_e
 flexi_write_blob_keyed(flexi_writer_s *writer, const char *k, const void *ptr,
-    size_t len)
+    size_t len, int align)
 {
-    // Write the blob length to stream.
-    int width = UINT_WIDTH(len);
-    if (!write_uint_by_width(writer, len, width)) {
+    int len_width = UINT_WIDTH(len);
+
+    // Pad the blob to the alignment value.
+    size_t offset;
+    if (!write_padding(writer, len_width, align, &offset)) {
         return FLEXI_ERR_BADWRITE;
     }
 
-    // Keep track of string starting position.
-    size_t offset;
-    if (!writer_tell(writer, &offset)) {
-        return FLEXI_ERR_STREAM;
+    // Write the blob length to stream.
+    if (!write_uint_by_width(writer, len, len_width)) {
+        return FLEXI_ERR_BADWRITE;
     }
 
     // Write the blob.
@@ -2711,7 +2785,7 @@ flexi_write_blob_keyed(flexi_writer_s *writer, const char *k, const void *ptr,
     stack->u.offset = offset;
     stack->key = k;
     stack->type = FLEXI_TYPE_BLOB;
-    stack->width = width;
+    stack->width = len_width;
     return FLEXI_OK;
 }
 

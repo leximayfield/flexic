@@ -36,9 +36,9 @@ target_sources(flexic_test PRIVATE
     "${CMAKE_CURRENT_SOURCE_DIR}/write_vector.cpp")
 target_link_libraries(flexic_test PRIVATE flexic GTest::gtest_main)
 
-add_sanitize_address(flexic_test)
-add_sanitize_address(gtest)
-add_sanitize_address(gtest_main)
+add_sanitizers(flexic_test)
+add_sanitizers(gtest)
+add_sanitizers(gtest_main)
 
 gtest_discover_tests(flexic_test)
 
