@@ -1,3 +1,5 @@
+include(GoogleTest)
+
 # Testing enables warnings
 
 if(MSVC)
@@ -26,6 +28,7 @@ target_sources(flexic_test PRIVATE
     "${CMAKE_CURRENT_SOURCE_DIR}/cursor_float.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/cursor_int.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/parser.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/parser_error.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/write_float.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/write_int.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/write_map.cpp"
@@ -33,7 +36,10 @@ target_sources(flexic_test PRIVATE
     "${CMAKE_CURRENT_SOURCE_DIR}/write_vector.cpp")
 target_link_libraries(flexic_test PRIVATE flexic GTest::gtest_main)
 
-include(GoogleTest)
+add_sanitize_address(flexic_test)
+add_sanitize_address(gtest)
+add_sanitize_address(gtest_main)
+
 gtest_discover_tests(flexic_test)
 
 if(FLEXIC_ENABLE_TEST_COVERAGE)

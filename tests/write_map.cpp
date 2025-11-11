@@ -24,24 +24,25 @@
 
 TEST_F(WriteFixture, WriteMapInts)
 {
-    ASSERT_TRUE(flexi_write_key(&m_writer, "bool"));
-    ASSERT_TRUE(flexi_write_key(&m_writer, "sint"));
-    ASSERT_TRUE(flexi_write_key(&m_writer, "indirect_sint"));
-    ASSERT_TRUE(flexi_write_key(&m_writer, "uint"));
-    ASSERT_TRUE(flexi_write_key(&m_writer, "indirect_uint"));
+    ASSERT_EQ(FLEXI_OK, flexi_write_key(&m_writer, "bool"));
+    ASSERT_EQ(FLEXI_OK, flexi_write_key(&m_writer, "sint"));
+    ASSERT_EQ(FLEXI_OK, flexi_write_key(&m_writer, "indirect_sint"));
+    ASSERT_EQ(FLEXI_OK, flexi_write_key(&m_writer, "uint"));
+    ASSERT_EQ(FLEXI_OK, flexi_write_key(&m_writer, "indirect_uint"));
     flexi_stack_idx_t keyset = -1;
-    ASSERT_TRUE(flexi_write_map_keys(&m_writer, 5, FLEXI_WIDTH_2B, &keyset));
+    ASSERT_EQ(FLEXI_OK,
+        flexi_write_map_keys(&m_writer, 5, FLEXI_WIDTH_2B, &keyset));
     ASSERT_EQ(0, keyset);
 
-    ASSERT_TRUE(flexi_write_bool_keyed(&m_writer, "bool", true));
-    ASSERT_TRUE(flexi_write_sint_keyed(&m_writer, "sint", INT16_MAX));
-    ASSERT_TRUE(
+    ASSERT_EQ(FLEXI_OK, flexi_write_bool_keyed(&m_writer, "bool", true));
+    ASSERT_EQ(FLEXI_OK, flexi_write_sint_keyed(&m_writer, "sint", INT16_MAX));
+    ASSERT_EQ(FLEXI_OK,
         flexi_write_indirect_sint_keyed(&m_writer, "indirect_sint", INT32_MAX));
-    ASSERT_TRUE(flexi_write_uint_keyed(&m_writer, "uint", UINT16_MAX));
-    ASSERT_TRUE(flexi_write_indirect_uint_keyed(&m_writer, "indirect_uint",
-        UINT32_MAX));
-    ASSERT_TRUE(flexi_write_map(&m_writer, keyset, 5, FLEXI_WIDTH_2B));
-    ASSERT_TRUE(flexi_write_finalize(&m_writer));
+    ASSERT_EQ(FLEXI_OK, flexi_write_uint_keyed(&m_writer, "uint", UINT16_MAX));
+    ASSERT_EQ(FLEXI_OK, flexi_write_indirect_uint_keyed(&m_writer,
+                            "indirect_uint", UINT32_MAX));
+    ASSERT_EQ(FLEXI_OK, flexi_write_map(&m_writer, keyset, 5, FLEXI_WIDTH_2B));
+    ASSERT_EQ(FLEXI_OK, flexi_write_finalize(&m_writer));
 
     std::vector<uint8_t> expected = {
         'b', 'o', 'o', 'l', '\0', // First three keys
@@ -57,9 +58,10 @@ TEST_F(WriteFixture, WriteMapInts)
         0x14, 0x00,                   // Keys[2] "indirect_uint"
         0x2e, 0x00,                   // Keys[3] "sint"
         0x1d, 0x00,                   // Keys[4] "uint"
+        0x00,                         // Padding
         0xff, 0xff, 0xff, 0x7f,       // Indirect int
         0xff, 0xff, 0xff, 0xff,       // Indirect uint
-        0x12, 0x00,                   // Keys vector offset
+        0x13, 0x00,                   // Keys vector offset
         0x02, 0x00,                   // Keys vector stride
         0x05, 0x00,                   // Map values vector length
         0x01, 0x00,                   // Values[0] Bool

@@ -175,7 +175,7 @@ TEST(Parser, ParseBasicTypes)
     ASSERT_EQ(FLEXI_OK, flexi_open_buffer(&buffer, &cursor));
 
     Results results;
-    ASSERT_TRUE(flexi_parse_cursor(&g_parser, &cursor, &results));
+    ASSERT_EQ(FLEXI_OK, flexi_parse_cursor(&g_parser, &cursor, &results));
 
     ASSERT_EQ(13, results.size());
 
@@ -276,7 +276,7 @@ TEST(Parser, ParseNestedTypes)
     ASSERT_EQ(FLEXI_OK, flexi_open_buffer(&buffer, &cursor));
 
     Results results;
-    ASSERT_TRUE(flexi_parse_cursor(&g_parser, &cursor, &results));
+    ASSERT_EQ(FLEXI_OK, flexi_parse_cursor(&g_parser, &cursor, &results));
 
     ASSERT_EQ(14, results.size());
 
@@ -388,7 +388,7 @@ TEST(Parser, ParseTypedVectors)
     ASSERT_EQ(FLEXI_OK, flexi_open_buffer(&buffer, &cursor));
 
     Results results;
-    ASSERT_TRUE(flexi_parse_cursor(&g_parser, &cursor, &results));
+    ASSERT_EQ(FLEXI_OK, flexi_parse_cursor(&g_parser, &cursor, &results));
 
     ASSERT_EQ(11, results.size());
 

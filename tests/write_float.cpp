@@ -41,12 +41,12 @@ TEST_P(WriteF32Fixture, WriteAndRead)
     auto [value, direct, ex_data, ex_width] = GetParam();
 
     if (direct == direct_e::direct) {
-        ASSERT_TRUE(flexi_write_f32(&m_writer, value));
+        ASSERT_EQ(FLEXI_OK, flexi_write_f32(&m_writer, value));
     } else {
-        ASSERT_TRUE(flexi_write_indirect_f32(&m_writer, value));
+        ASSERT_EQ(FLEXI_OK, flexi_write_indirect_f32(&m_writer, value));
     }
 
-    ASSERT_TRUE(flexi_write_finalize(&m_writer));
+    ASSERT_EQ(FLEXI_OK, flexi_write_finalize(&m_writer));
 
     AssertData(ex_data);
 
@@ -95,12 +95,12 @@ TEST_P(WriteF64Fixture, WriteAndRead)
     auto [value, direct, ex_data, ex_width] = GetParam();
 
     if (direct == direct_e::direct) {
-        ASSERT_TRUE(flexi_write_f64(&m_writer, value));
+        ASSERT_EQ(FLEXI_OK, flexi_write_f64(&m_writer, value));
     } else {
-        ASSERT_TRUE(flexi_write_indirect_f64(&m_writer, value));
+        ASSERT_EQ(FLEXI_OK, flexi_write_indirect_f64(&m_writer, value));
     }
 
-    ASSERT_TRUE(flexi_write_finalize(&m_writer));
+    ASSERT_EQ(FLEXI_OK, flexi_write_finalize(&m_writer));
 
     AssertData(ex_data);
 
@@ -152,9 +152,9 @@ TEST_P(WriteVecF32Fixture, WriteAndRead)
 {
     auto [ex_values, ex_data, ex_type, ex_width] = GetParam();
 
-    ASSERT_TRUE(flexi_write_typed_vector(&m_writer, ex_values.data(),
-        ex_values.size()));
-    ASSERT_TRUE(flexi_write_finalize(&m_writer));
+    ASSERT_EQ(FLEXI_OK, flexi_write_typed_vector(&m_writer, ex_values.data(),
+                            ex_values.size()));
+    ASSERT_EQ(FLEXI_OK, flexi_write_finalize(&m_writer));
 
     AssertData(ex_data);
 
@@ -226,9 +226,9 @@ TEST_P(WriteVecF64Fixture, WriteAndRead)
 {
     auto [ex_values, ex_data, ex_type, ex_width] = GetParam();
 
-    ASSERT_TRUE(flexi_write_typed_vector(&m_writer, ex_values.data(),
-        ex_values.size()));
-    ASSERT_TRUE(flexi_write_finalize(&m_writer));
+    ASSERT_EQ(FLEXI_OK, flexi_write_typed_vector(&m_writer, ex_values.data(),
+                            ex_values.size()));
+    ASSERT_EQ(FLEXI_OK, flexi_write_finalize(&m_writer));
 
     AssertData(ex_data);
 

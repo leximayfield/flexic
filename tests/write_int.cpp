@@ -39,12 +39,12 @@ TEST_P(WriteSintFixture, WriteAndRead)
     auto [value, direct, ex_data, ex_width] = this->GetParam();
 
     if (direct == direct_e::direct) {
-        ASSERT_TRUE(flexi_write_sint(&m_writer, value));
+        ASSERT_EQ(FLEXI_OK, flexi_write_sint(&m_writer, value));
     } else {
-        ASSERT_TRUE(flexi_write_indirect_sint(&m_writer, value));
+        ASSERT_EQ(FLEXI_OK, flexi_write_indirect_sint(&m_writer, value));
     }
 
-    ASSERT_TRUE(flexi_write_finalize(&m_writer));
+    ASSERT_EQ(FLEXI_OK, flexi_write_finalize(&m_writer));
 
     AssertData(ex_data);
 
@@ -90,12 +90,12 @@ TEST_P(WriteUintFixture, WriteAndRead)
     auto [value, direct, ex_data, ex_width] = this->GetParam();
 
     if (direct == direct_e::direct) {
-        ASSERT_TRUE(flexi_write_uint(&m_writer, value));
+        ASSERT_EQ(FLEXI_OK, flexi_write_uint(&m_writer, value));
     } else {
-        ASSERT_TRUE(flexi_write_indirect_uint(&m_writer, value));
+        ASSERT_EQ(FLEXI_OK, flexi_write_indirect_uint(&m_writer, value));
     }
 
-    ASSERT_TRUE(flexi_write_finalize(&m_writer));
+    ASSERT_EQ(FLEXI_OK, flexi_write_finalize(&m_writer));
 
     AssertData(ex_data);
 
@@ -139,9 +139,9 @@ public:
     {
         auto [ex_values, ex_data, ex_tyoe] = this->GetParam();
 
-        ASSERT_TRUE(flexi_write_typed_vector<T>(&m_writer, ex_values.data(),
-            ex_values.size()));
-        ASSERT_TRUE(flexi_write_finalize(&m_writer));
+        ASSERT_EQ(FLEXI_OK, flexi_write_typed_vector<T>(&m_writer,
+                                ex_values.data(), ex_values.size()));
+        ASSERT_EQ(FLEXI_OK, flexi_write_finalize(&m_writer));
 
         AssertData(ex_data);
 

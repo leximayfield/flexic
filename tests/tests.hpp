@@ -104,9 +104,13 @@ protected:
     {
         size_t actual_size = 0;
         ASSERT_TRUE(m_actual.Tell(&actual_size));
-        ASSERT_EQ(expected.size(), actual_size);
 
-        for (size_t i = 0; i < expected.size(); i++) {
+        // If the size is bad, we still want to know where any misalignment
+        // is located in the buffer.
+        EXPECT_EQ(expected.size(), actual_size);
+        size_t min_size = std::min(expected.size(), actual_size);
+
+        for (size_t i = 0; i < min_size; i++) {
             SCOPED_TRACE(testing::Message() << "At pos: " << i);
             ASSERT_EQ(expected[i], *m_actual.DataAt(i));
         }

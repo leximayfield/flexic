@@ -24,8 +24,8 @@
 
 TEST_F(WriteFixture, Null)
 {
-    ASSERT_TRUE(flexi_write_null(&m_writer));
-    ASSERT_TRUE(flexi_write_finalize(&m_writer));
+    ASSERT_EQ(FLEXI_OK, flexi_write_null(&m_writer));
+    ASSERT_EQ(FLEXI_OK, flexi_write_finalize(&m_writer));
 
     std::vector<uint8_t> expected = {0x00, 0x00, 0x01};
     AssertData(expected);
@@ -39,8 +39,8 @@ TEST_F(WriteFixture, Null)
 
 TEST_F(WriteFixture, Bool)
 {
-    ASSERT_TRUE(flexi_write_bool(&m_writer, true));
-    ASSERT_TRUE(flexi_write_finalize(&m_writer));
+    ASSERT_EQ(FLEXI_OK, flexi_write_bool(&m_writer, true));
+    ASSERT_EQ(FLEXI_OK, flexi_write_finalize(&m_writer));
 
     std::vector<uint8_t> expected = {0x01, 0x68, 0x01};
     AssertData(expected);

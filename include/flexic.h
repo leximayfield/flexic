@@ -33,8 +33,13 @@ typedef enum flexi_result_e {
     FLEXI_OK = 0,
     FLEXI_ERR_INTERNAL = -1,
     FLEXI_ERR_RANGE = -2,
-    FLEXI_ERR_BADTYPE = -3,
-    FLEXI_ERR_BADREAD = -4,
+    FLEXI_ERR_NOTFOUND = -3,
+    FLEXI_ERR_BADTYPE = -4,
+    FLEXI_ERR_BADREAD = -5,
+    FLEXI_ERR_BADSTACK = -6,
+    FLEXI_ERR_BADWRITE = -7,
+    FLEXI_ERR_STREAM = -8,
+    FLEXI_ERR_NOTKEYS = -9,
 } flexi_result_e;
 
 #define FLEXI_SUCCESS(x) (FLEXI_OK <= (x))
@@ -149,29 +154,21 @@ flexi_cursor_width(const flexi_cursor_s *cursor);
  *        strings, and blobs.
  *
  * @param[in] cursor Cursor pointing to value to examine.
- * @return Length of value at cursor.  Set to 0 on invalid type.
+ * @return Length of value at cursor.  Returns 0 on invalid type.
  */
 size_t
 flexi_cursor_length(const flexi_cursor_s *cursor);
-
-/**
- * @brief Obtain boolean value from cursor.  Non-booleans are turned into
- *        booleans on a best-effort basis.
- *
- * @param[in] cursor Cursor pointing to value to examine.
- * @param[out] val Boolean value.  Set to false on error.
- * @return True if read was successful.
- */
-flexi_result_e
-flexi_cursor_bool(const flexi_cursor_s *cursor, bool *val);
 
 /**
  * @brief Obtain signed int value from cursor.  Types that aren't signed ints
  *        are turned into signed ints on a best-effort basis.
  *
  * @param[in] cursor Cursor pointing to value to examine.
- * @param[out] val Boolean value.  Set to 0 on error.
- * @return True if read was successful.
+ * @param[out] val Obtained value.  Set to 0 on error.
+ * @return FLEXI_OK Successful read.
+ * @return FLEXI_ERR_RANGE Value is out of range for int64_t.
+ * @return FLEXI_ERR_BADTYPE Value isn't convertable to int64_t.
+ * @return FLEXI_ERR_BADREAD Out-of-bounds read.
  */
 flexi_result_e
 flexi_cursor_sint(const flexi_cursor_s *cursor, int64_t *val);
@@ -181,8 +178,11 @@ flexi_cursor_sint(const flexi_cursor_s *cursor, int64_t *val);
  *        ints are turned into unsigned ints on a best-effort basis.
  *
  * @param[in] cursor Cursor pointing to value to examine.
- * @param[out] val Boolean value.  Set to 0 on error.
- * @return True if read was successful.
+ * @param[out] val Obtained value.  Set to 0 on error.
+ * @return FLEXI_OK Successful read.
+ * @return FLEXI_ERR_RANGE Value is out of range for uint64_t.
+ * @return FLEXI_ERR_BADTYPE Value isn't convertable to uint64_t.
+ * @return FLEXI_ERR_BADREAD Out-of-bounds read.
  */
 flexi_result_e
 flexi_cursor_uint(const flexi_cursor_s *cursor, uint64_t *val);
@@ -192,26 +192,87 @@ flexi_cursor_uint(const flexi_cursor_s *cursor, uint64_t *val);
  *        floats are turned into 32-bit floats on a best-effort basis.
  *
  * @param[in] cursor Cursor pointing to value to examine.
- * @param[out] val Boolean value.  Set to 0.0f on error.
- * @return True if read was successful.
+ * @param[out] val Obtained value.  Set to 0.0f on error.
+ * @return FLEXI_OK Successful read.
+ * @return FLEXI_ERR_BADTYPE Value isn't convertable to float.
+ * @return FLEXI_ERR_BADREAD Out-of-bounds read.
  */
 flexi_result_e
 flexi_cursor_f32(const flexi_cursor_s *cursor, float *val);
 
+/**
+ * @brief Obtain 64-bit float value from cursor.  Types that aren't 64-bit
+ *        floats are turned into 64-bit floats on a best-effort basis.
+ *
+ * @param[in] cursor Cursor pointing to value to examine.
+ * @param[out] val Obtained value.  Set to 0.0 on error.
+ * @return FLEXI_OK Successful read.
+ * @return FLEXI_ERR_BADTYPE Value isn't convertable to double.
+ * @return FLEXI_ERR_BADREAD Out-of-bounds read.
+ */
 flexi_result_e
 flexi_cursor_f64(const flexi_cursor_s *cursor, double *val);
 
-flexi_result_e
-flexi_cursor_string(const flexi_cursor_s *cursor, const char **str);
-
+/**
+ * @brief Obtain null-terminated key string from cursor.
+ *
+ * @param[in] cursor Cursor pointing to value to examine.
+ * @param[out] str Obtained string.  Set to "" on error.
+ * @return FLEXI_OK Successful read.
+ * @return FLEXI_ERR_BADTYPE Value isn't convertable to key.
+ * @return FLEXI_ERR_BADREAD Out-of-bounds read.
+ */
 flexi_result_e
 flexi_cursor_key(const flexi_cursor_s *cursor, const char **str);
 
+/**
+ * @brief Obtain string from cursor.
+ *
+ * @param[in] cursor Cursor pointing to value to examine.
+ * @param[out] str Obtained string.  Set to "" on error.
+ * @return FLEXI_OK Successful read.
+ * @return FLEXI_ERR_BADTYPE Value isn't convertable to string.
+ * @return FLEXI_ERR_BADREAD Out-of-bounds read.
+ */
 flexi_result_e
-flexi_cursor_blob(const flexi_cursor_s *cursor, const uint8_t **blob);
+flexi_cursor_string(const flexi_cursor_s *cursor, const char **str);
 
+/**
+ * @brief Given a cursor pointing at a map, return the key located at the
+ *        n-th index of the map.
+ *
+ * @details A map is a vector of keys and a vector of values, so each entry
+ *          in the map has an associated index.
+ *
+ * @param[in] cursor Cursor pointing to map to examine.
+ * @param[in] index Index to look up.
+ * @param[out] str Key string located at the given index.
+ * @return FLEXI_OK Successful read.
+ * @return FLEXI_BADTYPE Cursor is not pointing at a map.
+ */
 flexi_result_e
-flexi_cursor_typed_vector_data(const flexi_cursor_s *cursor, const void **data);
+flexi_cursor_map_key_at_index(const flexi_cursor_s *cursor, size_t index,
+    const char **str);
+
+/**
+ * @brief Given a cursor pointing at a map, create a new cursor pointing
+ *        at a value found at the passed key.
+ *
+ * @details A map is a vector of keys and a vector of values.  Keys are not
+ *          hashed, but are sorted in strcmp order, which allows them to
+ *          be found via binary search.
+ *
+ * @param[in] cursor Cursor pointing to map to examine.
+ * @param[in] key Key to look up.
+ * @param[out] dest Cursor pointing at value for the given key.
+ * @return FLEXI_OK Successful seek.
+ * @return FLEXI_NOTFOUND Key does not exist in the map.
+ * @return FLEXI_BADTYPE Cursor is not pointing at a map.
+ * @return FLEXI_BADREAD Read error during lookup.
+ */
+flexi_result_e
+flexi_cursor_seek_map_key(const flexi_cursor_s *cursor, const char *key,
+    flexi_cursor_s *dest);
 
 flexi_result_e
 flexi_cursor_vector_types(const flexi_cursor_s *cursor,
@@ -222,182 +283,212 @@ flexi_cursor_seek_vector_index(const flexi_cursor_s *cursor, size_t index,
     flexi_cursor_s *dest);
 
 flexi_result_e
-flexi_cursor_map_key_at_index(const flexi_cursor_s *cursor, size_t index,
-    const char **str);
+flexi_cursor_typed_vector_data(const flexi_cursor_s *cursor, const void **data);
 
+/**
+ * @brief Obtain byte blob from cursor.
+ *
+ * @param[in] cursor Cursor pointing to value to examine.
+ * @param[out] blob Obtained byte blob.  Set to (const uint8_t *)"" on error.
+ * @return FLEXI_OK Successful read.
+ * @return FLEXI_ERR_BADTYPE Value isn't convertable to blob.
+ * @return FLEXI_ERR_BADREAD Out-of-bounds read.
+ */
 flexi_result_e
-flexi_cursor_seek_map_key(const flexi_cursor_s *cursor, const char *key,
-    flexi_cursor_s *dest);
+flexi_cursor_blob(const flexi_cursor_s *cursor, const uint8_t **blob);
 
-bool
+/**
+ * @brief Obtain boolean value from cursor.  Non-booleans are turned into
+ *        booleans on a best-effort basis.
+ *
+ * @param[in] cursor Cursor pointing to value to examine.
+ * @param[out] val Obtained value.  Set to false on error.
+ * @return FLEXI_OK on success.
+ * @return FLEXI_ERR_BADREAD if read went out of bounds.
+ * @return FLEXI_ERR_BADTYPE if type is not convertable to bool.
+ */
+flexi_result_e
+flexi_cursor_bool(const flexi_cursor_s *cursor, bool *val);
+
+/**
+ * @brief Starting from the value at the cursor, parse the FlexBuffer while
+ *        calling the appropriate callbacks.
+ *
+ * @param[in] parser Parser to operate on.
+ * @param[in] cursor Cursor to start parse at.
+ * @param[in] user User pointer - passed to all callbacks.
+ * @return FLEXI_OK Successful parse.
+ * @return FLEXI_ERR_BADREAD If read went out of range.
+ */
+flexi_result_e
 flexi_parse_cursor(const flexi_parser_s *parser, const flexi_cursor_s *cursor,
     void *user);
 
-bool
+flexi_result_e
 flexi_write_null_keyed(flexi_writer_s *writer, const char *key);
 
-bool
-flexi_write_bool_keyed(flexi_writer_s *writer, const char *key, bool val);
-
-bool
+flexi_result_e
 flexi_write_sint_keyed(flexi_writer_s *writer, const char *key, int64_t val);
 
-bool
+flexi_result_e
 flexi_write_uint_keyed(flexi_writer_s *writer, const char *key, uint64_t v);
 
-bool
+flexi_result_e
 flexi_write_f32_keyed(flexi_writer_s *writer, const char *key, float val);
 
-bool
+flexi_result_e
 flexi_write_f64_keyed(flexi_writer_s *writer, const char *key, double val);
 
-bool
+flexi_result_e
+flexi_write_key_keyed(flexi_writer_s *writer, const char *key, const char *str);
+
+flexi_result_e
 flexi_write_string_keyed(flexi_writer_s *writer, const char *key,
     const char *str);
 
-bool
-flexi_write_key_keyed(flexi_writer_s *writer, const char *key, const char *str);
-
-bool
-flexi_write_blob_keyed(flexi_writer_s *writer, const char *key, const void *ptr,
-    size_t len);
-
-bool
+flexi_result_e
 flexi_write_indirect_sint_keyed(flexi_writer_s *writer, const char *key,
     int64_t val);
 
-bool
+flexi_result_e
 flexi_write_indirect_uint_keyed(flexi_writer_s *writer, const char *key,
     uint64_t val);
 
-bool
+flexi_result_e
 flexi_write_indirect_f32_keyed(flexi_writer_s *writer, const char *key,
     float val);
 
-bool
+flexi_result_e
 flexi_write_indirect_f64_keyed(flexi_writer_s *writer, const char *key,
     double val);
 
-bool
+flexi_result_e
 flexi_write_map_keys(flexi_writer_s *writer, size_t len, flexi_width_e stride,
     flexi_stack_idx_t *keyset);
 
-bool
+flexi_result_e
 flexi_write_map_keyed(flexi_writer_s *writer, const char *key,
     flexi_stack_idx_t keyset, size_t len, flexi_width_e stride);
 
-bool
+flexi_result_e
 flexi_write_vector_keyed(flexi_writer_s *writer, const char *key, size_t len,
     flexi_width_e stride);
 
-bool
+flexi_result_e
 flexi_write_typed_vector_sint_keyed(flexi_writer_s *writer, const char *key,
     const void *ptr, flexi_width_e stride, size_t len);
 
-bool
+flexi_result_e
 flexi_write_typed_vector_uint_keyed(flexi_writer_s *writer, const char *key,
     const void *ptr, flexi_width_e stride, size_t len);
 
-bool
+flexi_result_e
 flexi_write_typed_vector_flt_keyed(flexi_writer_s *writer, const char *key,
     const void *ptr, flexi_width_e stride, size_t len);
 
-bool
+flexi_result_e
+flexi_write_blob_keyed(flexi_writer_s *writer, const char *key, const void *ptr,
+    size_t len);
+
+flexi_result_e
+flexi_write_bool_keyed(flexi_writer_s *writer, const char *key, bool val);
+
+flexi_result_e
 flexi_write_typed_vector_bool_keyed(flexi_writer_s *writer, const char *key,
     const bool *ptr, size_t len);
 
-bool
+flexi_result_e
 flexi_write_finalize(flexi_writer_s *writer);
 
-static inline bool
+static inline flexi_result_e
 flexi_write_null(flexi_writer_s *writer)
 {
     return flexi_write_null_keyed(writer, NULL);
 }
 
-static inline bool
-flexi_write_bool(flexi_writer_s *writer, bool val)
-{
-    return flexi_write_bool_keyed(writer, NULL, val);
-}
-
-static inline bool
+static inline flexi_result_e
 flexi_write_sint(flexi_writer_s *writer, int64_t val)
 {
     return flexi_write_sint_keyed(writer, NULL, val);
 }
 
-static inline bool
+static inline flexi_result_e
 flexi_write_uint(flexi_writer_s *writer, uint64_t val)
 {
     return flexi_write_uint_keyed(writer, NULL, val);
 }
 
-static inline bool
+static inline flexi_result_e
 flexi_write_f32(flexi_writer_s *writer, float val)
 {
     return flexi_write_f32_keyed(writer, NULL, val);
 }
 
-static inline bool
+static inline flexi_result_e
 flexi_write_f64(flexi_writer_s *writer, double val)
 {
     return flexi_write_f64_keyed(writer, NULL, val);
 }
 
-static inline bool
-flexi_write_string(flexi_writer_s *writer, const char *str)
-{
-    return flexi_write_string_keyed(writer, NULL, str);
-}
-
-static inline bool
+static inline flexi_result_e
 flexi_write_key(flexi_writer_s *writer, const char *str)
 {
     return flexi_write_key_keyed(writer, NULL, str);
 }
 
-static inline bool
-flexi_write_blob(flexi_writer_s *writer, const void *ptr, size_t len)
+static inline flexi_result_e
+flexi_write_string(flexi_writer_s *writer, const char *str)
 {
-    return flexi_write_blob_keyed(writer, NULL, ptr, len);
+    return flexi_write_string_keyed(writer, NULL, str);
 }
 
-static inline bool
+static inline flexi_result_e
 flexi_write_indirect_sint(flexi_writer_s *writer, int64_t val)
 {
     return flexi_write_indirect_sint_keyed(writer, NULL, val);
 }
 
-static inline bool
+static inline flexi_result_e
 flexi_write_indirect_uint(flexi_writer_s *writer, uint64_t val)
 {
     return flexi_write_indirect_uint_keyed(writer, NULL, val);
 }
 
-static inline bool
+static inline flexi_result_e
 flexi_write_indirect_f32(flexi_writer_s *writer, float val)
 {
     return flexi_write_indirect_f32_keyed(writer, NULL, val);
 }
 
-static inline bool
+static inline flexi_result_e
 flexi_write_indirect_f64(flexi_writer_s *writer, double val)
 {
     return flexi_write_indirect_f64_keyed(writer, NULL, val);
 }
 
-static inline bool
+static inline flexi_result_e
 flexi_write_map(flexi_writer_s *writer, flexi_stack_idx_t keyset, size_t len,
     flexi_width_e stride)
 {
     return flexi_write_map_keyed(writer, NULL, keyset, len, stride);
 }
 
-static inline bool
+static inline flexi_result_e
 flexi_write_vector(flexi_writer_s *writer, size_t len, flexi_width_e stride)
 {
     return flexi_write_vector_keyed(writer, NULL, len, stride);
+}
+
+static inline flexi_result_e
+flexi_write_blob(flexi_writer_s *writer, const void *ptr, size_t len)
+{
+    return flexi_write_blob_keyed(writer, NULL, ptr, len);
+}
+
+static inline flexi_result_e
+flexi_write_bool(flexi_writer_s *writer, bool val)
+{
+    return flexi_write_bool_keyed(writer, NULL, val);
 }
 
 #ifdef __cplusplus
@@ -406,14 +497,14 @@ flexi_write_vector(flexi_writer_s *writer, size_t len, flexi_width_e stride)
 
 #ifdef __cplusplus
 
-template<typename T> static inline bool
+template<typename T> static inline flexi_result_e
 flexi_write_typed_vector(flexi_writer_s *writer, const T *arr, size_t len);
 
-template<typename T> static inline bool
+template<typename T> static inline flexi_result_e
 flexi_write_typed_vector_keyed(flexi_writer_s *writer, const char *key,
     const T *arr, size_t len);
 
-template<> inline bool
+template<> inline flexi_result_e
 flexi_write_typed_vector<int8_t>(flexi_writer_s *writer, const int8_t *arr,
     size_t len)
 {
@@ -421,7 +512,7 @@ flexi_write_typed_vector<int8_t>(flexi_writer_s *writer, const int8_t *arr,
         FLEXI_WIDTH_1B, len);
 }
 
-template<> inline bool
+template<> inline flexi_result_e
 flexi_write_typed_vector_keyed<int8_t>(flexi_writer_s *writer, const char *key,
     const int8_t *arr, size_t len)
 {
@@ -429,7 +520,7 @@ flexi_write_typed_vector_keyed<int8_t>(flexi_writer_s *writer, const char *key,
         len);
 }
 
-template<> inline bool
+template<> inline flexi_result_e
 flexi_write_typed_vector<int16_t>(flexi_writer_s *writer, const int16_t *arr,
     size_t len)
 {
@@ -437,7 +528,7 @@ flexi_write_typed_vector<int16_t>(flexi_writer_s *writer, const int16_t *arr,
         FLEXI_WIDTH_2B, len);
 }
 
-template<> inline bool
+template<> inline flexi_result_e
 flexi_write_typed_vector_keyed<int16_t>(flexi_writer_s *writer, const char *key,
     const int16_t *arr, size_t len)
 {
@@ -445,7 +536,7 @@ flexi_write_typed_vector_keyed<int16_t>(flexi_writer_s *writer, const char *key,
         len);
 }
 
-template<> inline bool
+template<> inline flexi_result_e
 flexi_write_typed_vector<int32_t>(flexi_writer_s *writer, const int32_t *arr,
     size_t len)
 {
@@ -453,7 +544,7 @@ flexi_write_typed_vector<int32_t>(flexi_writer_s *writer, const int32_t *arr,
         FLEXI_WIDTH_4B, len);
 }
 
-template<> inline bool
+template<> inline flexi_result_e
 flexi_write_typed_vector_keyed<int32_t>(flexi_writer_s *writer, const char *key,
     const int32_t *arr, size_t len)
 {
@@ -461,7 +552,7 @@ flexi_write_typed_vector_keyed<int32_t>(flexi_writer_s *writer, const char *key,
         len);
 }
 
-template<> inline bool
+template<> inline flexi_result_e
 flexi_write_typed_vector<int64_t>(flexi_writer_s *writer, const int64_t *arr,
     size_t len)
 {
@@ -469,7 +560,7 @@ flexi_write_typed_vector<int64_t>(flexi_writer_s *writer, const int64_t *arr,
         FLEXI_WIDTH_8B, len);
 }
 
-template<> inline bool
+template<> inline flexi_result_e
 flexi_write_typed_vector_keyed<int64_t>(flexi_writer_s *writer, const char *key,
     const int64_t *arr, size_t len)
 {
@@ -477,7 +568,7 @@ flexi_write_typed_vector_keyed<int64_t>(flexi_writer_s *writer, const char *key,
         len);
 }
 
-template<> inline bool
+template<> inline flexi_result_e
 flexi_write_typed_vector<uint8_t>(flexi_writer_s *writer, const uint8_t *arr,
     size_t len)
 {
@@ -485,7 +576,7 @@ flexi_write_typed_vector<uint8_t>(flexi_writer_s *writer, const uint8_t *arr,
         FLEXI_WIDTH_1B, len);
 }
 
-template<> inline bool
+template<> inline flexi_result_e
 flexi_write_typed_vector_keyed<uint8_t>(flexi_writer_s *writer, const char *key,
     const uint8_t *arr, size_t len)
 {
@@ -493,7 +584,7 @@ flexi_write_typed_vector_keyed<uint8_t>(flexi_writer_s *writer, const char *key,
         len);
 }
 
-template<> inline bool
+template<> inline flexi_result_e
 flexi_write_typed_vector<uint16_t>(flexi_writer_s *writer, const uint16_t *arr,
     size_t len)
 {
@@ -501,7 +592,7 @@ flexi_write_typed_vector<uint16_t>(flexi_writer_s *writer, const uint16_t *arr,
         FLEXI_WIDTH_2B, len);
 }
 
-template<> inline bool
+template<> inline flexi_result_e
 flexi_write_typed_vector_keyed<uint16_t>(flexi_writer_s *writer,
     const char *key, const uint16_t *arr, size_t len)
 {
@@ -509,7 +600,7 @@ flexi_write_typed_vector_keyed<uint16_t>(flexi_writer_s *writer,
         len);
 }
 
-template<> inline bool
+template<> inline flexi_result_e
 flexi_write_typed_vector<uint32_t>(flexi_writer_s *writer, const uint32_t *arr,
     size_t len)
 {
@@ -517,7 +608,7 @@ flexi_write_typed_vector<uint32_t>(flexi_writer_s *writer, const uint32_t *arr,
         FLEXI_WIDTH_4B, len);
 }
 
-template<> inline bool
+template<> inline flexi_result_e
 flexi_write_typed_vector_keyed<uint32_t>(flexi_writer_s *writer,
     const char *key, const uint32_t *arr, size_t len)
 {
@@ -525,7 +616,7 @@ flexi_write_typed_vector_keyed<uint32_t>(flexi_writer_s *writer,
         len);
 }
 
-template<> inline bool
+template<> inline flexi_result_e
 flexi_write_typed_vector<uint64_t>(flexi_writer_s *writer, const uint64_t *arr,
     size_t len)
 {
@@ -533,7 +624,7 @@ flexi_write_typed_vector<uint64_t>(flexi_writer_s *writer, const uint64_t *arr,
         FLEXI_WIDTH_8B, len);
 }
 
-template<> inline bool
+template<> inline flexi_result_e
 flexi_write_typed_vector_keyed<uint64_t>(flexi_writer_s *writer,
     const char *key, const uint64_t *arr, size_t len)
 {
@@ -541,7 +632,7 @@ flexi_write_typed_vector_keyed<uint64_t>(flexi_writer_s *writer,
         len);
 }
 
-template<> inline bool
+template<> inline flexi_result_e
 flexi_write_typed_vector<float>(flexi_writer_s *writer, const float *arr,
     size_t len)
 {
@@ -549,7 +640,7 @@ flexi_write_typed_vector<float>(flexi_writer_s *writer, const float *arr,
         len);
 }
 
-template<> inline bool
+template<> inline flexi_result_e
 flexi_write_typed_vector_keyed<float>(flexi_writer_s *writer, const char *key,
     const float *arr, size_t len)
 {
@@ -557,7 +648,7 @@ flexi_write_typed_vector_keyed<float>(flexi_writer_s *writer, const char *key,
         len);
 }
 
-template<> inline bool
+template<> inline flexi_result_e
 flexi_write_typed_vector<double>(flexi_writer_s *writer, const double *arr,
     size_t len)
 {
@@ -565,7 +656,7 @@ flexi_write_typed_vector<double>(flexi_writer_s *writer, const double *arr,
         len);
 }
 
-template<> inline bool
+template<> inline flexi_result_e
 flexi_write_typed_vector_keyed<double>(flexi_writer_s *writer, const char *key,
     const double *arr, size_t len)
 {
