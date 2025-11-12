@@ -101,31 +101,37 @@ typedef enum flexi_result_e {
     FLEXI_ERR_PARSELIMIT = -6,
 
     /**
+     * @brief A previous write failed, you cannot call another write function
+     *        if this happens.
+     */
+    FLEXI_ERR_FAILSAFE = -7,
+
+    /**
      * @brief While writing data, an invalid stack operation was attempted.
      */
-    FLEXI_ERR_BADSTACK = -7,
+    FLEXI_ERR_BADSTACK = -8,
 
     /**
      * @brief Attempting to write to the output stream failed.
      */
-    FLEXI_ERR_BADWRITE = -8,
+    FLEXI_ERR_BADWRITE = -9,
 
     /**
      * @brief A non-write stream operation failed.
      */
-    FLEXI_ERR_STREAM = -9,
+    FLEXI_ERR_STREAM = -10,
 
     /**
      * @brief When creating a map, one of the values in the key array wasn't
      *        actually a key.
      */
-    FLEXI_ERR_NOTKEYS = -10,
+    FLEXI_ERR_NOTKEYS = -11,
 
     /**
      * @brief An internal precondition failed.  End users should never see
      *        this error - if you do, please file a bug.
      */
-    FLEXI_ERR_INTERNAL = -11,
+    FLEXI_ERR_INTERNAL = -12,
 } flexi_result_e;
 
 #define FLEXI_SUCCESS(x) (FLEXI_INVALID < (x))
@@ -221,6 +227,7 @@ typedef struct flexi_writer_s {
     bool (*tell_func)(size_t *offset, void *user);
     void *user;
     flexi_stack_idx_t head;
+    flexi_result_e err;
 } flexi_writer_s;
 
 flexi_buffer_s

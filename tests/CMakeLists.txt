@@ -29,6 +29,7 @@ target_sources(flexic_test PRIVATE
     "${CMAKE_CURRENT_SOURCE_DIR}/cursor_int.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/parser.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/parser_error.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/write_error.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/write_float.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/write_int.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/write_map.cpp"

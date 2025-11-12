@@ -2128,10 +2128,15 @@ flexi_parse_cursor(const flexi_parser_s *parser, const flexi_cursor_s *cursor,
 flexi_result_e
 flexi_write_null_keyed(flexi_writer_s *writer, const char *k)
 {
+    if (FLEXI_ERROR(writer->err)) {
+        return FLEXI_ERR_FAILSAFE;
+    }
+
     // Push value to the stack.
     flexi_value_s *stack = writer_push(writer);
     if (!stack) {
-        return FLEXI_ERR_BADSTACK;
+        writer->err = FLEXI_ERR_BADSTACK;
+        return writer->err;
     }
 
     stack->u.u64 = 0;
@@ -2146,10 +2151,15 @@ flexi_write_null_keyed(flexi_writer_s *writer, const char *k)
 flexi_result_e
 flexi_write_sint_keyed(flexi_writer_s *writer, const char *k, int64_t v)
 {
+    if (FLEXI_ERROR(writer->err)) {
+        return FLEXI_ERR_FAILSAFE;
+    }
+
     // Push value to the stack.
     flexi_value_s *stack = writer_push(writer);
     if (!stack) {
-        return FLEXI_ERR_BADSTACK;
+        writer->err = FLEXI_ERR_BADSTACK;
+        return writer->err;
     }
 
     stack->u.u64 = v;
@@ -2164,10 +2174,15 @@ flexi_write_sint_keyed(flexi_writer_s *writer, const char *k, int64_t v)
 flexi_result_e
 flexi_write_uint_keyed(flexi_writer_s *writer, const char *k, uint64_t v)
 {
+    if (FLEXI_ERROR(writer->err)) {
+        return FLEXI_ERR_FAILSAFE;
+    }
+
     // Push value to the stack.
     flexi_value_s *stack = writer_push(writer);
     if (!stack) {
-        return FLEXI_ERR_BADSTACK;
+        writer->err = FLEXI_ERR_BADSTACK;
+        return writer->err;
     }
 
     stack->u.u64 = v;
@@ -2182,10 +2197,15 @@ flexi_write_uint_keyed(flexi_writer_s *writer, const char *k, uint64_t v)
 flexi_result_e
 flexi_write_f32_keyed(flexi_writer_s *writer, const char *k, float v)
 {
+    if (FLEXI_ERROR(writer->err)) {
+        return FLEXI_ERR_FAILSAFE;
+    }
+
     // Push value to the stack.
     flexi_value_s *stack = writer_push(writer);
     if (!stack) {
-        return FLEXI_ERR_BADSTACK;
+        writer->err = FLEXI_ERR_BADSTACK;
+        return writer->err;
     }
 
     stack->u.f32 = v;
@@ -2200,10 +2220,15 @@ flexi_write_f32_keyed(flexi_writer_s *writer, const char *k, float v)
 flexi_result_e
 flexi_write_f64_keyed(flexi_writer_s *writer, const char *k, double v)
 {
+    if (FLEXI_ERROR(writer->err)) {
+        return FLEXI_ERR_FAILSAFE;
+    }
+
     // Push value to the stack.
     flexi_value_s *stack = writer_push(writer);
     if (!stack) {
-        return FLEXI_ERR_BADSTACK;
+        writer->err = FLEXI_ERR_BADSTACK;
+        return writer->err;
     }
 
     stack->u.f64 = v;
@@ -2218,28 +2243,36 @@ flexi_write_f64_keyed(flexi_writer_s *writer, const char *k, double v)
 flexi_result_e
 flexi_write_string_keyed(flexi_writer_s *writer, const char *k, const char *str)
 {
+    if (FLEXI_ERROR(writer->err)) {
+        return FLEXI_ERR_FAILSAFE;
+    }
+
     // Write the string length to stream.
     size_t len = strlen(str);
     int width = UINT_WIDTH(len);
     if (!write_uint_by_width(writer, len, width)) {
-        return FLEXI_ERR_BADWRITE;
+        writer->err = FLEXI_ERR_BADWRITE;
+        return writer->err;
     }
 
     // Keep track of string starting position.
     size_t offset;
     if (!writer_tell(writer, &offset)) {
-        return FLEXI_ERR_STREAM;
+        writer->err = FLEXI_ERR_STREAM;
+        return writer->err;
     }
 
     // Write the string, plus the trailing '\0'.
     if (!writer_write(writer, str, len + 1)) {
-        return FLEXI_ERR_BADWRITE;
+        writer->err = FLEXI_ERR_BADWRITE;
+        return writer->err;
     }
 
     // Push offset to the stack.
     flexi_value_s *stack = writer_push(writer);
     if (!stack) {
-        return FLEXI_ERR_BADSTACK;
+        writer->err = FLEXI_ERR_BADSTACK;
+        return writer->err;
     }
 
     stack->u.offset = offset;
@@ -2254,22 +2287,29 @@ flexi_write_string_keyed(flexi_writer_s *writer, const char *k, const char *str)
 flexi_result_e
 flexi_write_key_keyed(flexi_writer_s *writer, const char *k, const char *str)
 {
+    if (FLEXI_ERROR(writer->err)) {
+        return FLEXI_ERR_FAILSAFE;
+    }
+
     // Keep track of string starting position.
     size_t offset;
     if (!writer_tell(writer, &offset)) {
-        return FLEXI_ERR_STREAM;
+        writer->err = FLEXI_ERR_STREAM;
+        return writer->err;
     }
 
     // Write the string, plus the trailing '\0'.
     size_t len = strlen(str);
     if (!writer_write(writer, str, len + 1)) {
-        return FLEXI_ERR_BADWRITE;
+        writer->err = FLEXI_ERR_BADWRITE;
+        return writer->err;
     }
 
     // Push offset to the stack.
     flexi_value_s *stack = writer_push(writer);
     if (!stack) {
-        return FLEXI_ERR_BADSTACK;
+        writer->err = FLEXI_ERR_BADSTACK;
+        return writer->err;
     }
 
     stack->u.offset = offset;
@@ -2285,23 +2325,30 @@ flexi_result_e
 flexi_write_indirect_sint_keyed(flexi_writer_s *writer, const char *k,
     int64_t v)
 {
+    if (FLEXI_ERROR(writer->err)) {
+        return FLEXI_ERR_FAILSAFE;
+    }
+
     int width = SINT_WIDTH(v);
 
     // Align to the nearest multiple.
     size_t offset;
     if (!write_padding(writer, 0, width, &offset)) {
-        return FLEXI_ERR_BADWRITE;
+        writer->err = FLEXI_ERR_BADWRITE;
+        return writer->err;
     }
 
     // Write the value to the stream - large enough to fit.
     if (!write_sint_by_width(writer, v, width)) {
-        return FLEXI_ERR_BADWRITE;
+        writer->err = FLEXI_ERR_BADWRITE;
+        return writer->err;
     }
 
     // Push offset to the stack.
     flexi_value_s *stack = writer_push(writer);
     if (!stack) {
-        return FLEXI_ERR_BADSTACK;
+        writer->err = FLEXI_ERR_BADSTACK;
+        return writer->err;
     }
 
     stack->u.offset = offset;
@@ -2317,23 +2364,30 @@ flexi_result_e
 flexi_write_indirect_uint_keyed(flexi_writer_s *writer, const char *k,
     uint64_t v)
 {
+    if (FLEXI_ERROR(writer->err)) {
+        return FLEXI_ERR_FAILSAFE;
+    }
+
     int width = UINT_WIDTH(v);
 
     // Align to the nearest multiple.
     size_t offset;
     if (!write_padding(writer, 0, width, &offset)) {
-        return FLEXI_ERR_BADWRITE;
+        writer->err = FLEXI_ERR_BADWRITE;
+        return writer->err;
     }
 
     // Write the value to the stream - large enough to fit.
     if (!write_uint_by_width(writer, v, width)) {
-        return FLEXI_ERR_BADWRITE;
+        writer->err = FLEXI_ERR_BADWRITE;
+        return writer->err;
     }
 
     // Push offset to the stack.
     flexi_value_s *stack = writer_push(writer);
     if (!stack) {
-        return FLEXI_ERR_BADSTACK;
+        writer->err = FLEXI_ERR_BADSTACK;
+        return writer->err;
     }
 
     stack->u.offset = offset;
@@ -2348,21 +2402,28 @@ flexi_write_indirect_uint_keyed(flexi_writer_s *writer, const char *k,
 flexi_result_e
 flexi_write_indirect_f32_keyed(flexi_writer_s *writer, const char *k, float v)
 {
+    if (FLEXI_ERROR(writer->err)) {
+        return FLEXI_ERR_FAILSAFE;
+    }
+
     // Align to the nearest multiple.
     size_t offset;
     if (!write_padding(writer, 0, sizeof(float), &offset)) {
-        return FLEXI_ERR_BADWRITE;
+        writer->err = FLEXI_ERR_BADWRITE;
+        return writer->err;
     }
 
     // Write the value to the stream - large enough to fit.
     if (!write_f32(writer, v, sizeof(float))) {
-        return FLEXI_ERR_BADWRITE;
+        writer->err = FLEXI_ERR_BADWRITE;
+        return writer->err;
     }
 
     // Push offset to the stack.
     flexi_value_s *stack = writer_push(writer);
     if (!stack) {
-        return FLEXI_ERR_BADSTACK;
+        writer->err = FLEXI_ERR_BADSTACK;
+        return writer->err;
     }
 
     stack->u.offset = offset;
@@ -2377,21 +2438,28 @@ flexi_write_indirect_f32_keyed(flexi_writer_s *writer, const char *k, float v)
 flexi_result_e
 flexi_write_indirect_f64_keyed(flexi_writer_s *writer, const char *k, double v)
 {
+    if (FLEXI_ERROR(writer->err)) {
+        return FLEXI_ERR_FAILSAFE;
+    }
+
     // Keep track of the value's position.
     size_t offset;
     if (!write_padding(writer, 0, sizeof(double), &offset)) {
-        return FLEXI_ERR_BADWRITE;
+        writer->err = FLEXI_ERR_BADWRITE;
+        return writer->err;
     }
 
     // Write the value to the stream - large enough to fit.
     if (!write_f64(writer, v, sizeof(double))) {
-        return FLEXI_ERR_BADWRITE;
+        writer->err = FLEXI_ERR_BADWRITE;
+        return writer->err;
     }
 
     // Push offset to the stack.
     flexi_value_s *stack = writer_push(writer);
     if (!stack) {
-        return FLEXI_ERR_BADSTACK;
+        writer->err = FLEXI_ERR_BADSTACK;
+        return writer->err;
     }
 
     stack->u.offset = offset;
@@ -2407,16 +2475,22 @@ flexi_result_e
 flexi_write_map_keys(flexi_writer_s *writer, size_t len, flexi_width_e stride,
     flexi_stack_idx_t *keyset)
 {
+    if (FLEXI_ERROR(writer->err)) {
+        return FLEXI_ERR_FAILSAFE;
+    }
+
     // Find the start of the keys on the stack.
     int start = writer->head - (flexi_stack_idx_t)len;
     if (start < 0) {
-        return FLEXI_ERR_BADSTACK;
+        writer->err = FLEXI_ERR_BADSTACK;
+        return writer->err;
     }
 
     // All keys must be of key type.  Avoids redundant checks later.
     for (int i = start; i < writer->head; i++) {
         if (writer->stack[i].type != FLEXI_TYPE_KEY) {
-            return FLEXI_ERR_NOTKEYS;
+            writer->err = FLEXI_ERR_NOTKEYS;
+            return writer->err;
         }
     }
 
@@ -2427,13 +2501,15 @@ flexi_write_map_keys(flexi_writer_s *writer, size_t len, flexi_width_e stride,
 
     // Write length
     if (!write_uint_by_width(writer, len, stride_bytes)) {
-        return FLEXI_ERR_BADWRITE;
+        writer->err = FLEXI_ERR_BADWRITE;
+        return writer->err;
     }
 
     // Keep track of the base location of the keys.
     size_t keys_offset;
     if (!writer_tell(writer, &keys_offset)) {
-        return FLEXI_ERR_STREAM;
+        writer->err = FLEXI_ERR_STREAM;
+        return writer->err;
     }
 
     // Write out key offsets.
@@ -2444,18 +2520,21 @@ flexi_write_map_keys(flexi_writer_s *writer, size_t len, flexi_width_e stride,
         // TODO: We can pre-calculate this.
         size_t current;
         if (!writer_tell(writer, &current)) {
-            return FLEXI_ERR_STREAM;
+            writer->err = FLEXI_ERR_STREAM;
+            return writer->err;
         }
 
         size_t offset = current - value->u.offset;
         if (!write_uint_by_width(writer, offset, stride_bytes)) {
-            return FLEXI_ERR_BADWRITE;
+            writer->err = FLEXI_ERR_BADWRITE;
+            return writer->err;
         }
     }
 
     bool ok = writer_pop(writer, len);
     if (!ok) {
-        return FLEXI_ERR_BADSTACK;
+        writer->err = FLEXI_ERR_BADSTACK;
+        return writer->err;
     }
 
     *keyset = writer->head;
@@ -2475,10 +2554,15 @@ flexi_result_e
 flexi_write_map_keyed(flexi_writer_s *writer, const char *k,
     flexi_stack_idx_t keyset, size_t len, flexi_width_e stride)
 {
+    if (FLEXI_ERROR(writer->err)) {
+        return FLEXI_ERR_FAILSAFE;
+    }
+
     // First seek out the keys.
     flexi_value_s *keys_value = writer_peek_tail(writer, keyset);
     if (keys_value == NULL || keys_value->type != FLEXI_TYPE_VECTOR_KEY) {
-        return FLEXI_ERR_BADTYPE;
+        writer->err = FLEXI_ERR_BADTYPE;
+        return writer->err;
     }
 
     // Sort the values based on their keys.
@@ -2489,28 +2573,33 @@ flexi_write_map_keyed(flexi_writer_s *writer, const char *k,
     // Offset to aligned keys vector.
     size_t current;
     if (!write_padding(writer, 0, stride_bytes, &current)) {
-        return FLEXI_ERR_BADWRITE;
+        writer->err = FLEXI_ERR_BADWRITE;
+        return writer->err;
     }
 
     size_t offset = current - keys_value->u.offset;
     if (!write_uint_by_width(writer, offset, stride_bytes)) {
-        return FLEXI_ERR_BADWRITE;
+        writer->err = FLEXI_ERR_BADWRITE;
+        return writer->err;
     }
 
     // Byte width of key vector.
     if (!write_sint_by_width(writer, keys_value->width, stride_bytes)) {
-        return FLEXI_ERR_BADWRITE;
+        writer->err = FLEXI_ERR_BADWRITE;
+        return writer->err;
     }
 
     // Now we're to the values - write length.
     if (!write_uint_by_width(writer, len, stride_bytes)) {
-        return FLEXI_ERR_BADWRITE;
+        writer->err = FLEXI_ERR_BADWRITE;
+        return writer->err;
     }
 
     // Keep track of the base location of the vector.
     size_t values_offset;
     if (!writer_tell(writer, &values_offset)) {
-        return FLEXI_ERR_BADWRITE;
+        writer->err = FLEXI_ERR_BADWRITE;
+        return writer->err;
     }
 
     // Write values.
@@ -2521,13 +2610,15 @@ flexi_write_map_keyed(flexi_writer_s *writer, const char *k,
 
     // Write types.
     if (!write_vector_types(writer, len)) {
-        return FLEXI_ERR_BADWRITE;
+        writer->err = FLEXI_ERR_BADWRITE;
+        return writer->err;
     }
 
     // Pop the values.
     bool ok = writer_pop(writer, len);
     if (!ok) {
-        return FLEXI_ERR_BADSTACK;
+        writer->err = FLEXI_ERR_BADSTACK;
+        return writer->err;
     }
 
     // Push the completed map.
@@ -2547,17 +2638,23 @@ flexi_result_e
 flexi_write_vector_keyed(flexi_writer_s *writer, const char *k, size_t len,
     flexi_width_e stride)
 {
+    if (FLEXI_ERROR(writer->err)) {
+        return FLEXI_ERR_FAILSAFE;
+    }
+
     int stride_bytes = WIDTH_TO_BYTES(stride);
 
     // Align future writes to the nearest multiple.
     size_t offset;
     if (!write_padding(writer, stride_bytes, stride_bytes, &offset)) {
-        return FLEXI_ERR_BADWRITE;
+        writer->err = FLEXI_ERR_BADWRITE;
+        return writer->err;
     }
 
     // Write length
     if (!write_uint_by_width(writer, len, stride_bytes)) {
-        return FLEXI_ERR_BADWRITE;
+        writer->err = FLEXI_ERR_BADWRITE;
+        return writer->err;
     }
 
     // Write values.
@@ -2568,13 +2665,15 @@ flexi_write_vector_keyed(flexi_writer_s *writer, const char *k, size_t len,
 
     // Write types.
     if (!write_vector_types(writer, len)) {
-        return FLEXI_ERR_BADWRITE;
+        writer->err = FLEXI_ERR_BADWRITE;
+        return writer->err;
     }
 
     // Pop values.
     bool ok = writer_pop(writer, len);
     if (!ok) {
-        return FLEXI_ERR_BADSTACK;
+        writer->err = FLEXI_ERR_BADSTACK;
+        return writer->err;
     }
 
     // Push vector.
@@ -2592,6 +2691,10 @@ flexi_result_e
 flexi_write_typed_vector_sint_keyed(flexi_writer_s *writer, const char *k,
     const void *ptr, flexi_width_e stride, size_t len)
 {
+    if (FLEXI_ERROR(writer->err)) {
+        return FLEXI_ERR_FAILSAFE;
+    }
+
     int stride_bytes = WIDTH_TO_BYTES(stride);
     ASSERT(stride_bytes >= 1 && stride_bytes <= 8);
 
@@ -2599,12 +2702,14 @@ flexi_write_typed_vector_sint_keyed(flexi_writer_s *writer, const char *k,
         // Keep track of the aligned base location of the vector.
         size_t offset;
         if (!write_padding(writer, 0, stride_bytes, &offset)) {
-            return FLEXI_ERR_BADWRITE;
+            writer->err = FLEXI_ERR_BADWRITE;
+            return writer->err;
         }
 
         // Write values.
         if (!writer_write(writer, ptr, len * stride_bytes)) {
-            return FLEXI_ERR_BADWRITE;
+            writer->err = FLEXI_ERR_BADWRITE;
+            return writer->err;
         }
 
         flexi_value_s *stack = writer_push(writer);
@@ -2619,17 +2724,20 @@ flexi_write_typed_vector_sint_keyed(flexi_writer_s *writer, const char *k,
         // Align future writes to the nearest multiple.
         size_t offset;
         if (!write_padding(writer, stride_bytes, stride_bytes, &offset)) {
-            return FLEXI_ERR_BADWRITE;
+            writer->err = FLEXI_ERR_BADWRITE;
+            return writer->err;
         }
 
         // Length prefix.
         if (!write_uint_by_width(writer, len, stride_bytes)) {
-            return FLEXI_ERR_BADWRITE;
+            writer->err = FLEXI_ERR_BADWRITE;
+            return writer->err;
         }
 
         // Write values.
         if (!writer_write(writer, ptr, len * stride_bytes)) {
-            return FLEXI_ERR_BADWRITE;
+            writer->err = FLEXI_ERR_BADWRITE;
+            return writer->err;
         }
 
         flexi_value_s *stack = writer_push(writer);
@@ -2647,6 +2755,10 @@ flexi_result_e
 flexi_write_typed_vector_uint_keyed(flexi_writer_s *writer, const char *k,
     const void *ptr, flexi_width_e stride, size_t len)
 {
+    if (FLEXI_ERROR(writer->err)) {
+        return FLEXI_ERR_FAILSAFE;
+    }
+
     int stride_bytes = WIDTH_TO_BYTES(stride);
     ASSERT(stride_bytes >= 1 && stride_bytes <= 8);
 
@@ -2654,12 +2766,14 @@ flexi_write_typed_vector_uint_keyed(flexi_writer_s *writer, const char *k,
         // Keep track of the aligned base location of the vector.
         size_t offset;
         if (!write_padding(writer, 0, stride_bytes, &offset)) {
-            return FLEXI_ERR_BADWRITE;
+            writer->err = FLEXI_ERR_BADWRITE;
+            return writer->err;
         }
 
         // Write values.
         if (!writer_write(writer, ptr, len * stride_bytes)) {
-            return FLEXI_ERR_BADWRITE;
+            writer->err = FLEXI_ERR_BADWRITE;
+            return writer->err;
         }
 
         flexi_value_s *stack = writer_push(writer);
@@ -2674,17 +2788,20 @@ flexi_write_typed_vector_uint_keyed(flexi_writer_s *writer, const char *k,
         // Align future writes to the nearest multiple.
         size_t offset;
         if (!write_padding(writer, stride_bytes, stride_bytes, &offset)) {
-            return FLEXI_ERR_BADWRITE;
+            writer->err = FLEXI_ERR_BADWRITE;
+            return writer->err;
         }
 
         // Length prefix.
         if (!write_uint_by_width(writer, len, stride_bytes)) {
-            return FLEXI_ERR_BADWRITE;
+            writer->err = FLEXI_ERR_BADWRITE;
+            return writer->err;
         }
 
         // Write values.
         if (!writer_write(writer, ptr, len * stride_bytes)) {
-            return FLEXI_ERR_BADWRITE;
+            writer->err = FLEXI_ERR_BADWRITE;
+            return writer->err;
         }
 
         flexi_value_s *stack = writer_push(writer);
@@ -2701,21 +2818,28 @@ flexi_result_e
 flexi_write_typed_vector_flt_keyed(flexi_writer_s *writer, const char *k,
     const void *ptr, flexi_width_e stride, size_t len)
 {
+    if (FLEXI_ERROR(writer->err)) {
+        return FLEXI_ERR_FAILSAFE;
+    }
+
     int stride_bytes = WIDTH_TO_BYTES(stride);
     if (stride_bytes != 4 && stride_bytes != 8) {
-        return FLEXI_ERR_BADTYPE;
+        writer->err = FLEXI_ERR_BADTYPE;
+        return writer->err;
     }
 
     if (len >= 2 && len <= 4) {
         // Keep track of the aligned base location of the vector.
         size_t offset;
         if (!write_padding(writer, 0, stride_bytes, &offset)) {
-            return FLEXI_ERR_BADWRITE;
+            writer->err = FLEXI_ERR_BADWRITE;
+            return writer->err;
         }
 
         // Write values.
         if (!writer_write(writer, ptr, len * stride_bytes)) {
-            return FLEXI_ERR_BADWRITE;
+            writer->err = FLEXI_ERR_BADWRITE;
+            return writer->err;
         }
 
         flexi_value_s *stack = writer_push(writer);
@@ -2730,17 +2854,20 @@ flexi_write_typed_vector_flt_keyed(flexi_writer_s *writer, const char *k,
         // Align future writes to the nearest multiple.
         size_t offset;
         if (!write_padding(writer, stride_bytes, stride_bytes, &offset)) {
-            return FLEXI_ERR_BADWRITE;
+            writer->err = FLEXI_ERR_BADWRITE;
+            return writer->err;
         }
 
         // Length prefix.
         if (!write_uint_by_width(writer, len, stride_bytes)) {
-            return FLEXI_ERR_BADWRITE;
+            writer->err = FLEXI_ERR_BADWRITE;
+            return writer->err;
         }
 
         // Write values.
         if (!writer_write(writer, ptr, len * stride_bytes)) {
-            return FLEXI_ERR_BADWRITE;
+            writer->err = FLEXI_ERR_BADWRITE;
+            return writer->err;
         }
 
         flexi_value_s *stack = writer_push(writer);
@@ -2758,28 +2885,36 @@ flexi_result_e
 flexi_write_blob_keyed(flexi_writer_s *writer, const char *k, const void *ptr,
     size_t len, int align)
 {
+    if (FLEXI_ERROR(writer->err)) {
+        return FLEXI_ERR_FAILSAFE;
+    }
+
     int len_width = UINT_WIDTH(len);
 
     // Pad the blob to the alignment value.
     size_t offset;
     if (!write_padding(writer, len_width, align, &offset)) {
-        return FLEXI_ERR_BADWRITE;
+        writer->err = FLEXI_ERR_BADWRITE;
+        return writer->err;
     }
 
     // Write the blob length to stream.
     if (!write_uint_by_width(writer, len, len_width)) {
-        return FLEXI_ERR_BADWRITE;
+        writer->err = FLEXI_ERR_BADWRITE;
+        return writer->err;
     }
 
     // Write the blob.
     if (!writer_write(writer, ptr, len)) {
-        return FLEXI_ERR_BADWRITE;
+        writer->err = FLEXI_ERR_BADWRITE;
+        return writer->err;
     }
 
     // Push offset to the stack.
     flexi_value_s *stack = writer_push(writer);
     if (!stack) {
-        return FLEXI_ERR_BADSTACK;
+        writer->err = FLEXI_ERR_BADSTACK;
+        return writer->err;
     }
 
     stack->u.offset = offset;
@@ -2794,10 +2929,15 @@ flexi_write_blob_keyed(flexi_writer_s *writer, const char *k, const void *ptr,
 flexi_result_e
 flexi_write_bool_keyed(flexi_writer_s *writer, const char *k, bool v)
 {
+    if (FLEXI_ERROR(writer->err)) {
+        return FLEXI_ERR_FAILSAFE;
+    }
+
     // Push value to the stack.
     flexi_value_s *stack = writer_push(writer);
     if (!stack) {
-        return FLEXI_ERR_BADSTACK;
+        writer->err = FLEXI_ERR_BADSTACK;
+        return writer->err;
     }
 
     stack->u.u64 = v;
@@ -2813,20 +2953,27 @@ flexi_result_e
 flexi_write_typed_vector_bool_keyed(flexi_writer_s *writer, const char *k,
     const bool *ptr, size_t len)
 {
+    if (FLEXI_ERROR(writer->err)) {
+        return FLEXI_ERR_FAILSAFE;
+    }
+
     // Length prefix.
     if (!write_uint_by_width(writer, len, sizeof(bool))) {
-        return FLEXI_ERR_BADWRITE;
+        writer->err = FLEXI_ERR_BADWRITE;
+        return writer->err;
     }
 
     // Keep track of the base location of the vector.
     size_t offset;
     if (!writer_tell(writer, &offset)) {
-        return FLEXI_ERR_STREAM;
+        writer->err = FLEXI_ERR_STREAM;
+        return writer->err;
     }
 
     // Write values.
     if (!writer_write(writer, ptr, len * sizeof(bool))) {
-        return FLEXI_ERR_BADWRITE;
+        writer->err = FLEXI_ERR_BADWRITE;
+        return writer->err;
     }
 
     flexi_value_s *stack = writer_push(writer);
@@ -2842,10 +2989,15 @@ flexi_write_typed_vector_bool_keyed(flexi_writer_s *writer, const char *k,
 flexi_result_e
 flexi_write_finalize(flexi_writer_s *writer)
 {
+    if (FLEXI_ERROR(writer->err)) {
+        return FLEXI_ERR_FAILSAFE;
+    }
+
     flexi_value_s *root = writer_peek_idx(writer, 1, 0);
     if (root == NULL) {
         // We have nothing on the stack to write.
-        return FLEXI_ERR_BADSTACK;
+        writer->err = FLEXI_ERR_BADSTACK;
+        return writer->err;
     }
 
     if (type_is_direct(root->type)) {
@@ -2854,26 +3006,30 @@ flexi_write_finalize(flexi_writer_s *writer)
             // Write out the null root type.
             const uint8_t buffer[3] = {0x00, 0x00, 0x01};
             if (!writer_write(writer, buffer, COUNTOF(buffer))) {
-                return FLEXI_ERR_BADWRITE;
+                writer->err = FLEXI_ERR_BADWRITE;
+                return writer->err;
             }
             return FLEXI_OK;
         }
         case FLEXI_TYPE_SINT: {
             // Write the number.
             if (!write_sint_by_width(writer, root->u.s64, root->width)) {
-                return FLEXI_ERR_BADWRITE;
+                writer->err = FLEXI_ERR_BADWRITE;
+                return writer->err;
             }
 
             // Write the type.
             flexi_packed_t type =
                 PACK_TYPE(root->type) | PACK_WIDTH(root->width);
             if (!writer_write(writer, &type, 1)) {
-                return FLEXI_ERR_BADWRITE;
+                writer->err = FLEXI_ERR_BADWRITE;
+                return writer->err;
             }
 
             // Write the width.
             if (!writer_write(writer, &root->width, 1)) {
-                return FLEXI_ERR_BADWRITE;
+                writer->err = FLEXI_ERR_BADWRITE;
+                return writer->err;
             }
 
             return FLEXI_OK;
@@ -2881,19 +3037,22 @@ flexi_write_finalize(flexi_writer_s *writer)
         case FLEXI_TYPE_UINT: {
             // Write the number.
             if (!write_uint_by_width(writer, root->u.u64, root->width)) {
-                return FLEXI_ERR_BADWRITE;
+                writer->err = FLEXI_ERR_BADWRITE;
+                return writer->err;
             }
 
             // Write the type.
             flexi_packed_t type =
                 PACK_TYPE(root->type) | PACK_WIDTH(root->width);
             if (!writer_write(writer, &type, 1)) {
-                return FLEXI_ERR_BADWRITE;
+                writer->err = FLEXI_ERR_BADWRITE;
+                return writer->err;
             }
 
             // Write the width.
             if (!writer_write(writer, &root->width, 1)) {
-                return FLEXI_ERR_BADWRITE;
+                writer->err = FLEXI_ERR_BADWRITE;
+                return writer->err;
             }
 
             return FLEXI_OK;
@@ -2903,12 +3062,14 @@ flexi_write_finalize(flexi_writer_s *writer)
             switch (root->width) {
             case 4:
                 if (!write_f32(writer, root->u.f32, root->width)) {
-                    return FLEXI_ERR_BADWRITE;
+                    writer->err = FLEXI_ERR_BADWRITE;
+                    return writer->err;
                 }
                 break;
             case 8:
                 if (!write_f64(writer, root->u.f64, root->width)) {
-                    return FLEXI_ERR_BADWRITE;
+                    writer->err = FLEXI_ERR_BADWRITE;
+                    return writer->err;
                 }
                 break;
             default: return FLEXI_ERR_INTERNAL;
@@ -2918,12 +3079,14 @@ flexi_write_finalize(flexi_writer_s *writer)
             flexi_packed_t type =
                 PACK_TYPE(root->type) | PACK_WIDTH(root->width);
             if (!writer_write(writer, &type, 1)) {
-                return FLEXI_ERR_BADWRITE;
+                writer->err = FLEXI_ERR_BADWRITE;
+                return writer->err;
             }
 
             // Write the width.
             if (!writer_write(writer, &root->width, 1)) {
-                return FLEXI_ERR_BADWRITE;
+                writer->err = FLEXI_ERR_BADWRITE;
+                return writer->err;
             }
 
             return FLEXI_OK;
@@ -2932,18 +3095,21 @@ flexi_write_finalize(flexi_writer_s *writer)
             // Write the boolean.
             bool value = root->u.u64 ? 1 : 0;
             if (!writer_write(writer, &value, 1)) {
-                return FLEXI_ERR_BADWRITE;
+                writer->err = FLEXI_ERR_BADWRITE;
+                return writer->err;
             }
 
             // Write the type.
             flexi_packed_t type = PACK_TYPE(root->type) | FLEXI_WIDTH_1B;
             if (!writer_write(writer, &type, 1)) {
-                return FLEXI_ERR_BADWRITE;
+                writer->err = FLEXI_ERR_BADWRITE;
+                return writer->err;
             }
 
             // Write the width.
             if (!writer_write(writer, &root->width, 1)) {
-                return FLEXI_ERR_BADWRITE;
+                writer->err = FLEXI_ERR_BADWRITE;
+                return writer->err;
             }
 
             return FLEXI_OK;
@@ -2956,25 +3122,29 @@ flexi_write_finalize(flexi_writer_s *writer)
         // Get the current location.
         size_t current;
         if (!writer_tell(writer, &current)) {
-            return FLEXI_ERR_STREAM;
+            writer->err = FLEXI_ERR_STREAM;
+            return writer->err;
         }
 
         // Create the offset and figure out its witdh.
         size_t offset = current - root->u.offset;
         int width = UINT_WIDTH(offset);
         if (!write_uint_by_width(writer, offset, width)) {
-            return FLEXI_ERR_BADWRITE;
+            writer->err = FLEXI_ERR_BADWRITE;
+            return writer->err;
         }
 
         // Write the type that the offset is pointing to.
         flexi_packed_t type = PACK_TYPE(root->type) | PACK_WIDTH(root->width);
         if (!write_uint_by_width(writer, type, 1)) {
-            return FLEXI_ERR_BADWRITE;
+            writer->err = FLEXI_ERR_BADWRITE;
+            return writer->err;
         }
 
         // Write the width of the offset.
         if (!write_sint_by_width(writer, width, 1)) {
-            return FLEXI_ERR_BADWRITE;
+            writer->err = FLEXI_ERR_BADWRITE;
+            return writer->err;
         }
 
         bool ok = writer_pop(writer, 1);
