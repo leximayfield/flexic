@@ -1514,20 +1514,17 @@ write_vector_values(flexi_writer_s *writer, size_t len, int stride)
     // Write values
     for (int i = 0; i < (int)len; i++) {
         const flexi_value_s *value = writer_peek_idx(writer, (int)len, i);
-        switch (value->type) {
-        case FLEXI_TYPE_SINT:
+        if (value->type == FLEXI_TYPE_SINT) {
             // Write value inline.
             if (!write_sint_by_width(writer, value->u.s64, stride)) {
                 return FLEXI_ERR_BADWRITE;
             }
-            break;
-        case FLEXI_TYPE_UINT:
+        } else if (value->type == FLEXI_TYPE_UINT) {
             // Write value inline.
             if (!write_uint_by_width(writer, value->u.u64, stride)) {
                 return FLEXI_ERR_BADWRITE;
             }
-            break;
-        case FLEXI_TYPE_FLOAT:
+        } else if (value->type == FLEXI_TYPE_FLOAT) {
             // Write value inline.
             switch (value->width) {
             case 4:
@@ -1542,12 +1539,7 @@ write_vector_values(flexi_writer_s *writer, size_t len, int stride)
                 break;
             default: return FLEXI_ERR_INTERNAL;
             }
-            break;
-        case FLEXI_TYPE_STRING:
-        case FLEXI_TYPE_INDIRECT_SINT:
-        case FLEXI_TYPE_INDIRECT_UINT:
-        case FLEXI_TYPE_INDIRECT_FLOAT:
-        case FLEXI_TYPE_BLOB: {
+        } else if (type_is_indirect(value->type)) {
             // Get the current cursor position.
             size_t current;
             if (!writer_tell(writer, &current)) {
@@ -1559,15 +1551,11 @@ write_vector_values(flexi_writer_s *writer, size_t len, int stride)
             if (!write_uint_by_width(writer, offset, stride)) {
                 return FLEXI_ERR_BADWRITE;
             }
-            break;
-        }
-        case FLEXI_TYPE_BOOL:
+        } else if (value->type == FLEXI_TYPE_BOOL) {
             // Write value inline.
             if (!write_uint_by_width(writer, value->u.u64, stride)) {
                 return FLEXI_ERR_BADWRITE;
             }
-            break;
-        default: return FLEXI_ERR_INTERNAL;
         }
     }
     return FLEXI_OK;

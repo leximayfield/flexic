@@ -22,7 +22,7 @@
 
 #include "tests.hpp"
 
-TEST_F(WriteFixture, WriteMapInts)
+TEST_F(WriteFixture, MapInts)
 {
     ASSERT_EQ(FLEXI_OK, flexi_write_key(&m_writer, "bool"));
     ASSERT_EQ(FLEXI_OK, flexi_write_key(&m_writer, "sint"));
@@ -45,11 +45,11 @@ TEST_F(WriteFixture, WriteMapInts)
     ASSERT_EQ(FLEXI_OK, flexi_write_finalize(&m_writer));
 
     std::vector<uint8_t> expected = {
-        'b', 'o', 'o', 'l', '\0', // First three keys
+        'b', 'o', 'o', 'l', '\0', // Key values
         's', 'i', 'n', 't', '\0', //
         'i', 'n', 'd', 'i', 'r', 'e', 'c', 't', '_', 's', 'i', 'n', 't',
         '\0',                     //
-        'u', 'i', 'n', 't', '\0', // Last two keys
+        'u', 'i', 'n', 't', '\0', //
         'i', 'n', 'd', 'i', 'r', 'e', 'c', 't', '_', 'u', 'i', 'n', 't',
         '\0',                         //
         0x05,                         // Map keys vector length
@@ -105,4 +105,92 @@ TEST_F(WriteFixture, WriteMapInts)
         flexi_cursor_seek_map_key(&cursor, "indirect_uint", &value));
     ASSERT_EQ(FLEXI_OK, flexi_cursor_uint(&value, &vuint));
     ASSERT_EQ(UINT32_MAX, vuint);
+}
+
+TEST_F(WriteFixture, MapFloats)
+{
+    ASSERT_EQ(FLEXI_OK, flexi_write_key(&m_writer, "f32"));
+    ASSERT_EQ(FLEXI_OK, flexi_write_key(&m_writer, "indirect_f32"));
+    ASSERT_EQ(FLEXI_OK, flexi_write_key(&m_writer, "f64"));
+    ASSERT_EQ(FLEXI_OK, flexi_write_key(&m_writer, "indirect_f64"));
+    flexi_stack_idx_t keyset = -1;
+    ASSERT_EQ(FLEXI_OK,
+        flexi_write_map_keys(&m_writer, 4, FLEXI_WIDTH_1B, &keyset));
+    ASSERT_EQ(0, keyset);
+
+    ASSERT_EQ(FLEXI_OK, flexi_write_f32_keyed(&m_writer, "f32", PI_VALUE));
+    ASSERT_EQ(FLEXI_OK,
+        flexi_write_indirect_f32_keyed(&m_writer, "indirect_f32", PI_VALUE));
+    ASSERT_EQ(FLEXI_OK, flexi_write_f64_keyed(&m_writer, "f64", PI_VALUE));
+    ASSERT_EQ(FLEXI_OK,
+        flexi_write_indirect_f64_keyed(&m_writer, "indirect_f64", PI_VALUE));
+    ASSERT_EQ(FLEXI_OK, flexi_write_map(&m_writer, keyset, 4, FLEXI_WIDTH_8B));
+    ASSERT_EQ(FLEXI_OK, flexi_write_finalize(&m_writer));
+
+    std::vector<uint8_t> expected = {//
+        'f', '3', '2', '\0',         // Key values
+        'i', 'n', 'd', 'i', 'r', 'e', 'c', 't', '_', 'f', '3', '2', '\0', //
+        'f', '6', '4', '\0',                                              //
+        'i', 'n', 'd', 'i', 'r', 'e', 'c', 't', '_', 'f', '6', '4', '\0', //
+        0x04, // Map keys vector length
+        0x23, // Keys[0] "f32"
+        0x13, // Keys[1] "f64"
+        0x21, // Keys[2] "indirect_f32"
+        0x11, // Keys[3] "indirect_f64"
+        // Padding
+        0x00,
+        // Indirect float
+        0xdb, 0x0f, 0x49, 0x40,
+        // Padding
+        0x00, 0x00, 0x00, 0x00,
+        // Indirect double
+        0x18, 0x2d, 0x44, 0x54, 0xfb, 0x21, 0x09, 0x40,
+        // Keys vector offset (stride 8)
+        0x15, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+        // Keys vector stride (stride 8)
+        0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+        // Vector length (stride 8)
+        0x04, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+        // [0] Float (widened)
+        0x00, 0x00, 0x00, 0x60, 0xfb, 0x21, 0x09, 0x40,
+        // [1] Double
+        0x18, 0x2d, 0x44, 0x54, 0xfb, 0x21, 0x09, 0x40,
+        // [2] Indirect float
+        0x38, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+        // [3] Indirect double
+        0x38, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+        // Vector types
+        0x0e, 0x0f, 0x22, 0x23,
+        // Root
+        0x24, 0x27, 0x01};
+
+    AssertData(expected);
+
+    flexi_cursor_s cursor{};
+    GetCursor(&cursor);
+
+    ASSERT_EQ(FLEXI_TYPE_MAP, flexi_cursor_type(&cursor));
+    ASSERT_EQ(8, flexi_cursor_width(&cursor));
+    ASSERT_EQ(4, flexi_cursor_length(&cursor));
+
+    flexi_cursor_s vcursor{};
+    float f32 = 0.0f;
+    ASSERT_EQ(FLEXI_OK, flexi_cursor_seek_map_key(&cursor, "f32", &vcursor));
+    ASSERT_EQ(FLEXI_OK, flexi_cursor_f32(&vcursor, &f32));
+    ASSERT_FLOAT_EQ(f32, PI_VALUE);
+
+    f32 = 0.0f;
+    ASSERT_EQ(FLEXI_OK, flexi_cursor_seek_map_key(&cursor, "indirect_f32", &vcursor));
+    ASSERT_EQ(FLEXI_OK, flexi_cursor_f32(&vcursor, &f32));
+    ASSERT_FLOAT_EQ(f32, PI_VALUE);
+
+    double f64 = 0.0;
+    ASSERT_EQ(FLEXI_OK, flexi_cursor_seek_map_key(&cursor, "f64", &vcursor));
+    ASSERT_EQ(FLEXI_OK, flexi_cursor_f64(&vcursor, &f64));
+    ASSERT_DOUBLE_EQ(f64, PI_VALUE);
+
+    f64 = 0.0;
+    ASSERT_EQ(FLEXI_OK, flexi_cursor_seek_map_key(&cursor, "indirect_f64", &vcursor));
+    ASSERT_EQ(FLEXI_OK, flexi_cursor_f64(&vcursor, &f64));
+    ASSERT_DOUBLE_EQ(f64, PI_VALUE);
 }
