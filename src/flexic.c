@@ -2605,7 +2605,8 @@ flexi_write_map_keyed(flexi_writer_s *writer, const char *k,
     // Write values.
     flexi_result_e res = write_vector_values(writer, len, stride_bytes);
     if (FLEXI_ERROR(res)) {
-        return res;
+        writer->err = res;
+        return writer->err;
     }
 
     // Write types.
@@ -2660,7 +2661,8 @@ flexi_write_vector_keyed(flexi_writer_s *writer, const char *k, size_t len,
     // Write values.
     flexi_result_e res = write_vector_values(writer, len, stride_bytes);
     if (FLEXI_ERROR(res)) {
-        return res;
+        writer->err = res;
+        return writer->err;
     }
 
     // Write types.
