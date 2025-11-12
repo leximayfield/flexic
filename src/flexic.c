@@ -2493,12 +2493,12 @@ flexi_write_map_keyed(flexi_writer_s *writer, const char *k,
     }
 
     size_t offset = current - keys_value->u.offset;
-    if (!write_uint_by_width(writer, offset, keys_value->width)) {
+    if (!write_uint_by_width(writer, offset, stride_bytes)) {
         return FLEXI_ERR_BADWRITE;
     }
 
     // Byte width of key vector.
-    if (!write_uint_by_width(writer, stride_bytes, stride_bytes)) {
+    if (!write_sint_by_width(writer, keys_value->width, stride_bytes)) {
         return FLEXI_ERR_BADWRITE;
     }
 

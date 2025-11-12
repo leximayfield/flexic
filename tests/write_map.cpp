@@ -31,7 +31,7 @@ TEST_F(WriteFixture, WriteMapInts)
     ASSERT_EQ(FLEXI_OK, flexi_write_key(&m_writer, "indirect_uint"));
     flexi_stack_idx_t keyset = -1;
     ASSERT_EQ(FLEXI_OK,
-        flexi_write_map_keys(&m_writer, 5, FLEXI_WIDTH_2B, &keyset));
+        flexi_write_map_keys(&m_writer, 5, FLEXI_WIDTH_1B, &keyset));
     ASSERT_EQ(0, keyset);
 
     ASSERT_EQ(FLEXI_OK, flexi_write_bool_keyed(&m_writer, "bool", true));
@@ -52,17 +52,17 @@ TEST_F(WriteFixture, WriteMapInts)
         'u', 'i', 'n', 't', '\0', // Last two keys
         'i', 'n', 'd', 'i', 'r', 'e', 'c', 't', '_', 'u', 'i', 'n', 't',
         '\0',                         //
-        0x05, 0x00,                   // Map keys vector length
-        0x2d, 0x00,                   // Keys[0] "bool"
-        0x25, 0x00,                   // Keys[1] "indirect_sint"
-        0x14, 0x00,                   // Keys[2] "indirect_uint"
-        0x2e, 0x00,                   // Keys[3] "sint"
-        0x1d, 0x00,                   // Keys[4] "uint"
-        0x00,                         // Padding
+        0x05,                         // Map keys vector length
+        0x2c,                         // Keys[0] "bool"
+        0x23,                         // Keys[1] "indirect_sint"
+        0x11,                         // Keys[2] "indirect_uint"
+        0x2a,                         // Keys[3] "sint"
+        0x18,                         // Keys[4] "uint"
+        0x00, 0x00, 0x00,             // Padding
         0xff, 0xff, 0xff, 0x7f,       // Indirect int
         0xff, 0xff, 0xff, 0xff,       // Indirect uint
-        0x13, 0x00,                   // Keys vector offset
-        0x02, 0x00,                   // Keys vector stride
+        0x10, 0x00,                   // Keys vector offset
+        0x01, 0x00,                   // Keys vector stride
         0x05, 0x00,                   // Map values vector length
         0x01, 0x00,                   // Values[0] Bool
         0x10, 0x00,                   // Values[1] Indirect int
