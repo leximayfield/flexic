@@ -46,10 +46,10 @@ enum class direct_e {
 
 class TestStream {
     std::array<uint8_t, 256> m_buffer{};
-    size_t m_offset = 0;
+    flexi_ssize_t m_offset = 0;
 
 public:
-    bool Write(const void *ptr, size_t len)
+    bool Write(const void *ptr, flexi_ssize_t len)
     {
         if (m_offset + len >= std::size(m_buffer)) {
             return false;
@@ -60,57 +60,108 @@ public:
         return true;
     }
 
-    const uint8_t *DataAt(size_t index) const { return &m_buffer[index]; }
+    const uint8_t *DataAt(flexi_ssize_t index) const
+    {
+        return &m_buffer[index];
+    }
 
-    bool Tell(size_t *offset) const
+    bool Tell(flexi_ssize_t *offset) const
     {
         *offset = m_offset;
         return true;
     }
 
-    static bool WriteFunc(const void *ptr, size_t len, void *user)
+    static bool WriteFunc(const void *ptr, flexi_ssize_t len, void *user)
     {
         auto stream = static_cast<TestStream *>(user);
         return stream->Write(ptr, len);
     }
 
-    static const void *DataAtFunc(size_t index, void *user)
+    static const void *DataAtFunc(flexi_ssize_t index, void *user)
     {
         auto stream = static_cast<TestStream *>(user);
         return stream->DataAt(index);
     }
 
-    static bool TellFunc(size_t *offset, void *user)
+    static bool TellFunc(flexi_ssize_t *offset, void *user)
     {
         auto stream = static_cast<TestStream *>(user);
         return stream->Tell(offset);
     }
 };
 
+class TestStack {
+    std::vector<flexi_value_s> m_buffer;
+
+public:
+    static flexi_value_s *AtFunc(flexi_stack_idx_t offset, void *user)
+    {
+        auto stack = static_cast<TestStack *>(user);
+        if (offset < 0 || offset >= stack->m_buffer.size()) {
+            return nullptr;
+        }
+        return &stack->m_buffer[offset];
+    }
+    static flexi_ssize_t CountFunc(void *user)
+    {
+        auto stack = static_cast<TestStack *>(user);
+        return ptrdiff_t(stack->m_buffer.size());
+    }
+
+    static flexi_value_s *PushFunc(void *user)
+    {
+        auto stack = static_cast<TestStack *>(user);
+        stack->m_buffer.push_back({});
+        return &stack->m_buffer.back();
+    }
+
+    static ptrdiff_t PopFunc(ptrdiff_t count, void *user)
+    {
+        auto stack = static_cast<TestStack *>(user);
+
+        ptrdiff_t start_size = ptrdiff_t(stack->m_buffer.size());
+        ptrdiff_t wanted_size = start_size - count;
+        if (wanted_size < 0) {
+            stack->m_buffer.clear();
+            return start_size;
+        }
+
+        stack->m_buffer.resize(size_t(wanted_size));
+        return count;
+    }
+};
+
 class WriteFixture : public testing::Test {
 protected:
     TestStream m_actual;
+    TestStack m_stack;
     flexi_writer_s m_writer{};
 
     void SetUp() override
     {
-        m_writer.user = &m_actual;
-        m_writer.write_func = TestStream::WriteFunc;
-        m_writer.data_at_func = TestStream::DataAtFunc;
-        m_writer.tell_func = TestStream::TellFunc;
+        m_writer.ostream.user = &m_actual;
+        m_writer.ostream.write = TestStream::WriteFunc;
+        m_writer.ostream.data_at = TestStream::DataAtFunc;
+        m_writer.ostream.tell = TestStream::TellFunc;
+        m_writer.stack.user = &m_stack;
+        m_writer.stack.at = TestStack::AtFunc;
+        m_writer.stack.count = TestStack::CountFunc;
+        m_writer.stack.push = TestStack::PushFunc;
+        m_writer.stack.pop = TestStack::PopFunc;
     }
 
     void AssertData(const std::vector<uint8_t> &expected)
     {
-        size_t actual_size = 0;
+        flexi_ssize_t actual_size = 0;
         ASSERT_TRUE(m_actual.Tell(&actual_size));
 
         // If the size is bad, we still want to know where any misalignment
         // is located in the buffer.
         EXPECT_EQ(expected.size(), actual_size);
-        size_t min_size = std::min(expected.size(), actual_size);
+        flexi_ssize_t min_size =
+            std::min(flexi_ssize_t(expected.size()), actual_size);
 
-        for (size_t i = 0; i < min_size; i++) {
+        for (flexi_ssize_t i = 0; i < min_size; i++) {
             SCOPED_TRACE(testing::Message() << "At pos: " << i);
             ASSERT_EQ(expected[i], *m_actual.DataAt(i));
         }
@@ -118,7 +169,7 @@ protected:
 
     void GetCursor(flexi_cursor_s *cursor)
     {
-        size_t offset = 0;
+        flexi_ssize_t offset = 0;
         ASSERT_TRUE(m_actual.Tell(&offset));
 
         auto buffer = flexi_make_buffer(m_actual.DataAt(0), offset);

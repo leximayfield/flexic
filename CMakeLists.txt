@@ -1,7 +1,6 @@
 cmake_minimum_required(VERSION 3.31)
 
 set(CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake;${CMAKE_MODULE_PATH}")
-include(FindSanitizers)
 
 set_property(GLOBAL PROPERTY USE_FOLDERS ON)
 
@@ -23,6 +22,8 @@ add_library(flexic STATIC)
 target_sources(flexic PRIVATE ${FLEXIC_SOURCES})
 target_include_directories(flexic PUBLIC
     "${CMAKE_CURRENT_SOURCE_DIR}/include")
+
+include(FindSanitizers)
 add_sanitizers(flexic)
 
 if(FLEXIC_COMPILE_AS_CXX)

@@ -48,7 +48,7 @@ TEST_P(WriteSintFixture, WriteAndRead)
 
     AssertData(ex_data);
 
-    size_t offset = 0;
+    flexi_ssize_t offset = 0;
     ASSERT_TRUE(m_actual.Tell(&offset));
 
     flexi_cursor_s cursor{};
@@ -99,7 +99,7 @@ TEST_P(WriteUintFixture, WriteAndRead)
 
     AssertData(ex_data);
 
-    size_t offset = 0;
+    flexi_ssize_t offset = 0;
     ASSERT_TRUE(m_actual.Tell(&offset));
 
     flexi_cursor_s cursor{};

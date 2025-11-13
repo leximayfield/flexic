@@ -50,7 +50,7 @@ TEST_P(WriteF32Fixture, WriteAndRead)
 
     AssertData(ex_data);
 
-    size_t offset = 0;
+    flexi_ssize_t offset = 0;
     ASSERT_TRUE(m_actual.Tell(&offset));
 
     flexi_cursor_s cursor{};
@@ -104,7 +104,7 @@ TEST_P(WriteF64Fixture, WriteAndRead)
 
     AssertData(ex_data);
 
-    size_t offset = 0;
+    flexi_ssize_t offset = 0;
     ASSERT_TRUE(m_actual.Tell(&offset));
 
     flexi_cursor_s cursor{};
@@ -158,7 +158,7 @@ TEST_P(WriteVecF32Fixture, WriteAndRead)
 
     AssertData(ex_data);
 
-    size_t offset = 0;
+    flexi_ssize_t offset = 0;
     ASSERT_TRUE(m_actual.Tell(&offset));
 
     flexi_cursor_s cursor{};
@@ -232,7 +232,7 @@ TEST_P(WriteVecF64Fixture, WriteAndRead)
 
     AssertData(ex_data);
 
-    size_t offset = 0;
+    flexi_ssize_t offset = 0;
     ASSERT_TRUE(m_actual.Tell(&offset));
 
     flexi_cursor_s cursor{};

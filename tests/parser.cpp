@@ -56,19 +56,19 @@ struct key_s {
 struct str_s {
     const char *key = nullptr;
     const char *str = "";
-    size_t len = 0;
+    flexi_ssize_t len = 0;
 };
 
 struct mapbegin_s {
     const char *key = nullptr;
-    size_t len = 0;
+    flexi_ssize_t len = 0;
 };
 
 struct mapend_s {};
 
 struct vecbegin_s {
     const char *key = nullptr;
-    size_t len = 0;
+    flexi_ssize_t len = 0;
 };
 
 struct vecend_s {};
@@ -76,7 +76,7 @@ struct vecend_s {};
 struct typedvec_s {
     const char *key = nullptr;
     const void *ptr = nullptr;
-    size_t len = 0;
+    flexi_ssize_t len = 0;
     flexi_type_e type = FLEXI_TYPE_NULL;
     int width = 0;
     void *user = nullptr;
@@ -85,7 +85,7 @@ struct typedvec_s {
 struct blob_s {
     const char *key = nullptr;
     const void *ptr = nullptr;
-    size_t len = 0;
+    flexi_ssize_t len = 0;
 };
 
 struct bool_s {
@@ -124,11 +124,11 @@ static constexpr flexi_parser_s g_parser{
         auto results = static_cast<Results *>(user);
         results->push_back(key_s{key, str});
     },
-    [](const char *key, const char *str, size_t len, void *user) {
+    [](const char *key, const char *str, flexi_ssize_t len, void *user) {
         auto results = static_cast<Results *>(user);
         results->push_back(str_s{key, str, len});
     },
-    [](const char *key, size_t len, void *user) {
+    [](const char *key, flexi_ssize_t len, void *user) {
         auto results = static_cast<Results *>(user);
         results->push_back(mapbegin_s{key, len});
     },
@@ -136,7 +136,7 @@ static constexpr flexi_parser_s g_parser{
         auto results = static_cast<Results *>(user);
         results->push_back(mapend_s{});
     },
-    [](const char *key, size_t len, void *user) {
+    [](const char *key, flexi_ssize_t len, void *user) {
         auto results = static_cast<Results *>(user);
         results->push_back(vecbegin_s{key, len});
     },
@@ -144,12 +144,12 @@ static constexpr flexi_parser_s g_parser{
         auto results = static_cast<Results *>(user);
         results->push_back(vecend_s{});
     },
-    [](const char *key, const void *ptr, size_t len, flexi_type_e type,
+    [](const char *key, const void *ptr, flexi_ssize_t len, flexi_type_e type,
         int width, void *user) {
         auto results = static_cast<Results *>(user);
         results->push_back(typedvec_s{key, ptr, len, type, width, user});
     },
-    [](const char *key, const void *ptr, size_t len, void *user) {
+    [](const char *key, const void *ptr, flexi_ssize_t len, void *user) {
         auto results = static_cast<Results *>(user);
         results->push_back(blob_s{key, ptr, len});
     },
