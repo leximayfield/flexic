@@ -172,7 +172,10 @@ function (sanitizer_add_flags TARGET NAME PREFIX)
     separate_arguments(flags_list UNIX_COMMAND "${${PREFIX}_${TARGET_COMPILER}_FLAGS} ${SanBlist_${TARGET_COMPILER}_FLAGS}")
     target_compile_options(${TARGET} PUBLIC ${flags_list})
 
-    separate_arguments(flags_list UNIX_COMMAND "${${PREFIX}_${TARGET_COMPILER}_FLAGS}")
-    target_link_options(${TARGET} PUBLIC ${flags_list})
+    # Don't pass sanitizer flags to the linker on MSVC - it will whine.
+    if(NOT MSVC)
+        separate_arguments(flags_list UNIX_COMMAND "${${PREFIX}_${TARGET_COMPILER}_FLAGS}")
+        target_link_options(${TARGET} PUBLIC ${flags_list})
+    endif()
 
 endfunction ()

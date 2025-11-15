@@ -24,12 +24,12 @@
 
 TEST_F(WriteFixture, VectorInts)
 {
-    ASSERT_EQ(FLEXI_OK, flexi_write_bool(&m_writer, true));
-    ASSERT_EQ(FLEXI_OK, flexi_write_sint(&m_writer, INT16_MAX));
-    ASSERT_EQ(FLEXI_OK, flexi_write_indirect_sint(&m_writer, INT32_MAX));
-    ASSERT_EQ(FLEXI_OK, flexi_write_uint(&m_writer, UINT16_MAX));
-    ASSERT_EQ(FLEXI_OK, flexi_write_indirect_uint(&m_writer, UINT32_MAX));
-    ASSERT_EQ(FLEXI_OK, flexi_write_vector(&m_writer, 5, FLEXI_WIDTH_2B));
+    ASSERT_EQ(FLEXI_OK, flexi_write_bool(&m_writer, NULL, true));
+    ASSERT_EQ(FLEXI_OK, flexi_write_sint(&m_writer, NULL, INT16_MAX));
+    ASSERT_EQ(FLEXI_OK, flexi_write_indirect_sint(&m_writer, NULL, INT32_MAX));
+    ASSERT_EQ(FLEXI_OK, flexi_write_uint(&m_writer, NULL, UINT16_MAX));
+    ASSERT_EQ(FLEXI_OK, flexi_write_indirect_uint(&m_writer, NULL, UINT32_MAX));
+    ASSERT_EQ(FLEXI_OK, flexi_write_vector(&m_writer, NULL, 5, FLEXI_WIDTH_2B));
     ASSERT_EQ(FLEXI_OK, flexi_write_finalize(&m_writer));
 
     std::vector<uint8_t> expected = {
@@ -82,11 +82,11 @@ TEST_F(WriteFixture, VectorInts)
 
 TEST_F(WriteFixture, VectorFloats)
 {
-    ASSERT_EQ(FLEXI_OK, flexi_write_f32(&m_writer, PI_VALUE));
-    ASSERT_EQ(FLEXI_OK, flexi_write_indirect_f32(&m_writer, PI_VALUE));
-    ASSERT_EQ(FLEXI_OK, flexi_write_f64(&m_writer, PI_VALUE));
-    ASSERT_EQ(FLEXI_OK, flexi_write_indirect_f64(&m_writer, PI_VALUE));
-    ASSERT_EQ(FLEXI_OK, flexi_write_vector(&m_writer, 4, FLEXI_WIDTH_8B));
+    ASSERT_EQ(FLEXI_OK, flexi_write_f32(&m_writer, NULL, PI_VALUE));
+    ASSERT_EQ(FLEXI_OK, flexi_write_indirect_f32(&m_writer, NULL, PI_VALUE));
+    ASSERT_EQ(FLEXI_OK, flexi_write_f64(&m_writer, NULL, PI_VALUE));
+    ASSERT_EQ(FLEXI_OK, flexi_write_indirect_f64(&m_writer, NULL, PI_VALUE));
+    ASSERT_EQ(FLEXI_OK, flexi_write_vector(&m_writer, NULL, 4, FLEXI_WIDTH_8B));
     ASSERT_EQ(FLEXI_OK, flexi_write_finalize(&m_writer));
 
     std::vector<uint8_t> expected = {//
@@ -145,10 +145,10 @@ TEST_F(WriteFixture, VectorStringBlob)
     constexpr std::array<uint8_t, 8> BLOB = {
         0xD0, 0xCF, 0x11, 0xE0, 0xA1, 0xB1, 0x1A, 0xE1};
 
-    ASSERT_EQ(FLEXI_OK, flexi_write_string(&m_writer, "xyzzy"));
+    ASSERT_EQ(FLEXI_OK, flexi_write_strlen(&m_writer, NULL, "xyzzy"));
     ASSERT_EQ(FLEXI_OK,
-        flexi_write_blob(&m_writer, &BLOB[0], std::size(BLOB), 1));
-    ASSERT_EQ(FLEXI_OK, flexi_write_vector(&m_writer, 2, FLEXI_WIDTH_1B));
+        flexi_write_blob(&m_writer, NULL, &BLOB[0], std::size(BLOB), 1));
+    ASSERT_EQ(FLEXI_OK, flexi_write_vector(&m_writer, NULL, 2, FLEXI_WIDTH_1B));
     ASSERT_EQ(FLEXI_OK, flexi_write_finalize(&m_writer));
 
     std::vector<uint8_t> expected = {// String
@@ -197,10 +197,10 @@ TEST_F(WriteFixture, VectorAlignedBlob4)
     constexpr std::array<uint8_t, 8> BLOB = {
         0xD0, 0xCF, 0x11, 0xE0, 0xA1, 0xB1, 0x1A, 0xE1};
 
-    ASSERT_EQ(FLEXI_OK, flexi_write_string(&m_writer, "xyzzy"));
+    ASSERT_EQ(FLEXI_OK, flexi_write_strlen(&m_writer, NULL, "xyzzy"));
     ASSERT_EQ(FLEXI_OK,
-        flexi_write_blob(&m_writer, &BLOB[0], std::size(BLOB), 4));
-    ASSERT_EQ(FLEXI_OK, flexi_write_vector(&m_writer, 2, FLEXI_WIDTH_1B));
+        flexi_write_blob(&m_writer, NULL, &BLOB[0], std::size(BLOB), 4));
+    ASSERT_EQ(FLEXI_OK, flexi_write_vector(&m_writer, NULL, 2, FLEXI_WIDTH_1B));
     ASSERT_EQ(FLEXI_OK, flexi_write_finalize(&m_writer));
 
     std::vector<uint8_t> expected = {// String
@@ -251,10 +251,10 @@ TEST_F(WriteFixture, VectorAlignedBlob16)
     constexpr std::array<uint8_t, 8> BLOB = {
         0xD0, 0xCF, 0x11, 0xE0, 0xA1, 0xB1, 0x1A, 0xE1};
 
-    ASSERT_EQ(FLEXI_OK, flexi_write_string(&m_writer, "xyzzy"));
+    ASSERT_EQ(FLEXI_OK, flexi_write_strlen(&m_writer, NULL, "xyzzy"));
     ASSERT_EQ(FLEXI_OK,
-        flexi_write_blob(&m_writer, &BLOB[0], std::size(BLOB), 16));
-    ASSERT_EQ(FLEXI_OK, flexi_write_vector(&m_writer, 2, FLEXI_WIDTH_1B));
+        flexi_write_blob(&m_writer, NULL, &BLOB[0], std::size(BLOB), 16));
+    ASSERT_EQ(FLEXI_OK, flexi_write_vector(&m_writer, NULL, 2, FLEXI_WIDTH_1B));
     ASSERT_EQ(FLEXI_OK, flexi_write_finalize(&m_writer));
 
     std::vector<uint8_t> expected = {// String
@@ -298,4 +298,26 @@ TEST_F(WriteFixture, VectorAlignedBlob16)
     for (size_t i = 0; i < std::size(BLOB); i++) {
         ASSERT_EQ(blob[i], BLOB[i]);
     }
+}
+
+TEST_F(WriteFixture, VectorWidthTooSmall)
+{
+    // The size of this string is designed to induce a situation in the
+    // implementation where our first guess at the offset value is wrong.
+
+    std::string str;
+    str.resize(UINT16_MAX - 2, 'x');
+
+    ASSERT_EQ(FLEXI_OK,
+        flexi_write_string(&m_writer, NULL, str.c_str(), str.length()));
+    ASSERT_EQ(FLEXI_OK, flexi_write_uint(&m_writer, NULL, 128));
+    ASSERT_EQ(FLEXI_OK, flexi_write_vector(&m_writer, NULL, 2, FLEXI_WIDTH_1B));
+    ASSERT_EQ(FLEXI_OK, flexi_write_finalize(&m_writer));
+
+    flexi_cursor_s cursor{};
+    GetCursor(&cursor);
+
+    ASSERT_EQ(FLEXI_TYPE_VECTOR, flexi_cursor_type(&cursor));
+    ASSERT_EQ(4, flexi_cursor_width(&cursor));
+    ASSERT_EQ(2, flexi_cursor_length(&cursor));
 }

@@ -22,10 +22,26 @@
 
 #pragma once
 
+#if defined(__cplusplus)
+#if defined(_MSVC_LANG)
+#define FLEXI_CPLUSPLUS _MSVC_LANG
+#else
+#define FLEXI_CPLUSPLUS __cplusplus
+#endif
+#else
+#define FLEXI_CPLUSPLUS 0L
+#endif
+
+#if FLEXI_CPLUSPLUS >= 201103L
+#define FLEXI_CPP11_EQ_DELETE = delete
+#else
+#define FLEXI_CPP11_EQ_DELETE
+#endif
+
 #include <stdbool.h>
 #include <stdint.h>
 
-#ifdef __cplusplus
+#if FLEXI_CPLUSPLUS
 extern "C" {
 #endif
 
@@ -46,10 +62,10 @@ typedef flexi_ssize_t flexi_stack_idx_t;
 /**
  * @brief Possible error results.
  *
- * @detail Note that the only guarantee is that success returns will be > 0
- *         and errors are < 0, exact values of specific errors are not stable
- *         and subject to change.  0 is an invalid result to prevent careless
- *         shortcuts that check truthiness instead of using FLEXI_SUCCESS.
+ * @details Note that the only guarantee is that success returns will be > 0
+ *          and errors are < 0, exact values of specific errors are not stable
+ *          and subject to change.  0 is an invalid result to prevent careless
+ *          shortcuts that check truthiness instead of using FLEXI_SUCCESS.
  */
 typedef enum flexi_result_e {
     /**
@@ -530,6 +546,13 @@ typedef struct flexi_parser_s {
 } flexi_parser_s;
 
 /**
+ * @brief Returns a parser struct with every function pointer containing
+ *        a dummied-out function that does nothing.
+ */
+flexi_parser_s
+flexi_make_empty_parser();
+
+/**
  * @brief Starting from the value at the cursor, parse the FlexBuffer while
  *        calling the appropriate callbacks.
  *
@@ -659,54 +682,57 @@ typedef struct flexi_writer_s {
 } flexi_writer_s;
 
 flexi_result_e
-flexi_write_null_keyed(flexi_writer_s *writer, const char *key);
+flexi_write_null(flexi_writer_s *writer, const char *key);
 
 flexi_result_e
-flexi_write_sint_keyed(flexi_writer_s *writer, const char *key, int64_t val);
+flexi_write_sint(flexi_writer_s *writer, const char *key, int64_t val);
 
 flexi_result_e
-flexi_write_uint_keyed(flexi_writer_s *writer, const char *key, uint64_t v);
+flexi_write_uint(flexi_writer_s *writer, const char *key, uint64_t v);
 
 flexi_result_e
-flexi_write_f32_keyed(flexi_writer_s *writer, const char *key, float val);
+flexi_write_f32(flexi_writer_s *writer, const char *key, float val);
 
 flexi_result_e
-flexi_write_f64_keyed(flexi_writer_s *writer, const char *key, double val);
+flexi_write_f64(flexi_writer_s *writer, const char *key, double val);
 
 flexi_result_e
-flexi_write_key_keyed(flexi_writer_s *writer, const char *key, const char *str);
+flexi_write_key(flexi_writer_s *writer, const char *str);
 
 flexi_result_e
-flexi_write_string_keyed(flexi_writer_s *writer, const char *key,
-    const char *str);
+flexi_write_keyed_key(flexi_writer_s *writer, const char *key, const char *str);
 
 flexi_result_e
-flexi_write_indirect_sint_keyed(flexi_writer_s *writer, const char *key,
-    int64_t val);
+flexi_write_string(flexi_writer_s *writer, const char *key, const char *str,
+    size_t len);
 
 flexi_result_e
-flexi_write_indirect_uint_keyed(flexi_writer_s *writer, const char *key,
+flexi_write_strlen(flexi_writer_s *writer, const char *key, const char *str);
+
+flexi_result_e
+flexi_write_indirect_sint(flexi_writer_s *writer, const char *key, int64_t val);
+
+flexi_result_e
+flexi_write_indirect_uint(flexi_writer_s *writer, const char *key,
     uint64_t val);
 
 flexi_result_e
-flexi_write_indirect_f32_keyed(flexi_writer_s *writer, const char *key,
-    float val);
+flexi_write_indirect_f32(flexi_writer_s *writer, const char *key, float val);
 
 flexi_result_e
-flexi_write_indirect_f64_keyed(flexi_writer_s *writer, const char *key,
-    double val);
+flexi_write_indirect_f64(flexi_writer_s *writer, const char *key, double val);
 
 flexi_result_e
 flexi_write_map_keys(flexi_writer_s *writer, flexi_ssize_t len,
     flexi_width_e stride, flexi_stack_idx_t *keyset);
 
 flexi_result_e
-flexi_write_map_keyed(flexi_writer_s *writer, const char *key,
+flexi_write_map(flexi_writer_s *writer, const char *key,
     flexi_stack_idx_t keyset, flexi_ssize_t len, flexi_width_e stride);
 
 flexi_result_e
-flexi_write_vector_keyed(flexi_writer_s *writer, const char *key,
-    flexi_ssize_t len, flexi_width_e stride);
+flexi_write_vector(flexi_writer_s *writer, const char *key, flexi_ssize_t len,
+    flexi_width_e stride);
 
 /**
  * @brief Write a typed vector of signed ints to the stream.  Pushes an offset
@@ -720,7 +746,7 @@ flexi_write_vector_keyed(flexi_writer_s *writer, const char *key,
  * @return FLEXI_OK | FLEXI_ERR_BADWRITE.
  */
 flexi_result_e
-flexi_write_typed_vector_sint_keyed(flexi_writer_s *writer, const char *key,
+flexi_write_typed_vector_sint(flexi_writer_s *writer, const char *key,
     const void *ptr, flexi_width_e stride, flexi_ssize_t len);
 
 /**
@@ -735,7 +761,7 @@ flexi_write_typed_vector_sint_keyed(flexi_writer_s *writer, const char *key,
  * @return FLEXI_OK | FLEXI_ERR_BADWRITE.
  */
 flexi_result_e
-flexi_write_typed_vector_uint_keyed(flexi_writer_s *writer, const char *key,
+flexi_write_typed_vector_uint(flexi_writer_s *writer, const char *key,
     const void *ptr, flexi_width_e stride, flexi_ssize_t len);
 
 /**
@@ -750,7 +776,7 @@ flexi_write_typed_vector_uint_keyed(flexi_writer_s *writer, const char *key,
  * @return FLEXI_OK | FLEXI_ERR_BADWRITE.
  */
 flexi_result_e
-flexi_write_typed_vector_flt_keyed(flexi_writer_s *writer, const char *key,
+flexi_write_typed_vector_flt(flexi_writer_s *writer, const char *key,
     const void *ptr, flexi_width_e stride, flexi_ssize_t len);
 
 /**
@@ -768,297 +794,97 @@ flexi_write_typed_vector_flt_keyed(flexi_writer_s *writer, const char *key,
  * @return FLEXI_OK | FLEXI_ERR_BADWRITE | FLEXI_ERR_STREAM.
  */
 flexi_result_e
-flexi_write_blob_keyed(flexi_writer_s *writer, const char *key, const void *ptr,
+flexi_write_blob(flexi_writer_s *writer, const char *key, const void *ptr,
     flexi_ssize_t len, int align);
 
 flexi_result_e
-flexi_write_bool_keyed(flexi_writer_s *writer, const char *key, bool val);
+flexi_write_bool(flexi_writer_s *writer, const char *key, bool val);
 
 flexi_result_e
-flexi_write_typed_vector_bool_keyed(flexi_writer_s *writer, const char *key,
+flexi_write_typed_vector_bool(flexi_writer_s *writer, const char *key,
     const bool *ptr, flexi_ssize_t len);
 
 flexi_result_e
 flexi_write_finalize(flexi_writer_s *writer);
 
-static inline flexi_result_e
-flexi_write_null(flexi_writer_s *writer)
-{
-    return flexi_write_null_keyed(writer, NULL);
-}
-
-static inline flexi_result_e
-flexi_write_sint(flexi_writer_s *writer, int64_t val)
-{
-    return flexi_write_sint_keyed(writer, NULL, val);
-}
-
-static inline flexi_result_e
-flexi_write_uint(flexi_writer_s *writer, uint64_t val)
-{
-    return flexi_write_uint_keyed(writer, NULL, val);
-}
-
-static inline flexi_result_e
-flexi_write_f32(flexi_writer_s *writer, float val)
-{
-    return flexi_write_f32_keyed(writer, NULL, val);
-}
-
-static inline flexi_result_e
-flexi_write_f64(flexi_writer_s *writer, double val)
-{
-    return flexi_write_f64_keyed(writer, NULL, val);
-}
-
-static inline flexi_result_e
-flexi_write_key(flexi_writer_s *writer, const char *str)
-{
-    return flexi_write_key_keyed(writer, NULL, str);
-}
-
-static inline flexi_result_e
-flexi_write_string(flexi_writer_s *writer, const char *str)
-{
-    return flexi_write_string_keyed(writer, NULL, str);
-}
-
-static inline flexi_result_e
-flexi_write_indirect_sint(flexi_writer_s *writer, int64_t val)
-{
-    return flexi_write_indirect_sint_keyed(writer, NULL, val);
-}
-
-static inline flexi_result_e
-flexi_write_indirect_uint(flexi_writer_s *writer, uint64_t val)
-{
-    return flexi_write_indirect_uint_keyed(writer, NULL, val);
-}
-
-static inline flexi_result_e
-flexi_write_indirect_f32(flexi_writer_s *writer, float val)
-{
-    return flexi_write_indirect_f32_keyed(writer, NULL, val);
-}
-
-static inline flexi_result_e
-flexi_write_indirect_f64(flexi_writer_s *writer, double val)
-{
-    return flexi_write_indirect_f64_keyed(writer, NULL, val);
-}
-
-static inline flexi_result_e
-flexi_write_map(flexi_writer_s *writer, flexi_stack_idx_t keyset,
-    flexi_ssize_t len, flexi_width_e stride)
-{
-    return flexi_write_map_keyed(writer, NULL, keyset, len, stride);
-}
-
-static inline flexi_result_e
-flexi_write_vector(flexi_writer_s *writer, flexi_ssize_t len,
-    flexi_width_e stride)
-{
-    return flexi_write_vector_keyed(writer, NULL, len, stride);
-}
-
-/**
- * @brief Write a binary blob to the stream.  Pushes an offset to the blob
- *        onto the stack.
- *
- * @details Passing a value for align other than 1 will pad the start of
- *          the blob data to the nearest even multiple of the align value.
- *
- * @param[in,out] writer Writer to operate on.
- * @param[in] ptr Pointer to data to be written.
- * @param[in] len Length of data to be written.
- * @param[in] align Desired alignment of blob data, in bytes.
- * @return FLEXI_OK | FLEXI_ERR_BADWRITE | FLEXI_ERR_STREAM.
- */
-static inline flexi_result_e
-flexi_write_blob(flexi_writer_s *writer, const void *ptr, flexi_ssize_t len,
-    int align)
-{
-    return flexi_write_blob_keyed(writer, NULL, ptr, len, align);
-}
-
-static inline flexi_result_e
-flexi_write_bool(flexi_writer_s *writer, bool val)
-{
-    return flexi_write_bool_keyed(writer, NULL, val);
-}
-
-#ifdef __cplusplus
+#if FLEXI_CPLUSPLUS
 }
 #endif
 
-#ifdef __cplusplus
+#if FLEXI_CPLUSPLUS
 
-template<typename T> static inline flexi_result_e
-flexi_write_typed_vector(flexi_writer_s *writer, const T *arr,
-    flexi_ssize_t len);
-
-template<typename T> static inline flexi_result_e
-flexi_write_typed_vector_keyed(flexi_writer_s *writer, const char *key,
-    const T *arr, flexi_ssize_t len);
+template<typename T> inline flexi_result_e
+flexi_write_typed_vector(flexi_writer_s *writer, const char *key, const T *arr,
+    flexi_ssize_t len) FLEXI_CPP11_EQ_DELETE;
 
 template<> inline flexi_result_e
-flexi_write_typed_vector<int8_t>(flexi_writer_s *writer, const int8_t *arr,
-    flexi_ssize_t len)
-{
-    return flexi_write_typed_vector_sint_keyed(writer, NULL, arr,
-        FLEXI_WIDTH_1B, len);
-}
-
-template<> inline flexi_result_e
-flexi_write_typed_vector_keyed<int8_t>(flexi_writer_s *writer, const char *key,
+flexi_write_typed_vector<int8_t>(flexi_writer_s *writer, const char *key,
     const int8_t *arr, flexi_ssize_t len)
 {
-    return flexi_write_typed_vector_sint_keyed(writer, key, arr, FLEXI_WIDTH_1B,
-        len);
+    return flexi_write_typed_vector_sint(writer, key, arr, FLEXI_WIDTH_1B, len);
 }
 
 template<> inline flexi_result_e
-flexi_write_typed_vector<int16_t>(flexi_writer_s *writer, const int16_t *arr,
-    flexi_ssize_t len)
-{
-    return flexi_write_typed_vector_sint_keyed(writer, NULL, arr,
-        FLEXI_WIDTH_2B, len);
-}
-
-template<> inline flexi_result_e
-flexi_write_typed_vector_keyed<int16_t>(flexi_writer_s *writer, const char *key,
+flexi_write_typed_vector<int16_t>(flexi_writer_s *writer, const char *key,
     const int16_t *arr, flexi_ssize_t len)
 {
-    return flexi_write_typed_vector_sint_keyed(writer, key, arr, FLEXI_WIDTH_2B,
-        len);
+    return flexi_write_typed_vector_sint(writer, key, arr, FLEXI_WIDTH_2B, len);
 }
 
 template<> inline flexi_result_e
-flexi_write_typed_vector<int32_t>(flexi_writer_s *writer, const int32_t *arr,
-    flexi_ssize_t len)
-{
-    return flexi_write_typed_vector_sint_keyed(writer, NULL, arr,
-        FLEXI_WIDTH_4B, len);
-}
-
-template<> inline flexi_result_e
-flexi_write_typed_vector_keyed<int32_t>(flexi_writer_s *writer, const char *key,
+flexi_write_typed_vector<int32_t>(flexi_writer_s *writer, const char *key,
     const int32_t *arr, flexi_ssize_t len)
 {
-    return flexi_write_typed_vector_sint_keyed(writer, key, arr, FLEXI_WIDTH_4B,
-        len);
+    return flexi_write_typed_vector_sint(writer, key, arr, FLEXI_WIDTH_4B, len);
 }
 
 template<> inline flexi_result_e
-flexi_write_typed_vector<int64_t>(flexi_writer_s *writer, const int64_t *arr,
-    flexi_ssize_t len)
-{
-    return flexi_write_typed_vector_sint_keyed(writer, NULL, arr,
-        FLEXI_WIDTH_8B, len);
-}
-
-template<> inline flexi_result_e
-flexi_write_typed_vector_keyed<int64_t>(flexi_writer_s *writer, const char *key,
+flexi_write_typed_vector<int64_t>(flexi_writer_s *writer, const char *key,
     const int64_t *arr, flexi_ssize_t len)
 {
-    return flexi_write_typed_vector_sint_keyed(writer, key, arr, FLEXI_WIDTH_8B,
-        len);
+    return flexi_write_typed_vector_sint(writer, key, arr, FLEXI_WIDTH_8B, len);
 }
 
 template<> inline flexi_result_e
-flexi_write_typed_vector<uint8_t>(flexi_writer_s *writer, const uint8_t *arr,
-    flexi_ssize_t len)
-{
-    return flexi_write_typed_vector_uint_keyed(writer, NULL, arr,
-        FLEXI_WIDTH_1B, len);
-}
-
-template<> inline flexi_result_e
-flexi_write_typed_vector_keyed<uint8_t>(flexi_writer_s *writer, const char *key,
+flexi_write_typed_vector<uint8_t>(flexi_writer_s *writer, const char *key,
     const uint8_t *arr, flexi_ssize_t len)
 {
-    return flexi_write_typed_vector_uint_keyed(writer, key, arr, FLEXI_WIDTH_1B,
-        len);
+    return flexi_write_typed_vector_uint(writer, key, arr, FLEXI_WIDTH_1B, len);
 }
 
 template<> inline flexi_result_e
-flexi_write_typed_vector<uint16_t>(flexi_writer_s *writer, const uint16_t *arr,
-    flexi_ssize_t len)
+flexi_write_typed_vector<uint16_t>(flexi_writer_s *writer, const char *key,
+    const uint16_t *arr, flexi_ssize_t len)
 {
-    return flexi_write_typed_vector_uint_keyed(writer, NULL, arr,
-        FLEXI_WIDTH_2B, len);
+    return flexi_write_typed_vector_uint(writer, key, arr, FLEXI_WIDTH_2B, len);
 }
 
 template<> inline flexi_result_e
-flexi_write_typed_vector_keyed<uint16_t>(flexi_writer_s *writer,
-    const char *key, const uint16_t *arr, flexi_ssize_t len)
+flexi_write_typed_vector<uint32_t>(flexi_writer_s *writer, const char *key,
+    const uint32_t *arr, flexi_ssize_t len)
 {
-    return flexi_write_typed_vector_uint_keyed(writer, key, arr, FLEXI_WIDTH_2B,
-        len);
+    return flexi_write_typed_vector_uint(writer, key, arr, FLEXI_WIDTH_4B, len);
 }
 
 template<> inline flexi_result_e
-flexi_write_typed_vector<uint32_t>(flexi_writer_s *writer, const uint32_t *arr,
-    flexi_ssize_t len)
+flexi_write_typed_vector<uint64_t>(flexi_writer_s *writer, const char *key,
+    const uint64_t *arr, flexi_ssize_t len)
 {
-    return flexi_write_typed_vector_uint_keyed(writer, NULL, arr,
-        FLEXI_WIDTH_4B, len);
+    return flexi_write_typed_vector_uint(writer, key, arr, FLEXI_WIDTH_8B, len);
 }
 
 template<> inline flexi_result_e
-flexi_write_typed_vector_keyed<uint32_t>(flexi_writer_s *writer,
-    const char *key, const uint32_t *arr, flexi_ssize_t len)
-{
-    return flexi_write_typed_vector_uint_keyed(writer, key, arr, FLEXI_WIDTH_4B,
-        len);
-}
-
-template<> inline flexi_result_e
-flexi_write_typed_vector<uint64_t>(flexi_writer_s *writer, const uint64_t *arr,
-    flexi_ssize_t len)
-{
-    return flexi_write_typed_vector_uint_keyed(writer, NULL, arr,
-        FLEXI_WIDTH_8B, len);
-}
-
-template<> inline flexi_result_e
-flexi_write_typed_vector_keyed<uint64_t>(flexi_writer_s *writer,
-    const char *key, const uint64_t *arr, flexi_ssize_t len)
-{
-    return flexi_write_typed_vector_uint_keyed(writer, key, arr, FLEXI_WIDTH_8B,
-        len);
-}
-
-template<> inline flexi_result_e
-flexi_write_typed_vector<float>(flexi_writer_s *writer, const float *arr,
-    flexi_ssize_t len)
-{
-    return flexi_write_typed_vector_flt_keyed(writer, NULL, arr, FLEXI_WIDTH_4B,
-        len);
-}
-
-template<> inline flexi_result_e
-flexi_write_typed_vector_keyed<float>(flexi_writer_s *writer, const char *key,
+flexi_write_typed_vector<float>(flexi_writer_s *writer, const char *key,
     const float *arr, flexi_ssize_t len)
 {
-    return flexi_write_typed_vector_flt_keyed(writer, key, arr, FLEXI_WIDTH_4B,
-        len);
+    return flexi_write_typed_vector_flt(writer, key, arr, FLEXI_WIDTH_4B, len);
 }
 
 template<> inline flexi_result_e
-flexi_write_typed_vector<double>(flexi_writer_s *writer, const double *arr,
-    flexi_ssize_t len)
-{
-    return flexi_write_typed_vector_flt_keyed(writer, NULL, arr, FLEXI_WIDTH_8B,
-        len);
-}
-
-template<> inline flexi_result_e
-flexi_write_typed_vector_keyed<double>(flexi_writer_s *writer, const char *key,
+flexi_write_typed_vector<double>(flexi_writer_s *writer, const char *key,
     const double *arr, flexi_ssize_t len)
 {
-    return flexi_write_typed_vector_flt_keyed(writer, key, arr, FLEXI_WIDTH_8B,
-        len);
+    return flexi_write_typed_vector_flt(writer, key, arr, FLEXI_WIDTH_8B, len);
 }
 
-#endif
+#endif // #if FLEXI_CPLUSPLUS

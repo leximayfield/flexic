@@ -44,22 +44,7 @@ main(const int, const char *[])
         throw "assert";
     }
 
-    flexi_parser_s parser{
-        [](const char *, void *) {},
-        [](const char *, int64_t, void *) {},
-        [](const char *, uint64_t, void *) {},
-        [](const char *, float, void *) {},
-        [](const char *, double, void *) {},
-        [](const char *, const char *, void *) {},
-        [](const char *, const char *, size_t, void *) {},
-        [](const char *, size_t, void *) {},
-        [](void *) {},
-        [](const char *, size_t, void *) {},
-        [](void *) {},
-        [](const char *, const void *, size_t, flexi_type_e, int, void *) {},
-        [](const char *, const void *, size_t, void *) {},
-        [](const char *, bool, void *) {},
-    };
+    flexi_parser_s parser = flexi_make_empty_parser();
 
     flexi_cursor_s dest;
     ankerl::nanobench::Bench().run("flexi_cursor_seek_map_key",

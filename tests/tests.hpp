@@ -45,18 +45,13 @@ enum class direct_e {
 };
 
 class TestStream {
-    std::array<uint8_t, 256> m_buffer{};
-    flexi_ssize_t m_offset = 0;
+    std::vector<uint8_t> m_buffer;
 
 public:
     bool Write(const void *ptr, flexi_ssize_t len)
     {
-        if (m_offset + len >= std::size(m_buffer)) {
-            return false;
-        }
-
-        memcpy(&m_buffer[m_offset], ptr, len);
-        m_offset += len;
+        auto bytes = static_cast<const uint8_t *>(ptr);
+        m_buffer.insert(m_buffer.end(), bytes, bytes + len);
         return true;
     }
 
@@ -67,7 +62,7 @@ public:
 
     bool Tell(flexi_ssize_t *offset) const
     {
-        *offset = m_offset;
+        *offset = flexi_ssize_t(m_buffer.size());
         return true;
     }
 

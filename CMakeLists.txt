@@ -39,8 +39,5 @@ if(FLEXIC_ENABLE_BENCHES)
 endif()
 
 if(FLEXIC_ENABLE_FUZZER)
-    if(NOT CMAKE_CXX_COMPILER_ID MATCHES "Clang")
-        message(FATAL_ERROR "Fuzzing target requires Clang.")
-    endif()
     add_subdirectory(fuzzer)
 endif()

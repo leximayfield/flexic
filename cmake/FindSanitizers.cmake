@@ -40,6 +40,7 @@ find_package(ASan ${FIND_QUIETLY_FLAG})
 find_package(TSan ${FIND_QUIETLY_FLAG})
 find_package(MSan ${FIND_QUIETLY_FLAG})
 find_package(UBSan ${FIND_QUIETLY_FLAG})
+find_package(FSan ${FIND_QUIETLY_FLAG})
 
 function(sanitizer_add_blacklist_file FILE)
     if(NOT IS_ABSOLUTE ${FILE})

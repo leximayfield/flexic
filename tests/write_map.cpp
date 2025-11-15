@@ -34,14 +34,15 @@ TEST_F(WriteFixture, MapInts)
         flexi_write_map_keys(&m_writer, 5, FLEXI_WIDTH_1B, &keyset));
     ASSERT_EQ(0, keyset);
 
-    ASSERT_EQ(FLEXI_OK, flexi_write_bool_keyed(&m_writer, "bool", true));
-    ASSERT_EQ(FLEXI_OK, flexi_write_sint_keyed(&m_writer, "sint", INT16_MAX));
+    ASSERT_EQ(FLEXI_OK, flexi_write_bool(&m_writer, "bool", true));
+    ASSERT_EQ(FLEXI_OK, flexi_write_sint(&m_writer, "sint", INT16_MAX));
     ASSERT_EQ(FLEXI_OK,
-        flexi_write_indirect_sint_keyed(&m_writer, "indirect_sint", INT32_MAX));
-    ASSERT_EQ(FLEXI_OK, flexi_write_uint_keyed(&m_writer, "uint", UINT16_MAX));
-    ASSERT_EQ(FLEXI_OK, flexi_write_indirect_uint_keyed(&m_writer,
-                            "indirect_uint", UINT32_MAX));
-    ASSERT_EQ(FLEXI_OK, flexi_write_map(&m_writer, keyset, 5, FLEXI_WIDTH_2B));
+        flexi_write_indirect_sint(&m_writer, "indirect_sint", INT32_MAX));
+    ASSERT_EQ(FLEXI_OK, flexi_write_uint(&m_writer, "uint", UINT16_MAX));
+    ASSERT_EQ(FLEXI_OK,
+        flexi_write_indirect_uint(&m_writer, "indirect_uint", UINT32_MAX));
+    ASSERT_EQ(FLEXI_OK,
+        flexi_write_map(&m_writer, NULL, keyset, 5, FLEXI_WIDTH_2B));
     ASSERT_EQ(FLEXI_OK, flexi_write_finalize(&m_writer));
 
     std::vector<uint8_t> expected = {
@@ -118,13 +119,14 @@ TEST_F(WriteFixture, MapFloats)
         flexi_write_map_keys(&m_writer, 4, FLEXI_WIDTH_1B, &keyset));
     ASSERT_EQ(0, keyset);
 
-    ASSERT_EQ(FLEXI_OK, flexi_write_f32_keyed(&m_writer, "f32", PI_VALUE));
+    ASSERT_EQ(FLEXI_OK, flexi_write_f32(&m_writer, "f32", PI_VALUE));
     ASSERT_EQ(FLEXI_OK,
-        flexi_write_indirect_f32_keyed(&m_writer, "indirect_f32", PI_VALUE));
-    ASSERT_EQ(FLEXI_OK, flexi_write_f64_keyed(&m_writer, "f64", PI_VALUE));
+        flexi_write_indirect_f32(&m_writer, "indirect_f32", PI_VALUE));
+    ASSERT_EQ(FLEXI_OK, flexi_write_f64(&m_writer, "f64", PI_VALUE));
     ASSERT_EQ(FLEXI_OK,
-        flexi_write_indirect_f64_keyed(&m_writer, "indirect_f64", PI_VALUE));
-    ASSERT_EQ(FLEXI_OK, flexi_write_map(&m_writer, keyset, 4, FLEXI_WIDTH_8B));
+        flexi_write_indirect_f64(&m_writer, "indirect_f64", PI_VALUE));
+    ASSERT_EQ(FLEXI_OK,
+        flexi_write_map(&m_writer, NULL, keyset, 4, FLEXI_WIDTH_8B));
     ASSERT_EQ(FLEXI_OK, flexi_write_finalize(&m_writer));
 
     std::vector<uint8_t> expected = {'f', '3', '2', '\0',                 //

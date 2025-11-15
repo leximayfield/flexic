@@ -490,6 +490,103 @@ buffer_read_f64(const flexi_buffer_s *buffer, const char *src, int width,
 }
 
 /**
+ * @brief Dummy null callback for parser.
+ */
+static void
+empty_parser_null(const char *, void *)
+{
+}
+
+/**
+ * @brief Dummy sint callback for parser.
+ */
+static void
+empty_parser_sint(const char *, int64_t, void *)
+{
+}
+
+/**
+ * @brief Dummy uint callback for parser.
+ */
+static void
+empty_parser_uint(const char *, uint64_t, void *)
+{
+}
+
+/**
+ * @brief Dummy f32 callback for parser.
+ */
+static void
+empty_parser_f32(const char *, float, void *)
+{
+}
+
+/**
+ * @brief Dummy f64 callback for parser.
+ */
+static void
+empty_parser_f64(const char *, double, void *)
+{
+}
+
+/**
+ * @brief Dummy key callback for parser.
+ */
+static void
+empty_parser_key(const char *, const char *, void *)
+{
+}
+
+/**
+ * @brief Dummy string callback for parser.
+ */
+static void
+empty_parser_string(const char *, const char *, flexi_ssize_t, void *)
+{
+}
+
+/**
+ * @brief Dummy map/vector begin callback for parser.
+ */
+static void
+empty_parser_map_vector_begin(const char *, flexi_ssize_t, void *)
+{
+}
+
+/**
+ * @brief Dummy map/vector end callback for parser.
+ */
+static void
+empty_parser_map_vector_end(void *)
+{
+}
+
+/**
+ * @brief Dummy typed vector callback for parser.
+ */
+static void
+empty_parser_typed_vector(const char *, const void *, flexi_ssize_t,
+    flexi_type_e, int, void *)
+{
+}
+
+/**
+ * @brief Dummy blob callback for parser.
+ */
+static void
+empty_parser_blob(const char *, const void *, flexi_ssize_t, void *)
+{
+}
+
+/**
+ * @brief Dummy boolean callback for parser.
+ */
+static void
+empty_parser_boolean(const char *, bool, void *)
+{
+}
+
+/**
  * @brief Wrapper for flexi_stack_s at function call.
  */
 static flexi_value_s *
@@ -1522,14 +1619,72 @@ writer_sort_map_values(flexi_writer_s *writer, flexi_ssize_t len)
 }
 
 /**
+ * @brief Calculate the minimum alignment needed to store values in vector.
+ *
+ * @param[in] writer Writer to operate on.
+ * @param[in] len Number of values to examine.
+ * @return Actual minimum alignment needed in bytes, or -1 on stream error.
+ */
+static int
+writer_vector_calc_min_stride(flexi_writer_s *writer, flexi_ssize_t len)
+{
+    int min_width = 1;
+    for (flexi_ssize_t i = 0; i < len; i++) {
+        const flexi_value_s *value = writer_peek_idx(writer, len, i);
+        ASSERT(value && "Stack index out of range.");
+        if (value->type == FLEXI_TYPE_SINT || value->type == FLEXI_TYPE_UINT ||
+            value->type == FLEXI_TYPE_FLOAT) {
+            // Trivial.
+            min_width = MAX(min_width, value->width);
+        } else if (type_is_indirect(value->type)) {
+            // Get the current cursor position - we haven't written any data
+            // yet, so this will be pre-padding and pre-length.
+            flexi_ssize_t current;
+            if (!ostream_tell(&writer->ostream, &current)) {
+                return -1;
+            }
+
+            // Calculate an offset relative to the start of the array.
+            flexi_ssize_t start_offset = current - value->u.offset;
+
+            // The stride of the vector has to be large enough to contain
+            // the length of the vector and the offset *calculated from the
+            // position inside the array*.  Hold on to your hats...
+
+            int start_offset_width = UINT_WIDTH(start_offset);
+            int len_width = UINT_WIDTH(len);
+            int check_stride = MAX(min_width, start_offset_width);
+            check_stride = MAX(check_stride, len_width);
+
+            for (;;) {
+                // Estimate the final offset with the current checked width.
+                // We're accounting for vector's length prefix and one extra
+                // stride's worth of padding.
+                flexi_ssize_t offset = start_offset + (check_stride * (i + 2));
+                int offset_width = UINT_WIDTH(offset);
+                if (offset_width <= check_stride) {
+                    break;
+                }
+
+                check_stride <<= 1;
+                ASSERT(check_stride <= 8 &&
+                       "Vector stride calculation has gone sideways.");
+            }
+
+            min_width = MAX(min_width, check_stride);
+        }
+    }
+
+    return min_width;
+}
+
+/**
  * @brief Write out the values of a vector.
  *
  * @param[in] writer Writer to operate on.
  * @param[in] len Number of values to write.
  * @param[in] stride Number of bytes between values.
- * @return FLEXI_OK Successful write.
- * @return FLEXI_ERR_BADWRITE One or more values failed to write.
- * @return FLEXI_ERR_STREAM Encountered a non-writing problem with the stream.
+ * @return FLEXI_OK | FLEXI_ERR_BADWRITE | FLEXI_ERR_STREAM
  */
 static flexi_result_e
 write_vector_values(flexi_writer_s *writer, flexi_ssize_t len, int stride)
@@ -2127,6 +2282,29 @@ flexi_cursor_bool(const flexi_cursor_s *cursor, bool *val)
 
 /******************************************************************************/
 
+flexi_parser_s
+flexi_make_empty_parser()
+{
+    flexi_parser_s parser;
+    parser.null = &empty_parser_null;
+    parser.sint = &empty_parser_sint;
+    parser.uint = &empty_parser_uint;
+    parser.f32 = &empty_parser_f32;
+    parser.f64 = &empty_parser_f64;
+    parser.key = &empty_parser_key;
+    parser.string = &empty_parser_string;
+    parser.map_begin = &empty_parser_map_vector_begin;
+    parser.map_end = &empty_parser_map_vector_end;
+    parser.vector_begin = &empty_parser_map_vector_begin;
+    parser.vector_end = &empty_parser_map_vector_end;
+    parser.typed_vector = &empty_parser_typed_vector;
+    parser.blob = &empty_parser_blob;
+    parser.boolean = &empty_parser_boolean;
+    return parser;
+}
+
+/******************************************************************************/
+
 flexi_result_e
 flexi_parse_cursor(const flexi_parser_s *parser, const flexi_cursor_s *cursor,
     void *user)
@@ -2138,7 +2316,7 @@ flexi_parse_cursor(const flexi_parser_s *parser, const flexi_cursor_s *cursor,
 /******************************************************************************/
 
 flexi_result_e
-flexi_write_null_keyed(flexi_writer_s *writer, const char *k)
+flexi_write_null(flexi_writer_s *writer, const char *key)
 {
     if (FLEXI_ERROR(writer->err)) {
         return FLEXI_ERR_FAILSAFE;
@@ -2152,7 +2330,7 @@ flexi_write_null_keyed(flexi_writer_s *writer, const char *k)
     }
 
     stack->u.u64 = 0;
-    stack->key = k;
+    stack->key = key;
     stack->type = FLEXI_TYPE_NULL;
     stack->width = 1;
     return FLEXI_OK;
@@ -2161,7 +2339,7 @@ flexi_write_null_keyed(flexi_writer_s *writer, const char *k)
 /******************************************************************************/
 
 flexi_result_e
-flexi_write_sint_keyed(flexi_writer_s *writer, const char *k, int64_t v)
+flexi_write_sint(flexi_writer_s *writer, const char *key, int64_t v)
 {
     if (FLEXI_ERROR(writer->err)) {
         return FLEXI_ERR_FAILSAFE;
@@ -2175,7 +2353,7 @@ flexi_write_sint_keyed(flexi_writer_s *writer, const char *k, int64_t v)
     }
 
     stack->u.u64 = v;
-    stack->key = k;
+    stack->key = key;
     stack->type = FLEXI_TYPE_SINT;
     stack->width = SINT_WIDTH(v);
     return FLEXI_OK;
@@ -2184,7 +2362,7 @@ flexi_write_sint_keyed(flexi_writer_s *writer, const char *k, int64_t v)
 /******************************************************************************/
 
 flexi_result_e
-flexi_write_uint_keyed(flexi_writer_s *writer, const char *k, uint64_t v)
+flexi_write_uint(flexi_writer_s *writer, const char *key, uint64_t v)
 {
     if (FLEXI_ERROR(writer->err)) {
         return FLEXI_ERR_FAILSAFE;
@@ -2198,7 +2376,7 @@ flexi_write_uint_keyed(flexi_writer_s *writer, const char *k, uint64_t v)
     }
 
     stack->u.u64 = v;
-    stack->key = k;
+    stack->key = key;
     stack->type = FLEXI_TYPE_UINT;
     stack->width = UINT_WIDTH(v);
     return FLEXI_OK;
@@ -2207,7 +2385,7 @@ flexi_write_uint_keyed(flexi_writer_s *writer, const char *k, uint64_t v)
 /******************************************************************************/
 
 flexi_result_e
-flexi_write_f32_keyed(flexi_writer_s *writer, const char *k, float v)
+flexi_write_f32(flexi_writer_s *writer, const char *key, float v)
 {
     if (FLEXI_ERROR(writer->err)) {
         return FLEXI_ERR_FAILSAFE;
@@ -2221,7 +2399,7 @@ flexi_write_f32_keyed(flexi_writer_s *writer, const char *k, float v)
     }
 
     stack->u.f32 = v;
-    stack->key = k;
+    stack->key = key;
     stack->type = FLEXI_TYPE_FLOAT;
     stack->width = sizeof(float);
     return FLEXI_OK;
@@ -2230,7 +2408,7 @@ flexi_write_f32_keyed(flexi_writer_s *writer, const char *k, float v)
 /******************************************************************************/
 
 flexi_result_e
-flexi_write_f64_keyed(flexi_writer_s *writer, const char *k, double v)
+flexi_write_f64(flexi_writer_s *writer, const char *key, double v)
 {
     if (FLEXI_ERROR(writer->err)) {
         return FLEXI_ERR_FAILSAFE;
@@ -2244,7 +2422,7 @@ flexi_write_f64_keyed(flexi_writer_s *writer, const char *k, double v)
     }
 
     stack->u.f64 = v;
-    stack->key = k;
+    stack->key = key;
     stack->type = FLEXI_TYPE_FLOAT;
     stack->width = sizeof(double);
     return FLEXI_OK;
@@ -2253,14 +2431,59 @@ flexi_write_f64_keyed(flexi_writer_s *writer, const char *k, double v)
 /******************************************************************************/
 
 flexi_result_e
-flexi_write_string_keyed(flexi_writer_s *writer, const char *k, const char *str)
+flexi_write_key(flexi_writer_s *writer, const char *str)
+{
+    return flexi_write_keyed_key(writer, NULL, str);
+}
+
+/******************************************************************************/
+
+flexi_result_e
+flexi_write_keyed_key(flexi_writer_s *writer, const char *key, const char *str)
+{
+    if (FLEXI_ERROR(writer->err)) {
+        return FLEXI_ERR_FAILSAFE;
+    }
+
+    // Keep track of string starting position.
+    flexi_ssize_t offset;
+    if (!ostream_tell(&writer->ostream, &offset)) {
+        writer->err = FLEXI_ERR_STREAM;
+        return writer->err;
+    }
+
+    // Write the string, plus the trailing '\0'.
+    flexi_ssize_t len = strlen(str);
+    if (!ostream_write(&writer->ostream, str, len + 1)) {
+        writer->err = FLEXI_ERR_BADWRITE;
+        return writer->err;
+    }
+
+    // Push offset to the stack.
+    flexi_value_s *stack = writer_push(writer);
+    if (!stack) {
+        writer->err = FLEXI_ERR_BADSTACK;
+        return writer->err;
+    }
+
+    stack->u.offset = offset;
+    stack->key = key;
+    stack->type = FLEXI_TYPE_KEY;
+    stack->width = 0;
+    return FLEXI_OK;
+}
+
+/******************************************************************************/
+
+flexi_result_e
+flexi_write_string(flexi_writer_s *writer, const char *key, const char *str,
+    size_t len)
 {
     if (FLEXI_ERROR(writer->err)) {
         return FLEXI_ERR_FAILSAFE;
     }
 
     // Write the string length to stream.
-    flexi_ssize_t len = strlen(str);
     int width = UINT_WIDTH(len);
     if (!write_uint_by_width(writer, len, width)) {
         writer->err = FLEXI_ERR_BADWRITE;
@@ -2288,7 +2511,7 @@ flexi_write_string_keyed(flexi_writer_s *writer, const char *k, const char *str)
     }
 
     stack->u.offset = offset;
-    stack->key = k;
+    stack->key = key;
     stack->type = FLEXI_TYPE_STRING;
     stack->width = width;
     return FLEXI_OK;
@@ -2297,45 +2520,15 @@ flexi_write_string_keyed(flexi_writer_s *writer, const char *k, const char *str)
 /******************************************************************************/
 
 flexi_result_e
-flexi_write_key_keyed(flexi_writer_s *writer, const char *k, const char *str)
+flexi_write_strlen(flexi_writer_s *writer, const char *key, const char *str)
 {
-    if (FLEXI_ERROR(writer->err)) {
-        return FLEXI_ERR_FAILSAFE;
-    }
-
-    // Keep track of string starting position.
-    flexi_ssize_t offset;
-    if (!ostream_tell(&writer->ostream, &offset)) {
-        writer->err = FLEXI_ERR_STREAM;
-        return writer->err;
-    }
-
-    // Write the string, plus the trailing '\0'.
-    flexi_ssize_t len = strlen(str);
-    if (!ostream_write(&writer->ostream, str, len + 1)) {
-        writer->err = FLEXI_ERR_BADWRITE;
-        return writer->err;
-    }
-
-    // Push offset to the stack.
-    flexi_value_s *stack = writer_push(writer);
-    if (!stack) {
-        writer->err = FLEXI_ERR_BADSTACK;
-        return writer->err;
-    }
-
-    stack->u.offset = offset;
-    stack->key = k;
-    stack->type = FLEXI_TYPE_KEY;
-    stack->width = 0;
-    return FLEXI_OK;
+    return flexi_write_string(writer, key, str, strlen(str));
 }
 
 /******************************************************************************/
 
 flexi_result_e
-flexi_write_indirect_sint_keyed(flexi_writer_s *writer, const char *k,
-    int64_t v)
+flexi_write_indirect_sint(flexi_writer_s *writer, const char *key, int64_t v)
 {
     if (FLEXI_ERROR(writer->err)) {
         return FLEXI_ERR_FAILSAFE;
@@ -2364,7 +2557,7 @@ flexi_write_indirect_sint_keyed(flexi_writer_s *writer, const char *k,
     }
 
     stack->u.offset = offset;
-    stack->key = k;
+    stack->key = key;
     stack->type = FLEXI_TYPE_INDIRECT_SINT;
     stack->width = width;
     return FLEXI_OK;
@@ -2373,8 +2566,7 @@ flexi_write_indirect_sint_keyed(flexi_writer_s *writer, const char *k,
 /******************************************************************************/
 
 flexi_result_e
-flexi_write_indirect_uint_keyed(flexi_writer_s *writer, const char *k,
-    uint64_t v)
+flexi_write_indirect_uint(flexi_writer_s *writer, const char *key, uint64_t v)
 {
     if (FLEXI_ERROR(writer->err)) {
         return FLEXI_ERR_FAILSAFE;
@@ -2403,7 +2595,7 @@ flexi_write_indirect_uint_keyed(flexi_writer_s *writer, const char *k,
     }
 
     stack->u.offset = offset;
-    stack->key = k;
+    stack->key = key;
     stack->type = FLEXI_TYPE_INDIRECT_UINT;
     stack->width = width;
     return FLEXI_OK;
@@ -2412,7 +2604,7 @@ flexi_write_indirect_uint_keyed(flexi_writer_s *writer, const char *k,
 /******************************************************************************/
 
 flexi_result_e
-flexi_write_indirect_f32_keyed(flexi_writer_s *writer, const char *k, float v)
+flexi_write_indirect_f32(flexi_writer_s *writer, const char *key, float v)
 {
     if (FLEXI_ERROR(writer->err)) {
         return FLEXI_ERR_FAILSAFE;
@@ -2439,7 +2631,7 @@ flexi_write_indirect_f32_keyed(flexi_writer_s *writer, const char *k, float v)
     }
 
     stack->u.offset = offset;
-    stack->key = k;
+    stack->key = key;
     stack->type = FLEXI_TYPE_INDIRECT_FLOAT;
     stack->width = sizeof(float);
     return FLEXI_OK;
@@ -2448,7 +2640,7 @@ flexi_write_indirect_f32_keyed(flexi_writer_s *writer, const char *k, float v)
 /******************************************************************************/
 
 flexi_result_e
-flexi_write_indirect_f64_keyed(flexi_writer_s *writer, const char *k, double v)
+flexi_write_indirect_f64(flexi_writer_s *writer, const char *key, double v)
 {
     if (FLEXI_ERROR(writer->err)) {
         return FLEXI_ERR_FAILSAFE;
@@ -2475,7 +2667,7 @@ flexi_write_indirect_f64_keyed(flexi_writer_s *writer, const char *k, double v)
     }
 
     stack->u.offset = offset;
-    stack->key = k;
+    stack->key = key;
     stack->type = FLEXI_TYPE_INDIRECT_FLOAT;
     stack->width = sizeof(double);
     return FLEXI_OK;
@@ -2564,7 +2756,7 @@ flexi_write_map_keys(flexi_writer_s *writer, flexi_ssize_t len,
 /******************************************************************************/
 
 flexi_result_e
-flexi_write_map_keyed(flexi_writer_s *writer, const char *k,
+flexi_write_map(flexi_writer_s *writer, const char *key,
     flexi_stack_idx_t keyset, flexi_ssize_t len, flexi_width_e stride)
 {
     if (FLEXI_ERROR(writer->err)) {
@@ -2640,7 +2832,7 @@ flexi_write_map_keyed(flexi_writer_s *writer, const char *k,
     ASSERT(stack && "Stack is in invalid state.");
 
     stack->u.offset = values_offset;
-    stack->key = k;
+    stack->key = key;
     stack->type = FLEXI_TYPE_MAP;
     stack->width = stride_bytes;
     return FLEXI_OK;
@@ -2649,14 +2841,20 @@ flexi_write_map_keyed(flexi_writer_s *writer, const char *k,
 /******************************************************************************/
 
 flexi_result_e
-flexi_write_vector_keyed(flexi_writer_s *writer, const char *k,
-    flexi_ssize_t len, flexi_width_e stride)
+flexi_write_vector(flexi_writer_s *writer, const char *key, flexi_ssize_t len,
+    flexi_width_e stride)
 {
     if (FLEXI_ERROR(writer->err)) {
         return FLEXI_ERR_FAILSAFE;
     }
 
+    // The stride the developer passed in might not be wide enough to contain
+    // all of the values.  Calculate a minimum stride.
+    int min_stride_bytes = writer_vector_calc_min_stride(writer, len);
+
+    // Take the larger of our calculation vs. parameter.
     int stride_bytes = WIDTH_TO_BYTES(stride);
+    stride_bytes = MAX(stride_bytes, min_stride_bytes);
 
     // Align future writes to the nearest multiple.
     flexi_ssize_t offset;
@@ -2694,7 +2892,7 @@ flexi_write_vector_keyed(flexi_writer_s *writer, const char *k,
     // Push vector.
     flexi_value_s *stack = writer_push(writer);
     stack->u.offset = offset;
-    stack->key = k;
+    stack->key = key;
     stack->type = FLEXI_TYPE_VECTOR;
     stack->width = stride_bytes;
     return FLEXI_OK;
@@ -2703,7 +2901,7 @@ flexi_write_vector_keyed(flexi_writer_s *writer, const char *k,
 /******************************************************************************/
 
 flexi_result_e
-flexi_write_typed_vector_sint_keyed(flexi_writer_s *writer, const char *k,
+flexi_write_typed_vector_sint(flexi_writer_s *writer, const char *key,
     const void *ptr, flexi_width_e stride, flexi_ssize_t len)
 {
     if (FLEXI_ERROR(writer->err)) {
@@ -2729,7 +2927,7 @@ flexi_write_typed_vector_sint_keyed(flexi_writer_s *writer, const char *k,
 
         flexi_value_s *stack = writer_push(writer);
         stack->u.offset = offset;
-        stack->key = k;
+        stack->key = key;
         stack->type = len == 2   ? FLEXI_TYPE_VECTOR_SINT2
                       : len == 3 ? FLEXI_TYPE_VECTOR_SINT3
                                  : FLEXI_TYPE_VECTOR_SINT4;
@@ -2757,7 +2955,7 @@ flexi_write_typed_vector_sint_keyed(flexi_writer_s *writer, const char *k,
 
         flexi_value_s *stack = writer_push(writer);
         stack->u.offset = offset;
-        stack->key = k;
+        stack->key = key;
         stack->type = FLEXI_TYPE_VECTOR_SINT;
         stack->width = stride_bytes;
         return FLEXI_OK;
@@ -2767,7 +2965,7 @@ flexi_write_typed_vector_sint_keyed(flexi_writer_s *writer, const char *k,
 /******************************************************************************/
 
 flexi_result_e
-flexi_write_typed_vector_uint_keyed(flexi_writer_s *writer, const char *k,
+flexi_write_typed_vector_uint(flexi_writer_s *writer, const char *key,
     const void *ptr, flexi_width_e stride, flexi_ssize_t len)
 {
     if (FLEXI_ERROR(writer->err)) {
@@ -2793,7 +2991,7 @@ flexi_write_typed_vector_uint_keyed(flexi_writer_s *writer, const char *k,
 
         flexi_value_s *stack = writer_push(writer);
         stack->u.offset = offset;
-        stack->key = k;
+        stack->key = key;
         stack->type = len == 2   ? FLEXI_TYPE_VECTOR_UINT2
                       : len == 3 ? FLEXI_TYPE_VECTOR_UINT3
                                  : FLEXI_TYPE_VECTOR_UINT4;
@@ -2821,7 +3019,7 @@ flexi_write_typed_vector_uint_keyed(flexi_writer_s *writer, const char *k,
 
         flexi_value_s *stack = writer_push(writer);
         stack->u.offset = offset;
-        stack->key = k;
+        stack->key = key;
         stack->type = FLEXI_TYPE_VECTOR_UINT;
         stack->width = stride_bytes;
         return FLEXI_OK;
@@ -2830,7 +3028,7 @@ flexi_write_typed_vector_uint_keyed(flexi_writer_s *writer, const char *k,
 /******************************************************************************/
 
 flexi_result_e
-flexi_write_typed_vector_flt_keyed(flexi_writer_s *writer, const char *k,
+flexi_write_typed_vector_flt(flexi_writer_s *writer, const char *key,
     const void *ptr, flexi_width_e stride, flexi_ssize_t len)
 {
     if (FLEXI_ERROR(writer->err)) {
@@ -2859,7 +3057,7 @@ flexi_write_typed_vector_flt_keyed(flexi_writer_s *writer, const char *k,
 
         flexi_value_s *stack = writer_push(writer);
         stack->u.offset = offset;
-        stack->key = k;
+        stack->key = key;
         stack->type = len == 2   ? FLEXI_TYPE_VECTOR_FLOAT2
                       : len == 3 ? FLEXI_TYPE_VECTOR_FLOAT3
                                  : FLEXI_TYPE_VECTOR_FLOAT4;
@@ -2887,7 +3085,7 @@ flexi_write_typed_vector_flt_keyed(flexi_writer_s *writer, const char *k,
 
         flexi_value_s *stack = writer_push(writer);
         stack->u.offset = offset;
-        stack->key = k;
+        stack->key = key;
         stack->type = FLEXI_TYPE_VECTOR_FLOAT;
         stack->width = stride_bytes;
         return FLEXI_OK;
@@ -2897,7 +3095,7 @@ flexi_write_typed_vector_flt_keyed(flexi_writer_s *writer, const char *k,
 /******************************************************************************/
 
 flexi_result_e
-flexi_write_blob_keyed(flexi_writer_s *writer, const char *k, const void *ptr,
+flexi_write_blob(flexi_writer_s *writer, const char *key, const void *ptr,
     flexi_ssize_t len, int align)
 {
     if (FLEXI_ERROR(writer->err)) {
@@ -2933,7 +3131,7 @@ flexi_write_blob_keyed(flexi_writer_s *writer, const char *k, const void *ptr,
     }
 
     stack->u.offset = offset;
-    stack->key = k;
+    stack->key = key;
     stack->type = FLEXI_TYPE_BLOB;
     stack->width = len_width;
     return FLEXI_OK;
@@ -2942,7 +3140,7 @@ flexi_write_blob_keyed(flexi_writer_s *writer, const char *k, const void *ptr,
 /******************************************************************************/
 
 flexi_result_e
-flexi_write_bool_keyed(flexi_writer_s *writer, const char *k, bool v)
+flexi_write_bool(flexi_writer_s *writer, const char *key, bool v)
 {
     if (FLEXI_ERROR(writer->err)) {
         return FLEXI_ERR_FAILSAFE;
@@ -2956,7 +3154,7 @@ flexi_write_bool_keyed(flexi_writer_s *writer, const char *k, bool v)
     }
 
     stack->u.u64 = v;
-    stack->key = k;
+    stack->key = key;
     stack->type = FLEXI_TYPE_BOOL;
     stack->width = 1;
     return FLEXI_OK;
@@ -2965,7 +3163,7 @@ flexi_write_bool_keyed(flexi_writer_s *writer, const char *k, bool v)
 /******************************************************************************/
 
 flexi_result_e
-flexi_write_typed_vector_bool_keyed(flexi_writer_s *writer, const char *k,
+flexi_write_typed_vector_bool(flexi_writer_s *writer, const char *key,
     const bool *ptr, flexi_ssize_t len)
 {
     if (FLEXI_ERROR(writer->err)) {
@@ -2993,7 +3191,7 @@ flexi_write_typed_vector_bool_keyed(flexi_writer_s *writer, const char *k,
 
     flexi_value_s *stack = writer_push(writer);
     stack->u.offset = offset;
-    stack->key = k;
+    stack->key = key;
     stack->type = FLEXI_TYPE_VECTOR_FLOAT;
     stack->width = sizeof(bool);
     return FLEXI_OK;

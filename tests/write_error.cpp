@@ -27,38 +27,33 @@ TEST(WriteError, FailSafe)
     flexi_writer_s writer{};
     writer.err = FLEXI_ERR_INTERNAL;
 
-    EXPECT_EQ(FLEXI_ERR_FAILSAFE, flexi_write_null_keyed(&writer, NULL));
-    EXPECT_EQ(FLEXI_ERR_FAILSAFE, flexi_write_sint_keyed(&writer, NULL, 0));
-    EXPECT_EQ(FLEXI_ERR_FAILSAFE, flexi_write_uint_keyed(&writer, NULL, 0));
-    EXPECT_EQ(FLEXI_ERR_FAILSAFE, flexi_write_f32_keyed(&writer, NULL, 0));
-    EXPECT_EQ(FLEXI_ERR_FAILSAFE, flexi_write_f64_keyed(&writer, NULL, 0));
-    EXPECT_EQ(FLEXI_ERR_FAILSAFE, flexi_write_key_keyed(&writer, NULL, 0));
-    EXPECT_EQ(FLEXI_ERR_FAILSAFE, flexi_write_string_keyed(&writer, NULL, ""));
-    EXPECT_EQ(FLEXI_ERR_FAILSAFE,
-        flexi_write_indirect_sint_keyed(&writer, NULL, 0));
-    EXPECT_EQ(FLEXI_ERR_FAILSAFE,
-        flexi_write_indirect_uint_keyed(&writer, NULL, 0));
-    EXPECT_EQ(FLEXI_ERR_FAILSAFE,
-        flexi_write_indirect_f32_keyed(&writer, NULL, 0));
-    EXPECT_EQ(FLEXI_ERR_FAILSAFE,
-        flexi_write_indirect_f64_keyed(&writer, NULL, 0));
+    EXPECT_EQ(FLEXI_ERR_FAILSAFE, flexi_write_null(&writer, NULL));
+    EXPECT_EQ(FLEXI_ERR_FAILSAFE, flexi_write_sint(&writer, NULL, 0));
+    EXPECT_EQ(FLEXI_ERR_FAILSAFE, flexi_write_uint(&writer, NULL, 0));
+    EXPECT_EQ(FLEXI_ERR_FAILSAFE, flexi_write_f32(&writer, NULL, 0));
+    EXPECT_EQ(FLEXI_ERR_FAILSAFE, flexi_write_f64(&writer, NULL, 0));
+    EXPECT_EQ(FLEXI_ERR_FAILSAFE, flexi_write_key(&writer, ""));
+    EXPECT_EQ(FLEXI_ERR_FAILSAFE, flexi_write_strlen(&writer, NULL, ""));
+    EXPECT_EQ(FLEXI_ERR_FAILSAFE, flexi_write_indirect_sint(&writer, NULL, 0));
+    EXPECT_EQ(FLEXI_ERR_FAILSAFE, flexi_write_indirect_uint(&writer, NULL, 0));
+    EXPECT_EQ(FLEXI_ERR_FAILSAFE, flexi_write_indirect_f32(&writer, NULL, 0));
+    EXPECT_EQ(FLEXI_ERR_FAILSAFE, flexi_write_indirect_f64(&writer, NULL, 0));
     EXPECT_EQ(FLEXI_ERR_FAILSAFE,
         flexi_write_map_keys(&writer, 0, FLEXI_WIDTH_1B, NULL));
     EXPECT_EQ(FLEXI_ERR_FAILSAFE,
-        flexi_write_map_keyed(&writer, NULL, 0, 0, FLEXI_WIDTH_1B));
+        flexi_write_map(&writer, NULL, 0, 0, FLEXI_WIDTH_1B));
     EXPECT_EQ(FLEXI_ERR_FAILSAFE,
-        flexi_write_vector_keyed(&writer, NULL, 0, FLEXI_WIDTH_1B));
-    EXPECT_EQ(FLEXI_ERR_FAILSAFE, flexi_write_typed_vector_sint_keyed(&writer,
-                                      NULL, NULL, FLEXI_WIDTH_1B, 0));
-    EXPECT_EQ(FLEXI_ERR_FAILSAFE, flexi_write_typed_vector_uint_keyed(&writer,
-                                      NULL, NULL, FLEXI_WIDTH_1B, 0));
-    EXPECT_EQ(FLEXI_ERR_FAILSAFE, flexi_write_typed_vector_flt_keyed(&writer,
-                                      NULL, NULL, FLEXI_WIDTH_1B, 0));
+        flexi_write_vector(&writer, NULL, 0, FLEXI_WIDTH_1B));
     EXPECT_EQ(FLEXI_ERR_FAILSAFE,
-        flexi_write_blob_keyed(&writer, NULL, NULL, 0, 1));
+        flexi_write_typed_vector_sint(&writer, NULL, NULL, FLEXI_WIDTH_1B, 0));
+    EXPECT_EQ(FLEXI_ERR_FAILSAFE,
+        flexi_write_typed_vector_uint(&writer, NULL, NULL, FLEXI_WIDTH_1B, 0));
+    EXPECT_EQ(FLEXI_ERR_FAILSAFE,
+        flexi_write_typed_vector_flt(&writer, NULL, NULL, FLEXI_WIDTH_1B, 0));
+    EXPECT_EQ(FLEXI_ERR_FAILSAFE, flexi_write_blob(&writer, NULL, NULL, 0, 1));
 
-    EXPECT_EQ(FLEXI_ERR_FAILSAFE, flexi_write_bool_keyed(&writer, NULL, false));
+    EXPECT_EQ(FLEXI_ERR_FAILSAFE, flexi_write_bool(&writer, NULL, false));
     EXPECT_EQ(FLEXI_ERR_FAILSAFE,
-        flexi_write_typed_vector_bool_keyed(&writer, NULL, NULL, 0));
+        flexi_write_typed_vector_bool(&writer, NULL, NULL, 0));
     EXPECT_EQ(FLEXI_ERR_FAILSAFE, flexi_write_finalize(&writer));
 }
