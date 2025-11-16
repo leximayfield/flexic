@@ -46,7 +46,7 @@ TestOneInput(flexi_result_e ex_result, const std::vector<uint8_t> &data)
         [](void *) {},
         [](const char *, flexi_ssize_t, void *) {},
         [](void *) {},
-        [](const char *, const void *, flexi_ssize_t, flexi_type_e, int,
+        [](const char *, const void *, flexi_type_e, int, flexi_ssize_t,
             void *) {},
         [](const char *, const void *, flexi_ssize_t, void *) {},
         [](const char *, bool, void *) {},

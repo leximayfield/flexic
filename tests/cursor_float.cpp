@@ -126,7 +126,8 @@ TEST(CursorFloat, String_PiValue32)
     GetCursorPiValue32(cursor);
 
     const char *v = nullptr;
-    ASSERT_EQ(FLEXI_ERR_BADTYPE, flexi_cursor_string(&cursor, &v));
+    flexi_ssize_t len = -1;
+    ASSERT_EQ(FLEXI_ERR_BADTYPE, flexi_cursor_string(&cursor, &v, &len));
     ASSERT_STREQ("", v);
 }
 
@@ -136,8 +137,16 @@ TEST(CursorFloat, TypedVectorData_PiValue32)
     GetCursorPiValue32(cursor);
 
     const void *v = nullptr;
-    ASSERT_EQ(FLEXI_ERR_BADTYPE, flexi_cursor_typed_vector_data(&cursor, &v));
-    ASSERT_STREQ("", static_cast<const char *>(v));
+    flexi_type_e t = FLEXI_TYPE_NULL;
+    int s = -1;
+    flexi_ssize_t c = -1;
+
+    ASSERT_EQ(FLEXI_ERR_BADTYPE,
+        flexi_cursor_typed_vector_data(&cursor, &v, &t, &s, &c));
+    ASSERT_EQ(0.0, *static_cast<const double *>(v));
+    ASSERT_EQ(FLEXI_TYPE_INVALID, t);
+    ASSERT_EQ(0, s);
+    ASSERT_EQ(0, c);
 }
 
 TEST(CursorFloat, VectorTypes_PiValue32)
@@ -147,7 +156,7 @@ TEST(CursorFloat, VectorTypes_PiValue32)
 
     const flexi_packed_t *v = nullptr;
     ASSERT_EQ(FLEXI_ERR_BADTYPE, flexi_cursor_vector_types(&cursor, &v));
-    ASSERT_EQ(nullptr, v);
+    ASSERT_EQ(FLEXI_TYPE_NULL, FLEXI_UNPACK_TYPE(*v));
 }
 
 TEST(CursorFloat, Blob_PiValue32)
@@ -156,8 +165,9 @@ TEST(CursorFloat, Blob_PiValue32)
     GetCursorPiValue32(cursor);
 
     const uint8_t *v = nullptr;
-    ASSERT_EQ(FLEXI_ERR_BADTYPE, flexi_cursor_blob(&cursor, &v));
-    ASSERT_STREQ("", reinterpret_cast<const char *>(v));
+    flexi_ssize_t len = -1;
+    ASSERT_EQ(FLEXI_ERR_BADTYPE, flexi_cursor_blob(&cursor, &v, &len));
+    ASSERT_EQ(0, *v);
 }
 
 TEST(CursorFloat, Bool_PiValue32)
@@ -265,8 +275,10 @@ TEST(CursorFloat, String_PiValue64)
     GetCursorPiValue64(cursor);
 
     const char *v = nullptr;
-    ASSERT_EQ(FLEXI_ERR_BADTYPE, flexi_cursor_string(&cursor, &v));
+    flexi_ssize_t len = -1;
+    ASSERT_EQ(FLEXI_ERR_BADTYPE, flexi_cursor_string(&cursor, &v, &len));
     ASSERT_STREQ("", v);
+    ASSERT_EQ(0, len);
 }
 
 TEST(CursorFloat, TypedVectorData_PiValue64)
@@ -275,8 +287,16 @@ TEST(CursorFloat, TypedVectorData_PiValue64)
     GetCursorPiValue64(cursor);
 
     const void *v = nullptr;
-    ASSERT_EQ(FLEXI_ERR_BADTYPE, flexi_cursor_typed_vector_data(&cursor, &v));
-    ASSERT_STREQ("", static_cast<const char *>(v));
+    flexi_type_e t = FLEXI_TYPE_NULL;
+    int s = -1;
+    flexi_ssize_t c = -1;
+
+    ASSERT_EQ(FLEXI_ERR_BADTYPE,
+        flexi_cursor_typed_vector_data(&cursor, &v, &t, &s, &c));
+    ASSERT_EQ(0.0, *static_cast<const double *>(v));
+    ASSERT_EQ(FLEXI_TYPE_INVALID, t);
+    ASSERT_EQ(0, s);
+    ASSERT_EQ(0, c);
 }
 
 TEST(CursorFloat, VectorTypes_PiValue64)
@@ -286,7 +306,7 @@ TEST(CursorFloat, VectorTypes_PiValue64)
 
     const flexi_packed_t *v = nullptr;
     ASSERT_EQ(FLEXI_ERR_BADTYPE, flexi_cursor_vector_types(&cursor, &v));
-    ASSERT_EQ(nullptr, v);
+    ASSERT_EQ(FLEXI_TYPE_NULL, FLEXI_UNPACK_TYPE(*v));
 }
 
 TEST(CursorFloat, Blob_PiValue64)
@@ -295,7 +315,8 @@ TEST(CursorFloat, Blob_PiValue64)
     GetCursorPiValue64(cursor);
 
     const uint8_t *v = nullptr;
-    ASSERT_EQ(FLEXI_ERR_BADTYPE, flexi_cursor_blob(&cursor, &v));
+    flexi_ssize_t len = -1;
+    ASSERT_EQ(FLEXI_ERR_BADTYPE, flexi_cursor_blob(&cursor, &v, &len));
     ASSERT_STREQ("", reinterpret_cast<const char *>(v));
 }
 

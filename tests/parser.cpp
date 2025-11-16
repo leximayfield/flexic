@@ -76,9 +76,9 @@ struct vecend_s {};
 struct typedvec_s {
     const char *key = nullptr;
     const void *ptr = nullptr;
-    flexi_ssize_t len = 0;
     flexi_type_e type = FLEXI_TYPE_NULL;
     int width = 0;
+    flexi_ssize_t count = 0;
     void *user = nullptr;
 };
 
@@ -144,10 +144,10 @@ static constexpr flexi_parser_s g_parser{
         auto results = static_cast<Results *>(user);
         results->push_back(vecend_s{});
     },
-    [](const char *key, const void *ptr, flexi_ssize_t len, flexi_type_e type,
-        int width, void *user) {
+    [](const char *key, const void *ptr, flexi_type_e type, int width,
+        flexi_ssize_t count, void *user) {
         auto results = static_cast<Results *>(user);
-        results->push_back(typedvec_s{key, ptr, len, type, width, user});
+        results->push_back(typedvec_s{key, ptr, type, width, count, user});
     },
     [](const char *key, const void *ptr, flexi_ssize_t len, void *user) {
         auto results = static_cast<Results *>(user);
@@ -403,7 +403,7 @@ TEST(Parser, ParseTypedVectors)
         auto value = std::get_if<typedvec_s>(&results[i++]);
         ASSERT_NE(nullptr, value);
         ASSERT_STREQ("bool_vec", value->key);
-        ASSERT_EQ(2, value->len);
+        ASSERT_EQ(2, value->count);
         ASSERT_EQ(FLEXI_TYPE_VECTOR_BOOL, value->type);
         ASSERT_EQ(1, value->width);
 
@@ -416,12 +416,12 @@ TEST(Parser, ParseTypedVectors)
         auto value = std::get_if<typedvec_s>(&results[i++]);
         ASSERT_NE(nullptr, value);
         ASSERT_STREQ("sint_vec", value->key);
-        ASSERT_EQ(5, value->len);
+        ASSERT_EQ(5, value->count);
         ASSERT_EQ(FLEXI_TYPE_VECTOR_SINT, value->type);
         ASSERT_EQ(1, value->width);
 
         const int8_t *ptr = static_cast<const int8_t *>(value->ptr);
-        for (size_t i = 0; i < value->len; i++) {
+        for (flexi_ssize_t i = 0; i < value->count; i++) {
             ASSERT_EQ(i + 1, ptr[i]);
         }
     }
@@ -430,12 +430,12 @@ TEST(Parser, ParseTypedVectors)
         auto value = std::get_if<typedvec_s>(&results[i++]);
         ASSERT_NE(nullptr, value);
         ASSERT_STREQ("sint_vec2", value->key);
-        ASSERT_EQ(2, value->len);
+        ASSERT_EQ(2, value->count);
         ASSERT_EQ(FLEXI_TYPE_VECTOR_SINT2, value->type);
         ASSERT_EQ(1, value->width);
 
         const int8_t *ptr = static_cast<const int8_t *>(value->ptr);
-        for (size_t i = 0; i < value->len; i++) {
+        for (flexi_ssize_t i = 0; i < value->count; i++) {
             ASSERT_EQ(i + 1, ptr[i]);
         }
     }
@@ -444,12 +444,12 @@ TEST(Parser, ParseTypedVectors)
         auto value = std::get_if<typedvec_s>(&results[i++]);
         ASSERT_NE(nullptr, value);
         ASSERT_STREQ("sint_vec3", value->key);
-        ASSERT_EQ(3, value->len);
+        ASSERT_EQ(3, value->count);
         ASSERT_EQ(FLEXI_TYPE_VECTOR_SINT3, value->type);
         ASSERT_EQ(1, value->width);
 
         const int8_t *ptr = static_cast<const int8_t *>(value->ptr);
-        for (size_t i = 0; i < value->len; i++) {
+        for (flexi_ssize_t i = 0; i < value->count; i++) {
             ASSERT_EQ(i + 1, ptr[i]);
         }
     }
@@ -458,12 +458,12 @@ TEST(Parser, ParseTypedVectors)
         auto value = std::get_if<typedvec_s>(&results[i++]);
         ASSERT_NE(nullptr, value);
         ASSERT_STREQ("sint_vec4", value->key);
-        ASSERT_EQ(4, value->len);
+        ASSERT_EQ(4, value->count);
         ASSERT_EQ(FLEXI_TYPE_VECTOR_SINT4, value->type);
         ASSERT_EQ(1, value->width);
 
         const int8_t *ptr = static_cast<const int8_t *>(value->ptr);
-        for (size_t i = 0; i < value->len; i++) {
+        for (flexi_ssize_t i = 0; i < value->count; i++) {
             ASSERT_EQ(i + 1, ptr[i]);
         }
     }
@@ -472,12 +472,12 @@ TEST(Parser, ParseTypedVectors)
         auto value = std::get_if<typedvec_s>(&results[i++]);
         ASSERT_NE(nullptr, value);
         ASSERT_STREQ("uint_vec", value->key);
-        ASSERT_EQ(5, value->len);
+        ASSERT_EQ(5, value->count);
         ASSERT_EQ(FLEXI_TYPE_VECTOR_UINT, value->type);
         ASSERT_EQ(1, value->width);
 
         const int8_t *ptr = static_cast<const int8_t *>(value->ptr);
-        for (size_t i = 0; i < value->len; i++) {
+        for (flexi_ssize_t i = 0; i < value->count; i++) {
             ASSERT_EQ(i + 1, ptr[i]);
         }
     }
@@ -486,12 +486,12 @@ TEST(Parser, ParseTypedVectors)
         auto value = std::get_if<typedvec_s>(&results[i++]);
         ASSERT_NE(nullptr, value);
         ASSERT_STREQ("uint_vec2", value->key);
-        ASSERT_EQ(2, value->len);
+        ASSERT_EQ(2, value->count);
         ASSERT_EQ(FLEXI_TYPE_VECTOR_UINT2, value->type);
         ASSERT_EQ(1, value->width);
 
         const int8_t *ptr = static_cast<const int8_t *>(value->ptr);
-        for (size_t i = 0; i < value->len; i++) {
+        for (flexi_ssize_t i = 0; i < value->count; i++) {
             ASSERT_EQ(i + 1, ptr[i]);
         }
     }
@@ -500,12 +500,12 @@ TEST(Parser, ParseTypedVectors)
         auto value = std::get_if<typedvec_s>(&results[i++]);
         ASSERT_NE(nullptr, value);
         ASSERT_STREQ("uint_vec3", value->key);
-        ASSERT_EQ(3, value->len);
+        ASSERT_EQ(3, value->count);
         ASSERT_EQ(FLEXI_TYPE_VECTOR_UINT3, value->type);
         ASSERT_EQ(1, value->width);
 
         const int8_t *ptr = static_cast<const int8_t *>(value->ptr);
-        for (size_t i = 0; i < value->len; i++) {
+        for (flexi_ssize_t i = 0; i < value->count; i++) {
             ASSERT_EQ(i + 1, ptr[i]);
         }
     }
@@ -514,12 +514,12 @@ TEST(Parser, ParseTypedVectors)
         auto value = std::get_if<typedvec_s>(&results[i++]);
         ASSERT_NE(nullptr, value);
         ASSERT_STREQ("uint_vec4", value->key);
-        ASSERT_EQ(4, value->len);
+        ASSERT_EQ(4, value->count);
         ASSERT_EQ(FLEXI_TYPE_VECTOR_UINT4, value->type);
         ASSERT_EQ(1, value->width);
 
         const int8_t *ptr = static_cast<const int8_t *>(value->ptr);
-        for (size_t i = 0; i < value->len; i++) {
+        for (flexi_ssize_t i = 0; i < value->count; i++) {
             ASSERT_EQ(i + 1, ptr[i]);
         }
     }

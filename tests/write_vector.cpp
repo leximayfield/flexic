@@ -178,15 +178,18 @@ TEST_F(WriteFixture, VectorStringBlob)
     flexi_cursor_s vcursor{};
 
     const char *str = nullptr;
+    flexi_ssize_t len = -1;
     ASSERT_EQ(FLEXI_OK, flexi_cursor_seek_vector_index(&cursor, 0, &vcursor));
-    ASSERT_EQ(FLEXI_OK, flexi_cursor_string(&vcursor, &str));
     ASSERT_EQ(5, flexi_cursor_length(&vcursor));
+    ASSERT_EQ(FLEXI_OK, flexi_cursor_string(&vcursor, &str, &len));
+    ASSERT_EQ(5, len);
     ASSERT_STREQ(str, "xyzzy");
 
     const uint8_t *blob = nullptr;
     ASSERT_EQ(FLEXI_OK, flexi_cursor_seek_vector_index(&cursor, 1, &vcursor));
-    ASSERT_EQ(FLEXI_OK, flexi_cursor_blob(&vcursor, &blob));
+    ASSERT_EQ(FLEXI_OK, flexi_cursor_blob(&vcursor, &blob, &len));
     ASSERT_EQ(8, flexi_cursor_length(&vcursor));
+    ASSERT_EQ(8, len);
     for (size_t i = 0; i < std::size(BLOB); i++) {
         ASSERT_EQ(blob[i], BLOB[i]);
     }
@@ -232,15 +235,16 @@ TEST_F(WriteFixture, VectorAlignedBlob4)
     flexi_cursor_s vcursor{};
 
     const char *str = nullptr;
+    flexi_ssize_t len = -1;
     ASSERT_EQ(FLEXI_OK, flexi_cursor_seek_vector_index(&cursor, 0, &vcursor));
-    ASSERT_EQ(FLEXI_OK, flexi_cursor_string(&vcursor, &str));
-    ASSERT_EQ(5, flexi_cursor_length(&vcursor));
+    ASSERT_EQ(FLEXI_OK, flexi_cursor_string(&vcursor, &str, &len));
+    ASSERT_EQ(5, len);
     ASSERT_STREQ(str, "xyzzy");
 
     const uint8_t *blob = nullptr;
     ASSERT_EQ(FLEXI_OK, flexi_cursor_seek_vector_index(&cursor, 1, &vcursor));
-    ASSERT_EQ(FLEXI_OK, flexi_cursor_blob(&vcursor, &blob));
-    ASSERT_EQ(8, flexi_cursor_length(&vcursor));
+    ASSERT_EQ(FLEXI_OK, flexi_cursor_blob(&vcursor, &blob, &len));
+    ASSERT_EQ(8, len);
     for (size_t i = 0; i < std::size(BLOB); i++) {
         ASSERT_EQ(blob[i], BLOB[i]);
     }
@@ -286,15 +290,16 @@ TEST_F(WriteFixture, VectorAlignedBlob16)
     flexi_cursor_s vcursor{};
 
     const char *str = nullptr;
+    flexi_ssize_t len = -1;
     ASSERT_EQ(FLEXI_OK, flexi_cursor_seek_vector_index(&cursor, 0, &vcursor));
-    ASSERT_EQ(FLEXI_OK, flexi_cursor_string(&vcursor, &str));
-    ASSERT_EQ(5, flexi_cursor_length(&vcursor));
+    ASSERT_EQ(FLEXI_OK, flexi_cursor_string(&vcursor, &str, &len));
+    ASSERT_EQ(5, len);
     ASSERT_STREQ(str, "xyzzy");
 
     const uint8_t *blob = nullptr;
     ASSERT_EQ(FLEXI_OK, flexi_cursor_seek_vector_index(&cursor, 1, &vcursor));
-    ASSERT_EQ(FLEXI_OK, flexi_cursor_blob(&vcursor, &blob));
-    ASSERT_EQ(8, flexi_cursor_length(&vcursor));
+    ASSERT_EQ(FLEXI_OK, flexi_cursor_blob(&vcursor, &blob, &len));
+    ASSERT_EQ(8, len);
     for (size_t i = 0; i < std::size(BLOB); i++) {
         ASSERT_EQ(blob[i], BLOB[i]);
     }

@@ -170,7 +170,11 @@ TEST_P(WriteVecF32Fixture, WriteAndRead)
     ASSERT_EQ(ex_values.size(), flexi_cursor_length(&cursor));
 
     const void *out_ptr = nullptr;
-    ASSERT_EQ(FLEXI_OK, flexi_cursor_typed_vector_data(&cursor, &out_ptr));
+    flexi_type_e act_type = FLEXI_TYPE_INVALID;
+    int act_width = -1;
+    flexi_ssize_t act_count = -1;
+    ASSERT_EQ(FLEXI_OK, flexi_cursor_typed_vector_data(&cursor, &out_ptr,
+                            &act_type, &act_width, &act_count));
 
     auto out_values = static_cast<const float *>(out_ptr);
     for (size_t i = 0; i < ex_values.size(); i++) {
@@ -244,7 +248,11 @@ TEST_P(WriteVecF64Fixture, WriteAndRead)
     ASSERT_EQ(ex_values.size(), flexi_cursor_length(&cursor));
 
     const void *out_ptr = nullptr;
-    ASSERT_EQ(FLEXI_OK, flexi_cursor_typed_vector_data(&cursor, &out_ptr));
+    flexi_type_e act_type = FLEXI_TYPE_INVALID;
+    int act_width = -1;
+    flexi_ssize_t act_count = -1;
+    ASSERT_EQ(FLEXI_OK, flexi_cursor_typed_vector_data(&cursor, &out_ptr,
+                            &act_type, &act_width, &act_count));
 
     auto out_values = static_cast<const double *>(out_ptr);
     for (size_t i = 0; i < ex_values.size(); i++) {

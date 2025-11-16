@@ -110,8 +110,10 @@ TEST(CursorInt, String_Int64Pattern)
     GetCursorInt64Pattern(cursor);
 
     const char *v = nullptr;
-    ASSERT_EQ(FLEXI_ERR_BADTYPE, flexi_cursor_string(&cursor, &v));
+    flexi_ssize_t len = -1;
+    ASSERT_EQ(FLEXI_ERR_BADTYPE, flexi_cursor_string(&cursor, &v, &len));
     ASSERT_STREQ("", v);
+    ASSERT_EQ(0, len);
 }
 
 TEST(CursorInt, TypedVectorData_Int64Pattern)
@@ -120,8 +122,16 @@ TEST(CursorInt, TypedVectorData_Int64Pattern)
     GetCursorInt64Pattern(cursor);
 
     const void *v = nullptr;
-    ASSERT_EQ(FLEXI_ERR_BADTYPE, flexi_cursor_typed_vector_data(&cursor, &v));
-    ASSERT_STREQ("", static_cast<const char *>(v));
+    flexi_type_e t = FLEXI_TYPE_NULL;
+    int s = -1;
+    flexi_ssize_t c = -1;
+
+    ASSERT_EQ(FLEXI_ERR_BADTYPE,
+        flexi_cursor_typed_vector_data(&cursor, &v, &t, &s, &c));
+    ASSERT_EQ(0, *static_cast<const int64_t *>(v));
+    ASSERT_EQ(FLEXI_TYPE_INVALID, t);
+    ASSERT_EQ(0, s);
+    ASSERT_EQ(0, c);
 }
 
 TEST(CursorInt, VectorTypes_Int64Pattern)
@@ -131,7 +141,7 @@ TEST(CursorInt, VectorTypes_Int64Pattern)
 
     const flexi_packed_t *v = nullptr;
     ASSERT_EQ(FLEXI_ERR_BADTYPE, flexi_cursor_vector_types(&cursor, &v));
-    ASSERT_EQ(nullptr, v);
+    ASSERT_EQ(FLEXI_TYPE_NULL, FLEXI_UNPACK_TYPE(*v));
 }
 
 TEST(CursorInt, Blob_Int64Pattern)
@@ -140,8 +150,10 @@ TEST(CursorInt, Blob_Int64Pattern)
     GetCursorInt64Pattern(cursor);
 
     const uint8_t *v = nullptr;
-    ASSERT_EQ(FLEXI_ERR_BADTYPE, flexi_cursor_blob(&cursor, &v));
-    ASSERT_STREQ("", reinterpret_cast<const char *>(v));
+    flexi_ssize_t len = -1;
+    ASSERT_EQ(FLEXI_ERR_BADTYPE, flexi_cursor_blob(&cursor, &v, &len));
+    ASSERT_EQ(0x00, *v);
+    ASSERT_EQ(0, len);
 }
 
 TEST(CursorInt, Bool_Int64Pattern)
@@ -251,8 +263,10 @@ TEST(CursorInt, String_Uint64Pattern)
     GetCursorUint64Pattern(cursor);
 
     const char *v = nullptr;
-    ASSERT_EQ(FLEXI_ERR_BADTYPE, flexi_cursor_string(&cursor, &v));
+    flexi_ssize_t len = -1;
+    ASSERT_EQ(FLEXI_ERR_BADTYPE, flexi_cursor_string(&cursor, &v, &len));
     ASSERT_STREQ("", v);
+    ASSERT_EQ(0, len);
 }
 
 TEST(CursorInt, TypedVectorData_Uint64Pattern)
@@ -261,8 +275,16 @@ TEST(CursorInt, TypedVectorData_Uint64Pattern)
     GetCursorUint64Pattern(cursor);
 
     const void *v = nullptr;
-    ASSERT_EQ(FLEXI_ERR_BADTYPE, flexi_cursor_typed_vector_data(&cursor, &v));
-    ASSERT_STREQ("", static_cast<const char *>(v));
+    flexi_type_e t = FLEXI_TYPE_NULL;
+    int s = -1;
+    flexi_ssize_t c = -1;
+
+    ASSERT_EQ(FLEXI_ERR_BADTYPE,
+        flexi_cursor_typed_vector_data(&cursor, &v, &t, &s, &c));
+    ASSERT_EQ(0, *static_cast<const uint64_t *>(v));
+    ASSERT_EQ(FLEXI_TYPE_INVALID, t);
+    ASSERT_EQ(0, s);
+    ASSERT_EQ(0, c);
 }
 
 TEST(CursorInt, VectorTypes_Uint64Pattern)
@@ -272,7 +294,7 @@ TEST(CursorInt, VectorTypes_Uint64Pattern)
 
     const flexi_packed_t *v = nullptr;
     ASSERT_EQ(FLEXI_ERR_BADTYPE, flexi_cursor_vector_types(&cursor, &v));
-    ASSERT_EQ(nullptr, v);
+    ASSERT_EQ(FLEXI_TYPE_NULL, FLEXI_UNPACK_TYPE(*v));
 }
 
 TEST(CursorInt, Blob_Uint64Pattern)
@@ -281,8 +303,10 @@ TEST(CursorInt, Blob_Uint64Pattern)
     GetCursorUint64Pattern(cursor);
 
     const uint8_t *v = nullptr;
-    ASSERT_EQ(FLEXI_ERR_BADTYPE, flexi_cursor_blob(&cursor, &v));
-    ASSERT_STREQ("", reinterpret_cast<const char *>(v));
+    flexi_ssize_t len = -1;
+    ASSERT_EQ(FLEXI_ERR_BADTYPE, flexi_cursor_blob(&cursor, &v, &len));
+    ASSERT_EQ(0x00, *v);
+    ASSERT_EQ(0, len);
 }
 
 TEST(CursorInt, Bool_Uint64Pattern)

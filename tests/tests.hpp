@@ -134,15 +134,12 @@ protected:
 
     void SetUp() override
     {
-        m_writer.ostream.user = &m_actual;
-        m_writer.ostream.write = TestStream::WriteFunc;
-        m_writer.ostream.data_at = TestStream::DataAtFunc;
-        m_writer.ostream.tell = TestStream::TellFunc;
-        m_writer.stack.user = &m_stack;
-        m_writer.stack.at = TestStack::AtFunc;
-        m_writer.stack.count = TestStack::CountFunc;
-        m_writer.stack.push = TestStack::PushFunc;
-        m_writer.stack.pop = TestStack::PopFunc;
+        flexi_stack_s stack =
+            flexi_make_stack(TestStack::AtFunc, TestStack::CountFunc,
+                TestStack::PushFunc, TestStack::PopFunc, &m_stack);
+        flexi_ostream_s ostream = flexi_make_ostream(TestStream::WriteFunc,
+            TestStream::DataAtFunc, TestStream::TellFunc, &m_actual);
+        m_writer = flexi_make_writer(&stack, &ostream);
     }
 
     void AssertData(const std::vector<uint8_t> &expected)

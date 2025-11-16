@@ -122,8 +122,10 @@ typedef enum flexi_result_e {
     FLEXI_ERR_PARSELIMIT = -6,
 
     /**
-     * @brief A previous write failed, you cannot call another write function
-     *        if this happens.
+     * @brief For cursor operations, the cursor you attmpted to pass isn't
+     *        valid due to the failure of an earlier cursor operation.  For
+     *        write operations, the writer you attempted to pass is in an
+     *        invalid state due to an unrecoverable write error.
      */
     FLEXI_ERR_FAILSAFE = -7,
 
@@ -133,26 +135,21 @@ typedef enum flexi_result_e {
     FLEXI_ERR_BADSTACK = -8,
 
     /**
-     * @brief Attempting to write to the output stream failed.
+     * @brief An operation done on the output stream, usually a write, failed.
      */
     FLEXI_ERR_BADWRITE = -9,
-
-    /**
-     * @brief A non-write stream operation failed.
-     */
-    FLEXI_ERR_STREAM = -10,
 
     /**
      * @brief When creating a map, one of the values in the key array wasn't
      *        actually a key.
      */
-    FLEXI_ERR_NOTKEYS = -11,
+    FLEXI_ERR_NOTKEYS = -10,
 
     /**
      * @brief An internal precondition failed.  End users should never see
      *        this error - if you do, please file a bug.
      */
-    FLEXI_ERR_INTERNAL = -12,
+    FLEXI_ERR_INTERNAL = -11,
 } flexi_result_e;
 
 /**
@@ -164,12 +161,6 @@ typedef enum flexi_result_e {
  * @brief Macro which checks for any error.
  */
 #define FLEXI_ERROR(x) (FLEXI_INVALID > (x))
-
-/**
- * @brief A packed FlexBuffer type packs the width into the lower 2 bits
- *        and the wire type into the high 6 bits.
- */
-typedef uint8_t flexi_packed_t;
 
 /**
  * @brief Possible values for the low 2 bits of a packed type.
@@ -184,16 +175,16 @@ typedef enum flexi_width_e {
 /**
  * @brief Possible values for the high 6 bits of a packed type.
  *
- * @notes There are two types of values, direct and indirect.
+ * @note There are two types of values, direct and indirect.
  *
- *        When writing out vectors (and maps, which are similarly shaped),
- *        direct values are placed directly in the vector, while indirect
- *        values are stored at some point before the vector and are pointed
- *        to from inside the vector with an offset value.
+ *       When writing out vectors (and maps, which are similarly shaped),
+ *       direct values are placed directly in the vector, while indirect
+ *       values are stored at some point before the vector and are pointed
+ *       to from inside the vector with an offset value.
  *
- *        Thus, direct values are cache-friendly but waste space, while
- *        indirect values aren't as cache-friendly but can contain data that
- *        is much larger.
+ *       Thus, direct values are cache-friendly but waste space, while
+ *       indirect values aren't as cache-friendly but can contain data that
+ *       is much larger.
  */
 typedef enum flexi_type_e {
     /**
@@ -352,6 +343,32 @@ typedef enum flexi_type_e {
     FLEXI_TYPE_VECTOR_BOOL = 36,
 } flexi_type_e;
 
+/**
+ * @brief A packed FlexBuffer type packs the width into the lower 2 bits
+ *        and the wire type into the high 6 bits.
+ */
+typedef uint8_t flexi_packed_t;
+
+/**
+ * @brief Extract underlying type enum from packed type.
+ */
+#define FLEXI_UNPACK_TYPE(packed) ((flexi_type_e)(packed >> 2))
+
+/**
+ * @brief Extract underlying width enum from packed type.
+ */
+#define FLEXI_UNPACK_WIDTH(packed) ((flexi_width_e)(packed & 0x03))
+
+/**
+ * @brief Convert width enum to byte count integer.
+ */
+#define FLEXI_WIDTH_TO_BYTES(width) ((int)(1 << width))
+
+/**
+ * @brief Error type sentinal value, used by flexi_cursor_s.
+ */
+extern const flexi_type_e FLEXI_TYPE_INVALID;
+
 typedef struct flexi_buffer_s {
     const char *data;
     flexi_ssize_t length;
@@ -364,15 +381,37 @@ typedef struct flexi_cursor_s {
     int width;
 } flexi_cursor_s;
 
+/**
+ * @brief Create a buffer from a void pointer/len.
+ */
 flexi_buffer_s
 flexi_make_buffer(const void *buffer, flexi_ssize_t len);
 
+/**
+ * @brief "Open" a buffer and seek to the root object.
+ *
+ * @param[in] buffer Buffer to open.
+ * @param[out] cursor Cursor pointing to root object.
+ * @return FLEXI_OK || FLEXI_ERR_BADREAD.
+ */
 flexi_result_e
 flexi_open_buffer(const flexi_buffer_s *buffer, flexi_cursor_s *cursor);
 
+/**
+ * @brief Obtain the type of the value pointed to by the cursor.
+ *
+ * @param[in] cursor Cursor to examine.
+ * @return Enumerated type of cursor, or FLEXI_TYPE_INVALID on error.
+ */
 flexi_type_e
 flexi_cursor_type(const flexi_cursor_s *cursor);
 
+/**
+ * @brief Obtain the width or stride of the value pointed to by the cursor.
+ *
+ * @param[in] cursor Cursor to examine.
+ * @return Width of cursor in bytes, or 0 on error.
+ */
 int
 flexi_cursor_width(const flexi_cursor_s *cursor);
 
@@ -392,7 +431,8 @@ flexi_cursor_length(const flexi_cursor_s *cursor);
  *
  * @param[in] cursor Cursor pointing to value to examine.
  * @param[out] val Obtained value.  Set to 0 on error.
- * @return FLEXI_OK | FLEXI_ERR_RANGE | FLEXI_ERR_BADTYPE | FLEXI_ERR_BADREAD
+ * @return FLEXI_OK || FLEXI_ERR_RANGE || FLEXI_ERR_BADTYPE ||
+ *         FLEXI_ERR_BADREAD.
  */
 flexi_result_e
 flexi_cursor_sint(const flexi_cursor_s *cursor, int64_t *val);
@@ -403,7 +443,8 @@ flexi_cursor_sint(const flexi_cursor_s *cursor, int64_t *val);
  *
  * @param[in] cursor Cursor pointing to value to examine.
  * @param[out] val Obtained value.  Set to 0 on error.
- * @return FLEXI_OK | FLEXI_ERR_RANGE | FLEXI_ERR_BADTYPE | FLEXI_ERR_BADREAD
+ * @return FLEXI_OK || FLEXI_ERR_RANGE || FLEXI_ERR_BADTYPE ||
+ *         FLEXI_ERR_BADREAD.
  */
 flexi_result_e
 flexi_cursor_uint(const flexi_cursor_s *cursor, uint64_t *val);
@@ -414,7 +455,7 @@ flexi_cursor_uint(const flexi_cursor_s *cursor, uint64_t *val);
  *
  * @param[in] cursor Cursor pointing to value to examine.
  * @param[out] val Obtained value.  Set to 0.0f on error.
- * @return FLEXI_OK | FLEXI_ERR_BADTYPE | FLEXI_ERR_BADREAD
+ * @return FLEXI_OK || FLEXI_ERR_BADTYPE || FLEXI_ERR_BADREAD.
  */
 flexi_result_e
 flexi_cursor_f32(const flexi_cursor_s *cursor, float *val);
@@ -425,7 +466,7 @@ flexi_cursor_f32(const flexi_cursor_s *cursor, float *val);
  *
  * @param[in] cursor Cursor pointing to value to examine.
  * @param[out] val Obtained value.  Set to 0.0 on error.
- * @return FLEXI_OK | FLEXI_ERR_BADTYPE | FLEXI_ERR_BADREAD
+ * @return FLEXI_OK || FLEXI_ERR_BADTYPE || FLEXI_ERR_BADREAD.
  */
 flexi_result_e
 flexi_cursor_f64(const flexi_cursor_s *cursor, double *val);
@@ -435,7 +476,7 @@ flexi_cursor_f64(const flexi_cursor_s *cursor, double *val);
  *
  * @param[in] cursor Cursor pointing to value to examine.
  * @param[out] str Obtained string.  Set to "" on error.
- * @return FLEXI_OK | FLEXI_ERR_BADTYPE | FLEXI_ERR_BADREAD
+ * @return FLEXI_OK || FLEXI_ERR_BADTYPE || FLEXI_ERR_BADREAD.
  */
 flexi_result_e
 flexi_cursor_key(const flexi_cursor_s *cursor, const char **str);
@@ -445,10 +486,12 @@ flexi_cursor_key(const flexi_cursor_s *cursor, const char **str);
  *
  * @param[in] cursor Cursor pointing to value to examine.
  * @param[out] str Obtained string.  Set to "" on error.
- * @return FLEXI_OK | FLEXI_ERR_BADTYPE | FLEXI_ERR_BADREAD
+ * @param[out] len Length of string.  Set to 0 on error.
+ * @return FLEXI_OK || FLEXI_ERR_BADTYPE || FLEXI_ERR_BADREAD.
  */
 flexi_result_e
-flexi_cursor_string(const flexi_cursor_s *cursor, const char **str);
+flexi_cursor_string(const flexi_cursor_s *cursor, const char **str,
+    flexi_ssize_t *len);
 
 /**
  * @brief Given a cursor pointing at a map, return the key located at the
@@ -460,7 +503,7 @@ flexi_cursor_string(const flexi_cursor_s *cursor, const char **str);
  * @param[in] cursor Cursor pointing to map to examine.
  * @param[in] index Index to look up.
  * @param[out] str Key string located at the given index.
- * @return FLEXI_OK | FLEXI_ERR_BADTYPE
+ * @return FLEXI_OK || FLEXI_ERR_BADTYPE.
  */
 flexi_result_e
 flexi_cursor_map_key_at_index(const flexi_cursor_s *cursor, flexi_ssize_t index,
@@ -476,35 +519,83 @@ flexi_cursor_map_key_at_index(const flexi_cursor_s *cursor, flexi_ssize_t index,
  *
  * @param[in] cursor Cursor pointing to map to examine.
  * @param[in] key Key to look up.
- * @param[out] dest Cursor pointing at value for the given key.
- * @return FLEXI_OK | FLEXI_NOTFOUND | FLEXI_BADTYPE | FLEXI_BADREAD
+ * @param[out] dest Cursor pointing at value for the given key, or pointer
+ *                  to failsafe cursor.
+ * @return FLEXI_OK || FLEXI_NOTFOUND || FLEXI_BADTYPE || FLEXI_BADREAD
  */
 flexi_result_e
 flexi_cursor_seek_map_key(const flexi_cursor_s *cursor, const char *key,
     flexi_cursor_s *dest);
 
+/**
+ * @brief Given a cursor pointing at an untyped vector or map, return a pointer
+ *        to the packed type value for index 0.  The pointer is to a tightly
+ *        packed array of data, so the type value for index n is `packed[n]`
+ *        or `packed + n`.
+ *
+ * @param[in] cursor Cursor pointing to map or vector to examine.
+ * @param[out] packed Pointer to packed type, or pointer to hardcoded failsafe
+ *             value of FLEXI_TYPE_NULL.
+ * @return FLEXI_OK || FLEXI_ERR_FAILSAFE || FLEXI_ERR_BADTYPE.
+ */
 flexi_result_e
 flexi_cursor_vector_types(const flexi_cursor_s *cursor,
     const flexi_packed_t **packed);
 
+/**
+ * @brief Given a cursor pointing to a vector or map, return a second cursor
+ *        pointing to the value at indexed position.
+ *
+ * @note Maps are also vectors which are sorted by key order, which are in
+ *       turn sorted in strcmp order.  You can access them like any other
+ *       vector if you know the order of the keys.
+ *
+ * @param[in] cursor Cursor pointing to map or vector to seek into.
+ * @param[in] index Index to look up.
+ * @param[out] dest Cursor pointing at value for the given index, or pointer
+ *                  to failsafe cursor on error.
+ * @return FLEXI_OK || FLEXI_ERR_BADTYPE || FLEXI_ERR_FAILSAFE.
+ */
 flexi_result_e
 flexi_cursor_seek_vector_index(const flexi_cursor_s *cursor,
     flexi_ssize_t index, flexi_cursor_s *dest);
 
+/**
+ * @brief Given a cursor pointing at a typed vector, obtain a pointer to
+ *        its initial value, as well as the type and stride of the vector.
+ *
+ * @note The return value is void* because the library cannot assume that
+ *       the underlying buffer is properly aligned.  This could cause unaligned
+ *       access on platforms where unaligned access is slow or even completely
+ *       invalid.
+ *
+ *       If you're on a platform where unaligned access is fine, feel free
+ *       to cast the pointer.  If you're on a platform that doesn't appreciate
+ *       that sort of thing, memcpy the data into an aligned array.
+ *
+ * @param[in] cursor Cursor pointing to typed vector.
+ * @param[out] data Pointer to start of data, or pointer a single uint64_t
+ *                  on failure.
+ * @param[in] type Type of vector, or FLEXI_TYPE_INVALID on error.
+ * @param[in] stride Stride of vector values, or 0 on error.
+ * @param[in] count Number of items in the vector, or 0 on error.
+ * @return FLEXI_OK || FLEXI_FAILSAFE || FLEXI_BADTYPE.
+ */
 flexi_result_e
-flexi_cursor_typed_vector_data(const flexi_cursor_s *cursor, const void **data);
+flexi_cursor_typed_vector_data(const flexi_cursor_s *cursor, const void **data,
+    flexi_type_e *type, int *stride, flexi_ssize_t *count);
 
 /**
  * @brief Obtain byte blob from cursor.
  *
  * @param[in] cursor Cursor pointing to value to examine.
- * @param[out] blob Obtained byte blob.  Set to (const uint8_t *)"" on error.
- * @return FLEXI_OK Successful read.
- * @return FLEXI_ERR_BADTYPE Value isn't convertable to blob.
- * @return FLEXI_ERR_BADREAD Out-of-bounds read.
+ * @param[out] blob Obtained byte blob.  Set to 8 bit stub buffer on error.
+ * @param[out] len Length of obtained byte blob.  Set to 0 on error.
+ * @return FLEXI_OK || FLEXI_ERR_BADTYPE || FLEXI_ERR_BADREAD.
  */
 flexi_result_e
-flexi_cursor_blob(const flexi_cursor_s *cursor, const uint8_t **blob);
+flexi_cursor_blob(const flexi_cursor_s *cursor, const uint8_t **blob,
+    flexi_ssize_t *len);
 
 /**
  * @brief Obtain boolean value from cursor.  Non-booleans are turned into
@@ -538,8 +629,8 @@ typedef struct flexi_parser_s {
     void (*map_end)(void *user);
     void (*vector_begin)(const char *key, flexi_ssize_t len, void *user);
     void (*vector_end)(void *user);
-    void (*typed_vector)(const char *key, const void *ptr, flexi_ssize_t len,
-        flexi_type_e type, int width, void *user);
+    void (*typed_vector)(const char *key, const void *ptr, flexi_type_e type,
+        int width, flexi_ssize_t count, void *user);
     void (*blob)(const char *key, const void *ptr, flexi_ssize_t len,
         void *user);
     void (*boolean)(const char *key, bool val, void *user);
@@ -681,99 +772,333 @@ typedef struct flexi_writer_s {
     flexi_result_e err;
 } flexi_writer_s;
 
+/**
+ * @brief Create a stack struct from its constituent pieces.
+ */
+flexi_stack_s
+flexi_make_stack(flexi_stack_at_fn at, flexi_stack_count_fn count,
+    flexi_stack_push_fn push, flexi_stack_pop_fn pop, void *user);
+
+/**
+ * @brief Create an ostream struct from its constituent pieces.
+ */
+flexi_ostream_s
+flexi_make_ostream(flexi_ostream_write_fn write,
+    flexi_ostream_data_at_fn data_at, flexi_ostream_tell_fn tell, void *user);
+
+/**
+ * @brief Create a writer struct from its constituent pieces.
+ */
+flexi_writer_s
+flexi_make_writer(const flexi_stack_s *stack, const flexi_ostream_s *ostream);
+
+/**
+ * @brief Push a null value to the stack.
+ *
+ * @param[in,out] writer Writer to operate on.
+ * @param[in] key Key to use if the value is to be inserted into a map, or
+ *                NULL if the value will not be used in a map.
+ * @return FLEXI_OK || FLEXI_ERR_BADSTACK.
+ */
 flexi_result_e
 flexi_write_null(flexi_writer_s *writer, const char *key);
 
+/**
+ * @brief Push a signed int value to the stack.
+ *
+ * @note When the int is later written, it will only take up as much space
+ *       as necessary to fully fit the value.
+ *
+ * @param[in,out] writer Writer to operate on.
+ * @param[in] key Key to use if the value is to be inserted into a map, or
+ *                NULL if the value will not be used in a map.
+ * @param[in] val Value to push to the stack.
+ * @return FLEXI_OK || FLEXI_BADSTACK.
+ */
 flexi_result_e
 flexi_write_sint(flexi_writer_s *writer, const char *key, int64_t val);
 
+/**
+ * @brief Push an unsigned int value to the stack.
+ *
+ * @note When the int is later written, it will only take up as much space
+ *       as necessary to fully fit the value.
+ *
+ * @param[in,out] writer Writer to operate on.
+ * @param[in] key Key to use if the value is to be inserted into a map, or
+ *                NULL if the value will not be used in a map.
+ * @param[in] val Value to push to the stack.
+ * @return FLEXI_OK || FLEXI_BADSTACK.
+ */
 flexi_result_e
 flexi_write_uint(flexi_writer_s *writer, const char *key, uint64_t v);
 
+/**
+ * @brief Push a 32-bit float value to the stack.
+ *
+ * @note If this float value is placed into a map or vector with a stride
+ *       of 8 bytes, it will be promoted to a 64-bit float.
+ *
+ * @param[in,out] writer Writer to operate on.
+ * @param[in] key Key to use if the value is to be inserted into a map, or
+ *                NULL if the value will not be used in a map.
+ * @param[in] val Value to push to the stack.
+ * @return FLEXI_OK || FLEXI_BADSTACK.
+ */
 flexi_result_e
 flexi_write_f32(flexi_writer_s *writer, const char *key, float val);
 
+/**
+ * @brief Push a 64-bit float value to the stack.
+ *
+ * @note If this float value is placed into a map or vector with a stride
+ *       of 4 bytes, it will be narrowed to a 32-bit float.
+ *
+ * @param[in,out] writer Writer to operate on.
+ * @param[in] key Key to use if the value is to be inserted into a map, or
+ *                NULL if the value will not be used in a map.
+ * @param[in] val Value to push to the stack.
+ * @return FLEXI_OK || FLEXI_BADSTACK.
+ */
 flexi_result_e
 flexi_write_f64(flexi_writer_s *writer, const char *key, double val);
 
+/**
+ * @brief Write a key value to the stream, then push an offset to that key
+ *        onto the stack.
+ *
+ * @note Keys are used when creating keysets for a map.  Because they lack
+ *       a length, there isn't much of a reason to use them outside of that
+ *       specific use case, so this function lacks a way to pair them with
+ *       a key.
+ *
+ * @param[in,out] writer Writer to operate on.
+ * @param[in] str Key to write and push to the stack.
+ * @return FLEXI_OK || FLEXI_ERR_BADWRITE || FLEXI_BADSTACK.
+ */
 flexi_result_e
 flexi_write_key(flexi_writer_s *writer, const char *str);
 
+/**
+ * @brief Write a key value to the stream, then push an offset to that key
+ *        onto the stack.
+ *
+ * @note While allowed by the protocol, there's almost never a good reason
+ *       to put a key directly into a vector or map.  Prefer strings instead.
+ *
+ * @param[in,out] writer Writer to operate on.
+ * @param[in] key Key to use if the value is to be inserted into a map, or
+ *                NULL if the value will not be used in a map.
+ * @param[in] str Key to write and push to the stack.
+ * @return FLEXI_OK || FLEXI_ERR_BADWRITE || FLEXI_BADSTACK.
+ */
 flexi_result_e
 flexi_write_keyed_key(flexi_writer_s *writer, const char *key, const char *str);
 
+/**
+ * @brief Write a string value to the stream, then push an offset to that
+ *        string onto the stack.
+ *
+ * @note The written string value is prefixed with its length and has a '\0'
+ *       appended to the end.  By convention, strings are assumed to be UTF-8,
+ *       although this function does no uncode validation.
+ *
+ * @param[in,out] writer Writer to operate on.
+ * @param[in] key Key to use if the string is to be inserted into a map, or
+ *                NULL if the string will not be used in a map.
+ * @param[in] str String to write and push to the stack.
+ * @param[in] len Length of the string to be written to the stack.
+ * @return FLEXI_OK || FLEXI_ERR_BADWRITE || FLEXI_BADSTACK.
+ */
 flexi_result_e
 flexi_write_string(flexi_writer_s *writer, const char *key, const char *str,
-    size_t len);
+    flexi_ssize_t len);
 
+/**
+ * @brief Write a null-terminated string value to the stream, then push an
+ *        offset to that string onto the stack.
+ *
+ * @note This is just a convenience function for writing a null-terminated
+ *       string, it has the same underlying representation on the wire.
+ *
+ * @param[in,out] writer Writer to operate on.
+ * @param[in] key Key to use if the string is to be inserted into a map, or
+ *                NULL if the string will not be used in a map.
+ * @param[in] str String to write and push to the stack.
+ * @return FLEXI_OK || FLEXI_ERR_BADWRITE || FLEXI_BADSTACK.
+ */
 flexi_result_e
 flexi_write_strlen(flexi_writer_s *writer, const char *key, const char *str);
 
+/**
+ * @brief Write an indirect signed integer to the stream, then push an offset
+ *        to that value onto the stack.
+ *
+ * @note This is useful if you need to write a large number to a map or vector
+ *       with a small stride.  However, it is slower to access than the direct
+ *       counterpart.
+ *
+ * @param[in,out] writer Writer to operate on.
+ * @param[in] key Key to use if the value is to be inserted into a map, or
+ *                NULL if the value will not be used in a map.
+ * @param[in] val Value to write and push to the stack.
+ * @return FLEXI_OK || FLEXI_ERR_BADWRITE || FLEXI_BADSTACK.
+ */
 flexi_result_e
 flexi_write_indirect_sint(flexi_writer_s *writer, const char *key, int64_t val);
 
+/**
+ * @brief Write an indirect unsigned integer to the stream, then push an
+ *        offset to that value onto the stack.
+ *
+ * @note This is useful if you need to write a large number to a map or vector
+ *       with a small stride.  However, it is slower to access than the direct
+ *       counterpart.
+ *
+ * @param[in,out] writer Writer to operate on.
+ * @param[in] key Key to use if the value is to be inserted into a map, or
+ *                NULL if the value will not be used in a map.
+ * @param[in] val Value to write and push to the stack.
+ * @return FLEXI_OK || FLEXI_ERR_BADWRITE || FLEXI_BADSTACK.
+ */
 flexi_result_e
 flexi_write_indirect_uint(flexi_writer_s *writer, const char *key,
     uint64_t val);
 
+/**
+ * @brief Write an indirect 32-bit float to the stream, then push an
+ *        offset to that value onto the stack.
+ *
+ * @note This is useful if you need to write a float to a map or vector with
+ *       a small stride.  However, it is slower to access than the direct
+ *       counterpart.
+ *
+ * @param[in,out] writer Writer to operate on.
+ * @param[in] key Key to use if the value is to be inserted into a map, or
+ *                NULL if the value will not be used in a map.
+ * @param[in] val Value to write and push to the stack.
+ * @return FLEXI_OK || FLEXI_ERR_BADWRITE || FLEXI_BADSTACK.
+ */
 flexi_result_e
 flexi_write_indirect_f32(flexi_writer_s *writer, const char *key, float val);
 
+/**
+ * @brief Write an indirect 64-bit float to the stream, then push an
+ *        offset to that value onto the stack.
+ *
+ * @note This is useful if you need to write a float to a map or vector with
+ *       a small stride.  However, it is slower to access than the direct
+ *       counterpart.
+ *
+ * @param[in,out] writer Writer to operate on.
+ * @param[in] key Key to use if the value is to be inserted into a map, or
+ *                NULL if the value will not be used in a map.
+ * @param[in] val Value to write and push to the stack.
+ * @return FLEXI_OK || FLEXI_ERR_BADWRITE || FLEXI_BADSTACK.
+ */
 flexi_result_e
 flexi_write_indirect_f64(flexi_writer_s *writer, const char *key, double val);
 
+/**
+ * @brief Writes a vector of key offsets to the stream.  Pops `len` keys
+ *        from the stack, pushes a single vector of keys to the stack, and
+ *        hands you back a reference to that keyset which you can pass to
+ *        future calls to flexi_write_map.
+ *
+ * @note FlexBuffer maps are not hashtables, they consist of a vector of keys
+ *       and a vector of values.  The vector of keys is sorted, so they can
+ *       be looked up via binary search.  A single vector of keys can be
+ *       used by multiple maps.
+ *
+ * @param[in,out] writer Writer to operate on.
+ * @param[in] len Number of keys on the stack to collect into a map key
+ *                vector.
+ * @param[in] stride Desired stride of the vector.  If the stride is too small
+ *                   to fit one of the offsets, it will be widened to fit.
+ * @param[out] keyset Opaque handle to keyset, which can be passed a future
+ *                    map.
+ * @return FLEXI_OK || FLEXI_ERR_BADSTACK || FLEXI_ERR_NOTKEYS ||
+ *         FLEXI_ERR_BADWRITE || FLEXI_ERR_BADSTACK.
+ */
 flexi_result_e
 flexi_write_map_keys(flexi_writer_s *writer, flexi_ssize_t len,
     flexi_width_e stride, flexi_stack_idx_t *keyset);
 
+/**
+ * @brief Writes a vector of map values to the stream.  Pops `len` values
+ *        from the stack, and pushes a single vector of map values to the
+ *        stack.
+ *
+ * @notes This is the "vector of values" half of a map.  You need to have
+ *        created the keys first.
+ *
+ * @param[in,out] writer Writer to operate on.
+ * @param[in] key Key to use if this map is going to be nested in another
+ *                map, or NULL if the value will not be used in a map.
+ * @param[in] keyset Stack index pointing to vector of keys to use for map.
+ * @param[in] len Number of values on the stack to use for the map.
+ * @param[in] stride Desired stride of the map.  If the stride is too small
+ *                   to fit one of the values, it will be widened to fit.
+ * @return FLEXI_OK || FLEXI_ERR_BADWRITE || FLEXI_ERR_BADSTACK.
+ */
 flexi_result_e
 flexi_write_map(flexi_writer_s *writer, const char *key,
     flexi_stack_idx_t keyset, flexi_ssize_t len, flexi_width_e stride);
 
+/**
+ * @brief Write a vector to the stream.  Pops `len` values from the stack
+ *        and pushes a single vector to the stack.
+ *
+ * @param[in,out] writer Writer to operate on.
+ * @param[in] key Key for use in a map.  NULL if there is no key.
+ * @param[in] len Number of values on the stack to use for vector.
+ * @param[in] stride Desired width of vector.
+ * @return FLEXI_OK || FLEXI_ERR_BADWRITE || FLEXI_ERR_BADSTACK.
+ */
 flexi_result_e
 flexi_write_vector(flexi_writer_s *writer, const char *key, flexi_ssize_t len,
     flexi_width_e stride);
 
 /**
- * @brief Write a typed vector of signed ints to the stream.  Pushes an offset
- *        to the vector onto the stack.
+ * @brief Write a typed vector of signed ints to the stream.  Pushes a single
+ *        vector to the stack.
  *
  * @param[in,out] writer Writer to operate on.
  * @param[in] key Key for use in a map.  NULL if there is no key.
  * @param[in] ptr Pointer to int array to be written.
  * @param[in] stride Width of each individual int.
  * @param[in] len Number of elements in the array.
- * @return FLEXI_OK | FLEXI_ERR_BADWRITE.
+ * @return FLEXI_OK || FLEXI_ERR_BADWRITE.
  */
 flexi_result_e
 flexi_write_typed_vector_sint(flexi_writer_s *writer, const char *key,
     const void *ptr, flexi_width_e stride, flexi_ssize_t len);
 
 /**
- * @brief Write a typed vector of unsigned ints to the stream.  Pushes an
- *        offset to the vector onto the stack.
+ * @brief Write a typed vector of unsigned ints to the stream.  Pushes a single
+ *        vector to the stack.
  *
  * @param[in,out] writer Writer to operate on.
  * @param[in] key Key for use in a map.  NULL if there is no key.
  * @param[in] ptr Pointer to int array to be written.
  * @param[in] stride Width of each individual int.
  * @param[in] len Number of elements in the array.
- * @return FLEXI_OK | FLEXI_ERR_BADWRITE.
+ * @return FLEXI_OK || FLEXI_ERR_BADWRITE.
  */
 flexi_result_e
 flexi_write_typed_vector_uint(flexi_writer_s *writer, const char *key,
     const void *ptr, flexi_width_e stride, flexi_ssize_t len);
 
 /**
- * @brief Write a typed vector of unsigned ints to the stream.  Pushes an
- *        offset to the vector onto the stack.
+ * @brief Write a typed vector of floats ints to the stream.  Pushes a single
+ *        vector to the stack.
  *
  * @param[in,out] writer Writer to operate on.
  * @param[in] key Key for use in a map.  NULL if there is no key.
- * @param[in] ptr Pointer to int array to be written.
- * @param[in] stride Width of each individual int.
+ * @param[in] ptr Pointer to float array to be written.
+ * @param[in] stride Width of each individual float.
  * @param[in] len Number of elements in the array.
- * @return FLEXI_OK | FLEXI_ERR_BADWRITE.
+ * @return FLEXI_OK || FLEXI_ERR_BADWRITE.
  */
 flexi_result_e
 flexi_write_typed_vector_flt(flexi_writer_s *writer, const char *key,
@@ -791,19 +1116,47 @@ flexi_write_typed_vector_flt(flexi_writer_s *writer, const char *key,
  * @param[in] ptr Pointer to data to be written.
  * @param[in] len Length of data to be written.
  * @param[in] align Desired alignment of blob data, in bytes.
- * @return FLEXI_OK | FLEXI_ERR_BADWRITE | FLEXI_ERR_STREAM.
+ * @return FLEXI_OK || FLEXI_ERR_BADWRITE.
  */
 flexi_result_e
 flexi_write_blob(flexi_writer_s *writer, const char *key, const void *ptr,
     flexi_ssize_t len, int align);
 
+/**
+ * @brief Push a boolean value to the stack.
+ *
+ * @param[in,out] writer Writer to operate on.
+ * @param[in] key Key to use if the value is to be inserted into a map, or
+ *                NULL if the value will not be used in a map.
+ * @param[in] val Value to push to the stack.
+ * @return FLEXI_OK || FLEXI_BADSTACK.
+ */
 flexi_result_e
 flexi_write_bool(flexi_writer_s *writer, const char *key, bool val);
 
+/**
+ * @brief Write a typed vector of boleans ints to the stream.  Pushes a single
+ *        vector to the stack.
+ *
+ * @param[in,out] writer Writer to operate on.
+ * @param[in] key Key for use in a map.  NULL if there is no key.
+ * @param[in] ptr Pointer to int array to be written.
+ * @param[in] stride Width of each individual int.
+ * @param[in] len Number of elements in the array.
+ * @return FLEXI_OK || FLEXI_ERR_BADWRITE.
+ */
 flexi_result_e
 flexi_write_typed_vector_bool(flexi_writer_s *writer, const char *key,
     const bool *ptr, flexi_ssize_t len);
 
+/**
+ * @brief Pops a single value from the stack and writes it out to the stream
+ *        as the root of the message.  The message is considered "done" at
+ *        this point.
+ *
+ * @param[in,out] writer Writer to operate on.
+ * @return FLEXI_OK || FLEXI_ERR_BADSTACK || FLEXI_ERR_BADWRITE.
+ */
 flexi_result_e
 flexi_write_finalize(flexi_writer_s *writer);
 
