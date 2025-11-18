@@ -55,3 +55,61 @@ TEST_F(WriteFixture, Bool)
     ASSERT_EQ(FLEXI_OK, flexi_cursor_bool(&cursor, &value));
     ASSERT_EQ(true, value);
 }
+
+TEST_F(WriteFixture, String)
+{
+    ASSERT_EQ(FLEXI_OK, flexi_write_string(&m_writer, NULL, "foobar", 6));
+    ASSERT_EQ(FLEXI_OK, flexi_write_finalize(&m_writer));
+
+    std::vector<uint8_t> expected = {
+        0x06,                               // String length.
+        'f', 'o', 'o', 'b', 'a', 'r', '\0', // String.
+        0x07, 0x14, 0x01                    // Root
+    };
+    AssertData(expected);
+
+    flexi_cursor_s cursor{};
+    GetCursor(&cursor);
+
+    ASSERT_EQ(FLEXI_TYPE_STRING, flexi_cursor_type(&cursor));
+    ASSERT_EQ(1, flexi_cursor_width(&cursor));
+}
+
+TEST_F(WriteFixture, StringView)
+{
+    ASSERT_EQ(FLEXI_OK, flexi_write_string(&m_writer, NULL, "foobar"));
+    ASSERT_EQ(FLEXI_OK, flexi_write_finalize(&m_writer));
+
+    std::vector<uint8_t> expected = {
+        0x06,                               // String length.
+        'f', 'o', 'o', 'b', 'a', 'r', '\0', // String.
+        0x07, 0x14, 0x01                    // Root
+    };
+    AssertData(expected);
+
+    flexi_cursor_s cursor{};
+    GetCursor(&cursor);
+
+    ASSERT_EQ(FLEXI_TYPE_STRING, flexi_cursor_type(&cursor));
+    ASSERT_EQ(1, flexi_cursor_width(&cursor));
+}
+
+TEST_F(WriteFixture, Blob)
+{
+    auto data = reinterpret_cast<const uint8_t *>("foobar");
+    ASSERT_EQ(FLEXI_OK, flexi_write_blob(&m_writer, NULL, data, 6, 1));
+    ASSERT_EQ(FLEXI_OK, flexi_write_finalize(&m_writer));
+
+    std::vector<uint8_t> expected = {
+        0x06,                         // String length.
+        'f', 'o', 'o', 'b', 'a', 'r', // String.
+        0x06, 0x64, 0x01              // Root
+    };
+    AssertData(expected);
+
+    flexi_cursor_s cursor{};
+    GetCursor(&cursor);
+
+    ASSERT_EQ(FLEXI_TYPE_BLOB, flexi_cursor_type(&cursor));
+    ASSERT_EQ(1, flexi_cursor_width(&cursor));
+}

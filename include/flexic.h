@@ -130,7 +130,7 @@ typedef enum flexi_result_e {
     FLEXI_ERR_FAILSAFE = -7,
 
     /**
-     * @brief While writing data, an invalid stack operation was attempted.
+     * @brief An invalid writing stack operation was attempted.
      */
     FLEXI_ERR_BADSTACK = -8,
 
@@ -912,7 +912,7 @@ flexi_write_keyed_key(flexi_writer_s *writer, const char *key, const char *str);
  */
 flexi_result_e
 flexi_write_string(flexi_writer_s *writer, const char *key, const char *str,
-    flexi_ssize_t len);
+    size_t len);
 
 /**
  * @brief Write a null-terminated string value to the stream, then push an
@@ -1042,8 +1042,28 @@ flexi_write_map_keys(flexi_writer_s *writer, flexi_ssize_t len,
  * @return FLEXI_OK || FLEXI_ERR_BADWRITE || FLEXI_ERR_BADSTACK.
  */
 flexi_result_e
-flexi_write_map(flexi_writer_s *writer, const char *key,
+flexi_write_map_values(flexi_writer_s *writer, const char *key,
     flexi_stack_idx_t keyset, flexi_ssize_t len, flexi_width_e stride);
+
+/**
+ * @brief Write a map to the stream using keys of pushed values.  Pops `len`
+ *        values from the stack and pushes a single vector of map values
+ *        to the stack.
+ *
+ * @note This function is best for "one shot" maps where you're not going
+ *       to be reusing keys.
+ *
+ * @param[in,out] writer Writer to operate on.
+ * @param[in] key Key to use if this map is going to be nested in another
+ *                map, or NULL if the value will not be used in a map.
+ * @param[in] len Number of values on the stack to use for the map.
+ * @param[in] stride Desired stride of the map.  If the stride is too small
+ *                   to fit one of the values, it will be widened to fit.
+ * @return FLEXI_OK || FLEXI_ERR_BADWRITE || FLEXI_ERR_BADSTACK.
+ */
+flexi_result_e
+flexi_write_map(flexi_writer_s *writer, const char *key, flexi_ssize_t len,
+    flexi_width_e stride);
 
 /**
  * @brief Write a vector to the stream.  Pops `len` values from the stack
@@ -1160,11 +1180,49 @@ flexi_write_typed_vector_bool(flexi_writer_s *writer, const char *key,
 flexi_result_e
 flexi_write_finalize(flexi_writer_s *writer);
 
+/**
+ * @brief Peek at the given stack value.
+ *
+ * @note This information is for error reporting purposes.
+ *
+ * @param[in] writer Writer to operate on.
+ * @param[in] offset Stack offset to examine, starting from the bottom.
+ * @param[out] value Pointer to value on the stack.  Not touched on error.
+ * @return FLEXI_OK || FLEXI_ERR_BADSTACK.
+ */
+flexi_result_e
+flexi_writer_debug_stack_at(const flexi_writer_s *writer, flexi_ssize_t offset,
+    flexi_value_s **value);
+
+/**
+ * @brief Return the number of items on the stack.
+ *
+ * @note This information is for error reporting purposes.
+ *
+ * @param[in] writer Writer to operate on.
+ * @return Number of items currently in the stack.
+ */
+flexi_ssize_t
+flexi_writer_debug_stack_count(flexi_writer_s *writer);
+
 #if FLEXI_CPLUSPLUS
 }
 #endif
 
 #if FLEXI_CPLUSPLUS
+
+#if FLEXI_CPLUSPLUS >= 201703L
+
+#include <string_view>
+
+inline flexi_result_e
+flexi_write_string(flexi_writer_s *writer, const char *key,
+    std::string_view str)
+{
+    return flexi_write_string(writer, key, str.data(), str.length());
+}
+
+#endif
 
 template<typename T> inline flexi_result_e
 flexi_write_typed_vector(flexi_writer_s *writer, const char *key, const T *arr,

@@ -41,7 +41,9 @@ TEST(WriteError, FailSafe)
     EXPECT_EQ(FLEXI_ERR_FAILSAFE,
         flexi_write_map_keys(&writer, 0, FLEXI_WIDTH_1B, NULL));
     EXPECT_EQ(FLEXI_ERR_FAILSAFE,
-        flexi_write_map(&writer, NULL, 0, 0, FLEXI_WIDTH_1B));
+        flexi_write_map_values(&writer, NULL, 0, 0, FLEXI_WIDTH_1B));
+    EXPECT_EQ(FLEXI_ERR_FAILSAFE,
+        flexi_write_map(&writer, NULL, 0, FLEXI_WIDTH_1B));
     EXPECT_EQ(FLEXI_ERR_FAILSAFE,
         flexi_write_vector(&writer, NULL, 0, FLEXI_WIDTH_1B));
     EXPECT_EQ(FLEXI_ERR_FAILSAFE,

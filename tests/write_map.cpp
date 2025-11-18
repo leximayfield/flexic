@@ -22,6 +22,61 @@
 
 #include "tests.hpp"
 
+TEST_F(WriteFixture, Immediate)
+{
+    ASSERT_EQ(FLEXI_OK, flexi_write_uint(&m_writer, "uint", UINT16_MAX));
+    ASSERT_EQ(FLEXI_OK, flexi_write_sint(&m_writer, "sint", INT16_MAX));
+    ASSERT_EQ(FLEXI_OK, flexi_write_bool(&m_writer, "bool", true));
+    ASSERT_EQ(FLEXI_OK, flexi_write_map(&m_writer, NULL, 3, FLEXI_WIDTH_2B));
+    ASSERT_EQ(FLEXI_OK, flexi_write_finalize(&m_writer));
+
+    // There should be nothing on the stack, especially not the keys that
+    // flexi_write_map used internally.
+    ASSERT_EQ(0, flexi_writer_debug_stack_count(&m_writer));
+
+    std::vector<uint8_t> expected = {
+        'u', 'i', 'n', 't', '\0', // Key values
+        's', 'i', 'n', 't', '\0', //
+        'b', 'o', 'o', 'l', '\0', //
+        0x03,                     // Map keys vector length
+        0x06,                     // Keys[0] "bool"
+        0x0c,                     // Keys[1] "sint"
+        0x12,                     // Keys[2] "uint"
+        0x00,                     // Padding
+        0x04, 0x00,               // Keys vector offset
+        0x01, 0x00,               // Keys vector stride
+        0x03, 0x00,               // Map values vector length
+        0x01, 0x00,               // Values[0] Bool
+        0xff, 0x7f,               // Values[1] Int
+        0xff, 0xff,               // Values[2] Uint
+        0x68, 0x05, 0x09,         // Types
+        0x09, 0x25, 0x01,         // Root
+    };
+    AssertData(expected);
+
+    flexi_cursor_s cursor{};
+    GetCursor(&cursor);
+
+    ASSERT_EQ(FLEXI_TYPE_MAP, flexi_cursor_type(&cursor));
+    ASSERT_EQ(2, flexi_cursor_width(&cursor));
+
+    flexi_cursor_s value{};
+
+    bool vbool = false;
+    ASSERT_EQ(FLEXI_OK, flexi_cursor_seek_map_key(&cursor, "bool", &value));
+    ASSERT_EQ(FLEXI_OK, flexi_cursor_bool(&value, &vbool));
+    ASSERT_EQ(true, vbool);
+
+    int64_t vsint = 0;
+    ASSERT_EQ(FLEXI_OK, flexi_cursor_seek_map_key(&cursor, "sint", &value));
+    ASSERT_EQ(FLEXI_OK, flexi_cursor_sint(&value, &vsint));
+    ASSERT_EQ(INT16_MAX, vsint);
+
+    uint64_t vuint = 0;
+    ASSERT_EQ(FLEXI_OK, flexi_cursor_seek_map_key(&cursor, "uint", &value));
+    ASSERT_EQ(FLEXI_OK, flexi_cursor_uint(&value, &vuint));
+    ASSERT_EQ(UINT16_MAX, vuint);
+}
 TEST_F(WriteFixture, MapInts)
 {
     ASSERT_EQ(FLEXI_OK, flexi_write_key(&m_writer, "bool"));
@@ -42,7 +97,7 @@ TEST_F(WriteFixture, MapInts)
     ASSERT_EQ(FLEXI_OK,
         flexi_write_indirect_uint(&m_writer, "indirect_uint", UINT32_MAX));
     ASSERT_EQ(FLEXI_OK,
-        flexi_write_map(&m_writer, NULL, keyset, 5, FLEXI_WIDTH_2B));
+        flexi_write_map_values(&m_writer, NULL, keyset, 5, FLEXI_WIDTH_2B));
     ASSERT_EQ(FLEXI_OK, flexi_write_finalize(&m_writer));
 
     std::vector<uint8_t> expected = {
@@ -126,7 +181,7 @@ TEST_F(WriteFixture, MapFloats)
     ASSERT_EQ(FLEXI_OK,
         flexi_write_indirect_f64(&m_writer, "indirect_f64", PI_VALUE));
     ASSERT_EQ(FLEXI_OK,
-        flexi_write_map(&m_writer, NULL, keyset, 4, FLEXI_WIDTH_8B));
+        flexi_write_map_values(&m_writer, NULL, keyset, 4, FLEXI_WIDTH_8B));
     ASSERT_EQ(FLEXI_OK, flexi_write_finalize(&m_writer));
 
     std::vector<uint8_t> expected = {'f', '3', '2', '\0',                 //
