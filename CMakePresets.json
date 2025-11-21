@@ -1,0 +1,21 @@
+{
+  "version": 1,
+  "configurePresets": [
+    {
+      "name": "ninja",
+      "generator": "Ninja",
+      "binaryDir": "${sourceDir}/build_${presetName}",
+      "cacheVariables": {
+        "FLEXIC_ENABLE_TESTS": true,
+        "FLEXIC_ENABLE_BENCHES": true
+      }
+    },
+    {
+      "name": "ninja_cxx",
+      "inherits": "ninja",
+      "cacheVariables": {
+        "FLEXIC_COMPILE_AS_CXX": true
+      }
+    }
+  ]
+}

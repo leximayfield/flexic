@@ -244,7 +244,7 @@ TEST(Parser, ParseBasicTypes)
         auto value = std::get_if<blob_s>(&results[i++]);
         ASSERT_NE(nullptr, value);
         ASSERT_EQ(4, value->len);
-        ASSERT_EQ(0, std::memcmp("blob", value->ptr, 4));
+        ASSERT_EQ(0, memcmp("blob", value->ptr, 4));
     }
 
     {

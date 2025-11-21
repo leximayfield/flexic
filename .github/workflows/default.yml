@@ -1,0 +1,49 @@
+name: default
+on:
+  push:
+
+jobs:
+  win:
+    name: win-${{ matrix.arch }}-${{ matrix.config }}
+    strategy:
+      matrix:
+        # FIXME: Cleanly support x64_arm64 someday...
+        arch: [x64, x64_x86]
+        config: [ninja, ninja_cxx]
+    runs-on: windows-2022
+    steps:
+      - uses: actions/checkout@v4
+      - uses: lukka/get-cmake@latest
+      - uses: ilammy/msvc-dev-cmd@v1
+        with:
+          arch: ${{ matrix.arch }}
+      - name: Configure
+        run: |
+          cmake --preset ${{ matrix.config }}
+      - name: Build
+        run: |
+          cmake --build ./build_${{ matrix.config }}
+      - name: Run Tests
+        run: |
+          ctest --test-dir ./build_${{ matrix.config }}/tests/
+  linux:
+    name: linux-${{ matrix.config }}
+    strategy:
+      matrix:
+        config: [ninja, ninja_cxx]
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: lukka/get-cmake@latest
+      - name: Configure
+        env:
+          CC: clang
+          CXX: clang++
+        run: |
+          cmake --preset ${{ matrix.config }}
+      - name: Build
+        run: |
+          cmake --build ./build_${{ matrix.config }}
+      - name: Run Tests
+        run: |
+          ctest --test-dir ./build_${{ matrix.config }}/tests/

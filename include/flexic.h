@@ -38,6 +38,7 @@
 #define FLEXI_CPP11_EQ_DELETE
 #endif
 
+#include <stddef.h>
 #include <stdbool.h>
 #include <stdint.h>
 

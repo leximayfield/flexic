@@ -1077,7 +1077,7 @@ cursor_vector_types(const flexi_cursor_s *cursor, const flexi_packed_t **packed)
     }
 
     // Don't wrap the offset calculation.
-    flexi_ssize_t offset;
+    intmax_t offset;
     if (!checked_mul(&offset, len, cursor->width)) {
         return false;
     }
