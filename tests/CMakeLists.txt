@@ -2,7 +2,9 @@ include(GoogleTest)
 
 # Testing enables warnings
 
-if(MSVC)
+if(CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
+    target_compile_options(flexic PRIVATE -Wall -Wextra -Wmost)
+elseif(CMAKE_CXX_COMPILER_ID STREQUAL "MSVC")
     target_compile_options(flexic PRIVATE /W4 /we4013 /we4024 /we4047 /we4133 /we4244 /w44062 /w44388)
 else()
     target_compile_options(flexic PRIVATE -Wall -Wextra)

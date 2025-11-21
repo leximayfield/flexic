@@ -641,7 +641,7 @@ typedef struct flexi_parser_s {
  *        a dummied-out function that does nothing.
  */
 flexi_parser_s
-flexi_make_empty_parser();
+flexi_make_empty_parser(void);
 
 /**
  * @brief Starting from the value at the cursor, parse the FlexBuffer while
@@ -827,11 +827,11 @@ flexi_write_sint(flexi_writer_s *writer, const char *key, int64_t val);
  * @param[in,out] writer Writer to operate on.
  * @param[in] key Key to use if the value is to be inserted into a map, or
  *                NULL if the value will not be used in a map.
- * @param[in] val Value to push to the stack.
+ * @param[in] value Value to push to the stack.
  * @return FLEXI_OK || FLEXI_BADSTACK.
  */
 flexi_result_e
-flexi_write_uint(flexi_writer_s *writer, const char *key, uint64_t v);
+flexi_write_uint(flexi_writer_s *writer, const char *key, uint64_t value);
 
 /**
  * @brief Push a 32-bit float value to the stack.
