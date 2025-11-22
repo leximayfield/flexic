@@ -327,21 +327,15 @@ buffer_seek_back(const flexi_buffer_s *buffer, const char *src,
  *
  * @pre Width must be a valid width in bytes.
  *
- * @param[in] buffer Buffer to constrain read inside.
  * @param[in] src Pointer to data to read from.
  * @param[in] width Width of data to read.
  * @param[out] dst Output value.
- * @return True if read was successful, false if read would have gone out
- *         of range of the buffer.
+ * @return True if read was successful, false if size would be too large
+ *         for the given size type.
  */
 static bool
-buffer_read_size_by_width(const flexi_buffer_s *buffer, const char *src,
-    int width, flexi_ssize_t *dst)
+buffer_read_size_by_width_unsafe(const char *src, int width, flexi_ssize_t *dst)
 {
-    if (!read_is_valid(buffer, src, width)) {
-        return false;
-    }
-
     switch (width) {
     case 1: {
         uint8_t v;
@@ -372,8 +366,24 @@ buffer_read_size_by_width(const flexi_buffer_s *buffer, const char *src,
         return true;
 #endif
     }
+    default: {
+        ASSERT(false);
+        return false;
     }
-    return false;
+    }
+}
+
+/******************************************************************************/
+
+static bool
+buffer_read_size_by_width(const flexi_buffer_s *buffer, const char *src,
+    int width, flexi_ssize_t *dst)
+{
+    if (!read_is_valid(buffer, src, width)) {
+        return false;
+    }
+
+    return buffer_read_size_by_width_unsafe(src, width, dst);
 }
 
 /**
@@ -424,11 +434,19 @@ buffer_read_sint(const flexi_buffer_s *buffer, const char *src, int width,
     }
 }
 
-/******************************************************************************/
-
+/**
+ * @brief Read an unsigned integer from the passed buffer.
+ *
+ * @note Values of width < 8 bytes will be promoted to uint64_t.
+ *
+ * @pre Width must be a valid width in bytes.
+ *
+ * @param[in] src Pointer to data to read from.
+ * @param[in] width Width of data to read.
+ * @return Output value.
+ */
 static uint64_t
-buffer_read_uint_unsafe(const flexi_buffer_s *buffer, const char *src,
-    int width)
+buffer_read_uint_unsafe(const char *src, int width)
 {
     switch (width) {
     case 1: {
@@ -458,20 +476,8 @@ buffer_read_uint_unsafe(const flexi_buffer_s *buffer, const char *src,
     }
 }
 
-/**
- * @brief Read an unsigned integer from the passed buffer.
- *
- * @note Values of width < 8 bytes will be promoted to uint64_t.
- *
- * @pre Width must be a valid width in bytes.
- *
- * @param[in] buffer Buffer to constrain read inside.
- * @param[in] src Pointer to data to read from.
- * @param[in] width Width of data to read.
- * @param[out] dst Output value.
- * @return True if read was successful, false if read would have gone out
- *         of range of the buffer.
- */
+/******************************************************************************/
+
 static bool
 buffer_read_uint(const flexi_buffer_s *buffer, const char *src, int width,
     uint64_t *dst)
@@ -480,33 +486,8 @@ buffer_read_uint(const flexi_buffer_s *buffer, const char *src, int width,
         return false;
     }
 
-    switch (width) {
-    case 1: {
-        uint8_t v;
-        memcpy(&v, src, 1);
-        *dst = v;
-        return true;
-    }
-    case 2: {
-        uint16_t v;
-        memcpy(&v, src, 2);
-        *dst = v;
-        return true;
-    }
-    case 4: {
-        uint32_t v;
-        memcpy(&v, src, 4);
-        *dst = v;
-        return true;
-    }
-    case 8: {
-        uint64_t v;
-        memcpy(&v, src, 8);
-        *dst = v;
-        return true;
-    }
-    default: return false;
-    }
+    *dst = buffer_read_uint_unsafe(src, width);
+    return true;
 }
 
 /**
@@ -1241,9 +1222,9 @@ cursor_seek_typed_vector_index(const flexi_cursor_s *cursor,
         dest->width = 1;
         return true;
     case FLEXI_TYPE_VECTOR_KEY: {
-        uint64_t offset;
+        flexi_ssize_t offset;
         const char *cur = cursor->cursor + (index * cursor->width);
-        if (!buffer_read_uint(&cursor->buffer, cur, cursor->width, &offset)) {
+        if (!buffer_read_size_by_width_unsafe(cur, cursor->width, &offset)) {
             return false;
         }
 
@@ -1283,12 +1264,14 @@ cursor_map_keys(const flexi_cursor_s *cursor, flexi_cursor_s *dest)
     }
 
     // [-3] contains key vector offset.
-    uint64_t keys_offset =
-        buffer_read_uint_unsafe(&cursor->buffer, cur, cursor->width);
+    flexi_ssize_t keys_offset;
+    if (!buffer_read_size_by_width_unsafe(cur, cursor->width, &keys_offset)) {
+        return false;
+    }
 
     // [-2] contains key vector width.
-    uint64_t keys_width = buffer_read_uint_unsafe(&cursor->buffer,
-        cur + cursor->width, cursor->width);
+    uint64_t keys_width =
+        buffer_read_uint_unsafe(cur + cursor->width, cursor->width);
 
     if (!buffer_seek_back(&cursor->buffer, cur, keys_offset, &cur)) {
         // Tried to seek keys base, went out of bounds.
