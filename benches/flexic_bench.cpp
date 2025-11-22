@@ -23,16 +23,13 @@
 #include "nanobench.h"
 
 #include <flatbuffers/flexbuffers.h>
+#include <yyjson.h>
 
 #include <cassert>
 #include <fstream>
 #include <sstream>
 
 #include "flexic.h"
-
-// [LM] Fastest maintained JSON library I could find here:
-//      https://github.com/miloyip/nativejson-benchmark
-#include "json.h"
 
 /******************************************************************************/
 
@@ -65,82 +62,66 @@ flexic_open_and_parse(const std::string &str, const flexi_parser_s &parser)
 /******************************************************************************/
 
 static void
-json_emit_string(const char *key, const char *str, size_t len)
+yyjson_emit_string(const char *key, const char *str, size_t len)
 {
 }
 
 /******************************************************************************/
 
 static void
-json_emit_begin_object(const char *key, size_t len)
+yyjson_emit_begin_object(const char *key, size_t len)
 {
 }
 
 /******************************************************************************/
 
 static void
-json_emit_end_object()
+yyjson_emit_end_object()
 {
 }
 
 /******************************************************************************/
 
 static void
-json_walk_value(const char *key, json_value_s *value)
+yyjson_walk_value(const char *key, yyjson_val *value)
 {
-    switch (value->type) {
-    case json_type_string: {
-        json_string_s *string = json_value_as_string(value);
-        json_emit_string(key, string->string, string->string_size);
+    switch (yyjson_get_type(value)) {
+    case YYJSON_TYPE_RAW: assert(false); break;
+    case YYJSON_TYPE_NULL: assert(false); break;
+    case YYJSON_TYPE_BOOL: assert(false); break;
+    case YYJSON_TYPE_NUM: assert(false); break;
+    case YYJSON_TYPE_STR: {
+        const char *str = yyjson_get_str(value);
+        size_t len = yyjson_get_len(value);
+        yyjson_emit_string(key, str, len);
         break;
     }
-    case json_type_number: assert(false); break;
-    case json_type_object: {
-        json_object_s *object = json_value_as_object(value);
-        json_emit_begin_object(key, object->length);
-        json_object_element_s *element = object->start;
-        while (element) {
-            json_walk_value(element->name->string, element->value);
-            element = element->next;
+    case YYJSON_TYPE_ARR: assert(false); break;
+    case YYJSON_TYPE_OBJ: {
+        yyjson_emit_begin_object(key, yyjson_obj_size(value));
+        size_t idx, imax;
+        yyjson_val *ikey, *ival;
+        yyjson_obj_foreach(value, idx, imax, ikey, ival)
+        {
+            const char *keyStr = yyjson_get_str(ikey);
+            yyjson_walk_value(keyStr, ival);
         }
-        json_emit_end_object();
+        yyjson_emit_end_object();
         break;
     }
-    case json_type_array: assert(false); break;
-    case json_type_true: assert(false); break;
-    case json_type_false: assert(false); break;
-    case json_type_null: assert(false); break;
     }
 }
 
 /******************************************************************************/
 
 static size_t
-json_parse_and_walk(const std::string &str)
+yyjson_parse_and_walk(const std::string &str)
 {
-    json_parse_result_t result;
-
-    json_value_s *root = json_parse_ex(str.c_str(), str.length(),
-        json_parse_flags_default, NULL, NULL, &result);
-    json_walk_value(NULL, root);
-    free(root);
-
+    yyjson_doc *doc = yyjson_read(str.c_str(), str.length(), 0);
+    yyjson_val *val = yyjson_doc_get_root(doc);
+    yyjson_walk_value(NULL, val);
+    yyjson_doc_free(doc);
     return 0;
-}
-
-/******************************************************************************/
-
-static json_object_element_s *
-json_find_key(const json_object_s *obj, const char *name)
-{
-    json_object_element_s *element = obj->start;
-    while (element) {
-        if (!strcmp(element->name->string, name)) {
-            return element;
-        }
-        element = element->next;
-    }
-    return nullptr;
 }
 
 /******************************************************************************/
@@ -238,24 +219,27 @@ main(const int, const char *[])
         auto bench = ankerl::nanobench::Bench().minEpochIterations(16).title(
             "Seek value of root[map-50][key-50]");
 
-        bench.run("sheredom/json.h", [&] {
-            json_parse_result_t result;
-
-            json_value_s *root =
-                json_parse_ex(large_doc1_json.c_str(), large_doc1_json.length(),
-                    json_parse_flags_default, NULL, NULL, &result);
-
-            json_object_s *map = json_value_as_object(root);
-            assert(map);
-            json_object_element_s *mapele = json_find_key(map, "map-50");
-            assert(mapele);
-            json_object_s *obj = json_value_as_object(mapele->value);
-            assert(obj);
-            json_object_element_s *objele = json_find_key(obj, "key-50");
-            assert(objele);
-            json_string_s *str = json_value_as_string(objele->value);
-            assert(!strcmp(str->string, "v-50-50"));
-            free(root);
+        bench.run("ibireme/yyjson.h", [&] {
+            yyjson_doc *doc = yyjson_read(large_doc1_json.c_str(),
+                large_doc1_json.length(), 0);
+            if (doc == nullptr) {
+                throw "failure";
+            }
+            yyjson_val *rootVal = yyjson_doc_get_root(doc);
+            if (rootVal == nullptr) {
+                throw "failure";
+            }
+            yyjson_val *mapVal = yyjson_obj_get(rootVal, "map-50");
+            if (mapVal == nullptr) {
+                throw "failure";
+            }
+            yyjson_val *keyVal = yyjson_obj_get(mapVal, "key-50");
+            if (keyVal == nullptr) {
+                throw "failure";
+            }
+            const char *str = yyjson_get_str(keyVal);
+            assert(!strcmp(str, "v-50-50"));
+            yyjson_doc_free(doc);
             return str;
         });
 
@@ -292,8 +276,8 @@ main(const int, const char *[])
         auto bench = ankerl::nanobench::Bench().minEpochIterations(16).title(
             "Walk entire document");
 
-        bench.run("sheredom/json.h",
-            [&] { return json_parse_and_walk(large_doc1_json); });
+        bench.run("ibireme/yyjson.h",
+            [&] { return yyjson_parse_and_walk(large_doc1_json); });
 
         bench.run("google/flatbuffers",
             [&] { return flexbuffers_getroot_and_walk(large_doc1_flexbuf); });
