@@ -87,15 +87,15 @@ All benchmarks are started after loading the file, but before parsing.
 
 |               ns/op |                op/s |    err% |     total | Seek value of root[map-50][key-50]
 |--------------------:|--------------------:|--------:|----------:|:-----------------------------------
-|          180,887.50 |            5,528.30 |    1.0% |      0.03 | `ibireme/yyjson.h`
-|              289.16 |        3,458,317.83 |    0.6% |      0.01 | `google/flatbuffers`
-|              195.15 |        5,124,218.05 |    0.7% |      0.01 | `leximayfield/flexic`
+|          186,087.50 |            5,373.82 |    0.6% |      0.04 | `ibireme/yyjson.h`
+|              284.39 |        3,516,356.18 |    0.7% |      0.01 | `google/flatbuffers`
+|              177.45 |        5,635,297.16 |    1.3% |      0.01 | `leximayfield/flexic`
 
 |               ns/op |                op/s |    err% |     total | Walk entire document
 |--------------------:|--------------------:|--------:|----------:|:---------------------
-|          119,152.94 |            8,392.58 |    0.7% |      0.02 | `ibireme/yyjson.h`
-|          672,637.50 |            1,486.68 |    1.1% |      0.13 | `google/flatbuffers`
-|          159,511.76 |            6,269.13 |    0.6% |      0.03 | `leximayfield/flexic`
+|          124,227.78 |            8,049.73 |    1.0% |      0.02 | `ibireme/yyjson.h`
+|          657,411.11 |            1,521.12 |    0.3% |      0.13 | `google/flatbuffers`
+|          130,842.11 |            7,642.80 |    0.5% |      0.02 | `leximayfield/flexic`
 
 For the seek benchmark, the JSON library is forced to do a linear scan to
 look up a specific key, so it's not exactly a fair comparison.

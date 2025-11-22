@@ -56,6 +56,23 @@
 
 /******************************************************************************/
 
+#ifndef NDEBUG
+#include <stdlib.h>
+
+/**
+ * @brief Force a crash if expression evaluates to false.
+ *
+ * @details Asserts should only be used to validate preconditions of calling
+ *          a particular internal function.  Problems found in the middle
+ *          of a function should return an error.
+ */
+#define ASSERT(ex) ((ex) ? (void)0 : (abort(), (void)0))
+#else
+#define ASSERT(ex) (void)0
+#endif
+
+/******************************************************************************/
+
 #define MIN(a, b) ((b) < (a) ? (b) : (a))
 #define MAX(a, b) ((a) < (b) ? (b) : (a))
 #define COUNTOF(arr) (sizeof(arr) / sizeof((arr)[0]))
@@ -404,6 +421,40 @@ buffer_read_sint(const flexi_buffer_s *buffer, const char *src, int width,
         return true;
     }
     default: return false;
+    }
+}
+
+/******************************************************************************/
+
+static uint64_t
+buffer_read_uint_unsafe(const flexi_buffer_s *buffer, const char *src,
+    int width)
+{
+    switch (width) {
+    case 1: {
+        uint8_t v;
+        memcpy(&v, src, 1);
+        return v;
+    }
+    case 2: {
+        uint16_t v;
+        memcpy(&v, src, 2);
+        return v;
+    }
+    case 4: {
+        uint32_t v;
+        memcpy(&v, src, 4);
+        return v;
+    }
+    case 8: {
+        uint64_t v;
+        memcpy(&v, src, 8);
+        return v;
+    }
+    default: {
+        ASSERT(false);
+        return 0;
+    }
     }
 }
 
@@ -1189,8 +1240,66 @@ cursor_seek_typed_vector_index(const flexi_cursor_s *cursor,
         dest->type = FLEXI_TYPE_BOOL;
         dest->width = 1;
         return true;
+    case FLEXI_TYPE_VECTOR_KEY: {
+        uint64_t offset;
+        const char *cur = cursor->cursor + (index * cursor->width);
+        if (!buffer_read_uint(&cursor->buffer, cur, cursor->width, &offset)) {
+            return false;
+        }
+
+        if (!buffer_seek_back(&cursor->buffer, cur, offset, &cur)) {
+            return false;
+        }
+
+        dest->buffer = cursor->buffer;
+        dest->cursor = cur;
+        dest->type = FLEXI_TYPE_KEY;
+        dest->width = 0;
+        return true;
+    }
     default: return false;
     }
+}
+
+/**
+ * @brief Given a cursor pointing at the base of a map, return a cursor
+ *        pointing at the keys vector of the map.
+ *
+ * @param[in] cursor Cursor to examine.
+ * @param[out] dest Cursor which will be pointing at vector of keys.
+ * @return True if seek was successful.
+ */
+static bool
+cursor_map_keys(const flexi_cursor_s *cursor, flexi_cursor_s *dest)
+{
+    // Calling this with a non-map is a contract violation.
+    ASSERT(cursor->type == FLEXI_TYPE_MAP);
+
+    const char *cur;
+    if (!buffer_seek_back(&cursor->buffer, cursor->cursor, cursor->width * 3,
+            &cur)) {
+        // Not enough room for the header.
+        return false;
+    }
+
+    // [-3] contains key vector offset.
+    uint64_t keys_offset =
+        buffer_read_uint_unsafe(&cursor->buffer, cur, cursor->width);
+
+    // [-2] contains key vector width.
+    uint64_t keys_width = buffer_read_uint_unsafe(&cursor->buffer,
+        cur + cursor->width, cursor->width);
+
+    if (!buffer_seek_back(&cursor->buffer, cur, keys_offset, &cur)) {
+        // Tried to seek keys base, went out of bounds.
+        return false;
+    }
+
+    dest->buffer = cursor->buffer;
+    dest->cursor = cur;
+    dest->type = FLEXI_TYPE_VECTOR_KEY;
+    dest->width = (int)keys_width;
+    return true;
 }
 
 /**
@@ -1206,30 +1315,19 @@ static bool
 cursor_map_key_at_index(const flexi_cursor_s *cursor, flexi_ssize_t index,
     const char **str)
 {
-    if (cursor->type != FLEXI_TYPE_MAP) {
+    // Calling this with a non-map is a contract violation.
+    ASSERT(cursor->type == FLEXI_TYPE_MAP);
+
+    flexi_cursor_s keys;
+    if (!cursor_map_keys(cursor, &keys)) {
+        // Could not locate keys.
         return false;
     }
-
-    // Figure out offset and width of keys vector.
-    uint64_t keys_offset, keys_width;
-    if (!buffer_read_uint(&cursor->buffer, cursor->cursor - (cursor->width * 3),
-            cursor->width, &keys_offset)) {
-        return false;
-    }
-
-    if (!buffer_read_uint(&cursor->buffer, cursor->cursor - (cursor->width * 2),
-            cursor->width, &keys_width)) {
-        return false;
-    }
-
-    // Seek the keys base.
-    const char *keys_base =
-        cursor->cursor - ((3 * cursor->width) + keys_offset);
 
     // Resolve the key.
     flexi_ssize_t offset = 0;
-    const char *offset_ptr = keys_base + (index * keys_width);
-    if (!buffer_read_size_by_width(&cursor->buffer, offset_ptr, (int)keys_width,
+    const char *offset_ptr = keys.cursor + (index * keys.width);
+    if (!buffer_read_size_by_width(&cursor->buffer, offset_ptr, keys.width,
             &offset)) {
         return false;
     }
@@ -1441,25 +1539,39 @@ static flexi_result_e
 parser_emit_map(const flexi_parser_s *parser, const char *key,
     const flexi_cursor_s *cursor, void *user, parse_limits_s *limits)
 {
+    ASSERT(cursor->type == FLEXI_TYPE_MAP);
+
     flexi_ssize_t len;
     if (!cursor_get_length_prefix(cursor, &len)) {
+        return FLEXI_ERR_BADREAD;
+    }
+
+    flexi_cursor_s cur_keys;
+    if (!cursor_map_keys(cursor, &cur_keys)) {
         return FLEXI_ERR_BADREAD;
     }
 
     flexi_result_e res;
     parser->map_begin(key, len, user);
     for (flexi_ssize_t i = 0; i < len; i++) {
-        const char *str;
-        if (!cursor_map_key_at_index(cursor, i, &str)) {
+        // Grab the key of this map.
+        flexi_cursor_s scratch;
+        if (!cursor_seek_typed_vector_index(&cur_keys, i, &scratch)) {
             return FLEXI_ERR_BADREAD;
         }
 
-        flexi_cursor_s value;
-        if (!cursor_seek_untyped_vector_index(cursor, i, &value)) {
+        const char *subkey;
+        if (!flexi_cursor_key(&scratch, &subkey)) {
             return FLEXI_ERR_BADREAD;
         }
+
+        // Grab the value to parse.
+        if (!cursor_seek_untyped_vector_index(cursor, i, &scratch)) {
+            return FLEXI_ERR_BADREAD;
+        }
+
         limits->depth += 1;
-        res = parse_cursor(parser, str, &value, user, limits);
+        res = parse_cursor(parser, subkey, &scratch, user, limits);
         if (FLEXI_ERROR(res)) {
             return res;
         }
