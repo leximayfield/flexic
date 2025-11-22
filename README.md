@@ -74,6 +74,35 @@ I can't imagine why you would want to turn this library into a shared library,
 but if you have a use case, let me know in an issue.  FWIW, I do not consider
 packaging for a Linux distro to be a compelling use case.
 
+How Fast Is FlexiC?
+-------------------
+If this is a serious concern of yours, you should probably construct a
+benchmark that mirrors your own expected usage of the library.
+
+That being said, I decided to construct a few benchmarks of my own, just
+to get a ballpark idea of how fast this library compares to the official
+Google library, as well as a fast C JSON library.
+
+All benchmarks are started after loading the file, but before parsing.
+
+|               ns/op |                op/s |    err% |     total | Seek value of root[map-50][key-50]
+|--------------------:|--------------------:|--------:|----------:|:-----------------------------------
+|          816,200.00 |            1,225.19 |    0.6% |      0.15 | `sheredom/json.h`
+|              284.51 |        3,514,818.67 |    0.5% |      0.01 | `google/flatbuffers`
+|              186.13 |        5,372,528.71 |    0.5% |      0.01 | `leximayfield/flexic`
+
+|               ns/op |                op/s |    err% |     total | Walk entire document
+|--------------------:|--------------------:|--------:|----------:|:---------------------
+|          642,047.37 |            1,557.52 |    0.7% |      0.12 | `sheredom/json.h`
+|          657,978.95 |            1,519.81 |    0.7% |      0.12 | `google/flatbuffers`
+|          152,182.35 |            6,571.06 |    0.8% |      0.03 | `leximayfield/flexic`
+
+For the seek benchmark, the JSON library is forced to do a linear scan to
+look up a specific key, so it's not exactly a fair comparison.
+
+Compiled with Clang 21.1.5 `-O3` and run on a Ryzen 7 5800X running Windows
+11 25H2.
+
 License
 -------
 FlexiC is licensed under the [zlib][3] license.
