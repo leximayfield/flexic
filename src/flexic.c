@@ -54,6 +54,18 @@
 #define FLEXI_CONFIG_MAX_ITERABLES (2048)
 #endif
 
+#ifndef FLEXI_CONFIG_SEEK_MAP_KEY_LINEAR_COUNT
+/**
+ * @brief The maximum length of a map where keys are looked up linearly.
+ *        Above this count, keys are found via binary search.
+ *
+ * @details With a small enough map, it is actually faster to do a linear
+ *          scan of keys than to do a binary search.  This configuration
+ *          value tunes the cut-off length.
+ */
+#define FLEXI_CONFIG_SEEK_MAP_KEY_LINEAR_MAX (16)
+#endif
+
 /******************************************************************************/
 
 #ifndef NDEBUG
@@ -2785,7 +2797,7 @@ flexi_cursor_seek_map_key(const flexi_cursor_s *cursor, const char *key,
         return FLEXI_ERR_BADREAD;
     }
 
-    if (len <= 16) {
+    if (len <= FLEXI_CONFIG_SEEK_MAP_KEY_LINEAR_MAX) {
         return cursor_seek_map_key_linear(cursor, len, key, dest);
     } else {
         return cursor_seek_map_key_bsearch(cursor, len, key, dest);
