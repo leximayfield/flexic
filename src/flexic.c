@@ -114,19 +114,6 @@ static uint8_t g_empty_blob = 0;
 /******************************************************************************/
 
 /**
- * @brief Checked unsigned multiply with signed params.
- */
-static bool
-checked_mul(intmax_t *z, intmax_t x, intmax_t y)
-{
-    uintmax_t ux = (uintmax_t)x;
-    uintmax_t uy = (uintmax_t)y;
-    uintmax_t uz = ux * uy;
-    *z = (intmax_t)uz;
-    return x >= 0 && y >= 0 && uz <= INTMAX_MAX && (ux == 0 || (uz / ux) == uy);
-}
-
-/**
  * @brief Returns true if the value has a single bit set, making it a
  *        power-of-two.
  */
@@ -1010,10 +997,20 @@ cursor_set_error(flexi_cursor_s *cursor)
 }
 
 /**
+ * @brief Return true if there is room in the buffer to read a length prefix.
+ */
+static bool
+cursor_can_read_length_prefix(const flexi_cursor_s *cursor)
+{
+    return cursor->cursor - cursor->width >= cursor->buffer.data;
+}
+
+/**
  * @brief Given a cursor pointing at the base of a vector or vector-like
  *        type, obtain its length.
  *
  * @pre Type must be a type that has a length prefix.
+ * @pre Buffer must have room for length at cursor position.
  *
  * @param[in] cursor Cursor to check.
  * @param[out] len Length of vector.
@@ -1024,9 +1021,33 @@ cursor_get_length_prefix_unsafe(const flexi_cursor_s *cursor,
     flexi_ssize_t *len)
 {
     ASSERT(type_has_length_prefix(cursor->type));
+    ASSERT(cursor_can_read_length_prefix(cursor));
 
-    return buffer_read_size_by_width(&cursor->buffer,
-        cursor->cursor - cursor->width, cursor->width, len);
+    return buffer_read_size_by_width_unsafe(cursor->cursor - cursor->width,
+        cursor->width, len);
+}
+
+/**
+ * @brief Given a cursor pointing at the base of a vector or vector-like
+ *        type, obtain its length.
+ *
+ * @pre Type must be a type that has a length prefix.
+ *
+ * @param[in] cursor Cursor to check.
+ * @param[out] len Length of vector.
+ * @return True if length was found.
+ */
+static bool
+cursor_get_length_prefix(const flexi_cursor_s *cursor, flexi_ssize_t *len)
+{
+    ASSERT(type_has_length_prefix(cursor->type));
+
+    if (!cursor_can_read_length_prefix(cursor)) {
+        return false;
+    }
+
+    return buffer_read_size_by_width_unsafe(cursor->cursor - cursor->width,
+        cursor->width, len);
 }
 
 /**
@@ -1065,7 +1086,7 @@ cursor_length(const flexi_cursor_s *cursor)
     flexi_ssize_t len = -1;
     if (type_has_length_prefix(cursor->type)) {
         // Get the length prefix.
-        if (!cursor_get_length_prefix_unsafe(cursor, &len)) {
+        if (!cursor_get_length_prefix(cursor, &len)) {
             return 0;
         }
         return len;
@@ -1086,30 +1107,28 @@ cursor_length(const flexi_cursor_s *cursor)
  *
  * @warning This is a bug-prone function, be careful when working on it.
  *
+ * @pre Cursor must be a map or untyped vector.
+ * @pre Buffer must have room for length at cursor position.
+ * @post Every vector value is in-bounds.
+ *
  * @param[in] cursor Cursor to check.
  * @param[out] packed Pointer to first packed type.
  * @return True if types were located.
  */
 static bool
-cursor_vector_types(const flexi_cursor_s *cursor, const flexi_packed_t **packed)
+cursor_vector_types_unsafe(const flexi_cursor_s *cursor,
+    const flexi_packed_t **packed)
 {
-    if (!type_is_map_or_untyped_vector(cursor->type)) {
-        return false;
-    }
+    ASSERT(type_is_map_or_untyped_vector(cursor->type));
+    ASSERT(cursor_can_read_length_prefix(cursor));
 
     flexi_ssize_t len;
     if (!cursor_get_length_prefix_unsafe(cursor, &len)) {
         return false;
     }
 
-    // Don't wrap the offset calculation.
-    intmax_t offset;
-    if (!checked_mul(&offset, len, cursor->width)) {
-        return false;
-    }
-
     // Make sure the destination pointer is in-bounds at all valid offsets.
-    const char *dest = cursor->cursor + offset;
+    const char *dest = cursor->cursor + (len * cursor->width);
     if (dest + len >= cursor->buffer.data + cursor->buffer.length) {
         return false;
     }
@@ -1123,6 +1142,9 @@ cursor_vector_types(const flexi_cursor_s *cursor, const flexi_packed_t **packed)
  *        trailing types, return a cursor pointing at the value at the given
  *        index.
  *
+ * @pre Cursor type must be map or untyped vector.
+ * @pre Buffer must have room for length at cursor position.
+ *
  * @param[in] cursor Cursor to use as base.
  * @param[in] index Index to look up.
  * @param[out] dest Destination cursor.
@@ -1132,12 +1154,11 @@ static bool
 cursor_seek_untyped_vector_index(const flexi_cursor_s *cursor,
     flexi_ssize_t index, flexi_cursor_s *dest)
 {
-    if (!type_is_map_or_untyped_vector(cursor->type)) {
-        return false;
-    }
+    ASSERT(type_is_map_or_untyped_vector(cursor->type));
+    ASSERT(cursor_can_read_length_prefix(cursor));
 
     const flexi_packed_t *types = NULL;
-    if (!cursor_vector_types(cursor, &types)) {
+    if (!cursor_vector_types_unsafe(cursor, &types)) {
         return false;
     }
 
@@ -1153,8 +1174,7 @@ cursor_seek_untyped_vector_index(const flexi_cursor_s *cursor,
 
     flexi_ssize_t offset = 0;
     const char *offset_ptr = cursor->cursor + (index * cursor->width);
-    if (!buffer_read_size_by_width(&cursor->buffer, offset_ptr, cursor->width,
-            &offset)) {
+    if (!buffer_read_size_by_width_unsafe(offset_ptr, cursor->width, &offset)) {
         return false;
     }
 
@@ -1538,11 +1558,7 @@ parser_emit_map(const flexi_parser_s *parser, const char *key,
         if (!cursor_seek_typed_vector_index(&cur_keys, i, &scratch)) {
             return FLEXI_ERR_BADREAD;
         }
-
-        const char *subkey;
-        if (!flexi_cursor_key(&scratch, &subkey)) {
-            return FLEXI_ERR_BADREAD;
-        }
+        const char *subkey = scratch.cursor;
 
         // Grab the value to parse.
         if (!cursor_seek_untyped_vector_index(cursor, i, &scratch)) {
@@ -2764,7 +2780,7 @@ flexi_cursor_seek_map_key(const flexi_cursor_s *cursor, const char *key,
     }
 
     flexi_ssize_t len;
-    if (!cursor_get_length_prefix_unsafe(cursor, &len)) {
+    if (!cursor_get_length_prefix(cursor, &len)) {
         cursor_set_error(dest);
         return FLEXI_ERR_BADREAD;
     }
@@ -2792,7 +2808,12 @@ flexi_cursor_vector_types(const flexi_cursor_s *cursor,
         return FLEXI_ERR_BADTYPE;
     }
 
-    if (!cursor_vector_types(cursor, packed)) {
+    if (!cursor_can_read_length_prefix(cursor)) {
+        *packed = &g_empty_packed;
+        return FLEXI_ERR_BADREAD;
+    }
+
+    if (!cursor_vector_types_unsafe(cursor, packed)) {
         *packed = &g_empty_packed;
         return FLEXI_ERR_INTERNAL;
     }
@@ -2854,7 +2875,6 @@ flexi_cursor_typed_vector_data(const flexi_cursor_s *cursor, const void **data,
         *stride = cursor->width;
         *count = cursor_length(cursor);
         return FLEXI_OK;
-    } else if (type_is_map_or_untyped_vector(cursor->type)) {
     }
 
     *data = &g_empty_typed_vector;

@@ -260,9 +260,13 @@ main(const int, const char *[])
             flexi_buffer_s view = flexi_make_buffer(large_doc1_flexbuf.data(),
                 large_doc1_flexbuf.length());
 
-            flexi_open_buffer(&view, &cursor);
-            flexi_cursor_seek_map_key(&cursor, "map-50", &cursorTwo);
-            flexi_cursor_seek_map_key(&cursorTwo, "key-50", &cursorThree);
+            flexi_result_e res;
+            res = flexi_open_buffer(&view, &cursor);
+            assert(res == FLEXI_OK);
+            res = flexi_cursor_seek_map_key(&cursor, "map-50", &cursorTwo);
+            assert(res == FLEXI_OK);
+            res = flexi_cursor_seek_map_key(&cursorTwo, "key-50", &cursorThree);
+            assert(res == FLEXI_OK);
 
             const char *str = nullptr;
             flexi_ssize_t len = -1;
