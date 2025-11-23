@@ -54,7 +54,7 @@
 #define FLEXI_CONFIG_MAX_ITERABLES (2048)
 #endif
 
-#ifndef FLEXI_CONFIG_SEEK_MAP_KEY_LINEAR_COUNT
+#ifndef FLEXI_CONFIG_SEEK_MAP_KEY_LINEAR_MAX
 /**
  * @brief The maximum length of a map where keys are looked up linearly.
  *        Above this count, keys are found via binary search.
