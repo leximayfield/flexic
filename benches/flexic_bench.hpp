@@ -20,28 +20,19 @@
 // 3. This notice may not be removed or altered from any source distribution.
 //
 
-#include "flexic_bench.hpp"
+#pragma once
 
-#include <fstream>
-#include <sstream>
+#include "nanobench.h"
 
-/******************************************************************************/
+#include "flexic.h"
+#include <flatbuffers/flexbuffers.h>
+#include <yyjson.h>
 
 std::string
-bench_ReadFileToString(const char *filename)
-{
-    std::ifstream file{filename, std::ios::binary};
-    std::stringstream stream;
-    stream << file.rdbuf();
-    return std::move(stream).str();
-}
+bench_ReadFileToString(const char *filename);
 
-/******************************************************************************/
+void
+bench_BenchSeekKey();
 
-int
-main(const int, const char *[])
-{
-    bench_BenchSeekKey();
-    bench_BenchWalk();
-    return 0;
-}
+void
+bench_BenchWalk();

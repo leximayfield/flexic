@@ -16,7 +16,10 @@ FetchContent_MakeAvailable(yyjson)
 
 add_executable(flexic_bench)
 target_sources(flexic_bench PRIVATE
+    "${CMAKE_CURRENT_SOURCE_DIR}/flexic_bench.hpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/flexic_bench.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/bench_seek_key.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/bench_walk.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/nanobench.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/nanobench.h")
 target_link_libraries(flexic_bench PRIVATE flexic flatbuffers yyjson)

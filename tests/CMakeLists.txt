@@ -28,6 +28,7 @@ add_executable(flexic_test)
 target_sources(flexic_test PRIVATE
     "${CMAKE_CURRENT_SOURCE_DIR}/tests.hpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/cursor_float.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/cursor_foreach.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/cursor_int.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/cursor_string.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/cursor_typed_vector.cpp"

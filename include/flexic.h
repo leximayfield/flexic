@@ -38,8 +38,8 @@
 #define FLEXI_CPP11_EQ_DELETE
 #endif
 
-#include <stddef.h>
 #include <stdbool.h>
+#include <stddef.h>
 #include <stdint.h>
 
 #if FLEXI_CPLUSPLUS
@@ -383,6 +383,17 @@ typedef struct flexi_cursor_s {
 } flexi_cursor_s;
 
 /**
+ * @brief Function called on every iteration of flexi_cursor_foreach.
+ *
+ * @param key Key assigned to a particular map value, or NULL if iterable
+ *            is not a map.
+ * @param value Value currently being iterated over.
+ * @param user User pointer passed to flexi_cursor_foreach.
+ */
+typedef bool (*flexi_foreach_fn)(const char *key, flexi_cursor_s *value,
+    void *user);
+
+/**
  * @brief Create a buffer from a void pointer/len.
  */
 flexi_buffer_s
@@ -585,6 +596,18 @@ flexi_cursor_seek_vector_index(const flexi_cursor_s *cursor,
 flexi_result_e
 flexi_cursor_typed_vector_data(const flexi_cursor_s *cursor, const void **data,
     flexi_type_e *type, int *stride, flexi_ssize_t *count);
+
+/**
+ * @brief Iterate over a map or vector type.
+ *
+ * @param[in] cursor Cursor pointing to map or vector.
+ * @param[in] foreach Function which will be called per iteration.
+ * @param[in] user User pointer which will be passed to foreach function.
+ * @return FLEXI_OK || FLEXI_BADREAD.
+ */
+flexi_result_e
+flexi_cursor_foreach(flexi_cursor_s *cursor, flexi_foreach_fn foreach,
+    void *user);
 
 /**
  * @brief Obtain byte blob from cursor.

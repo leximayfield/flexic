@@ -1316,27 +1316,23 @@ cursor_map_keys(const flexi_cursor_s *cursor, flexi_cursor_s *dest)
  *        used by that index.
  *
  * @param[in] cursor Cursor to use as base.
+ * @param[in] keys Cursor to previously sought-out keys.
  * @param[in] index Index to look up.
  * @param[out] str Key found by lookup.
  * @return True if lookup was successful.
  */
 static bool
-cursor_map_key_at_index(const flexi_cursor_s *cursor, flexi_ssize_t index,
-    const char **str)
+cursor_map_key_at_index(const flexi_cursor_s *cursor,
+    const flexi_cursor_s *keys, flexi_ssize_t index, const char **str)
 {
     // Calling this with a non-map is a contract violation.
     ASSERT(cursor->type == FLEXI_TYPE_MAP);
-
-    flexi_cursor_s keys;
-    if (!cursor_map_keys(cursor, &keys)) {
-        // Could not locate keys.
-        return false;
-    }
+    ASSERT(keys->type == FLEXI_TYPE_VECTOR_KEY);
 
     // Resolve the key.
     flexi_ssize_t offset = 0;
-    const char *offset_ptr = keys.cursor + (index * keys.width);
-    if (!buffer_read_size_by_width(&cursor->buffer, offset_ptr, keys.width,
+    const char *offset_ptr = keys->cursor + (index * keys->width);
+    if (!buffer_read_size_by_width(&cursor->buffer, offset_ptr, keys->width,
             &offset)) {
         return false;
     }
@@ -1363,10 +1359,16 @@ cursor_seek_map_key_linear(const flexi_cursor_s *cursor, flexi_ssize_t len,
         return FLEXI_ERR_INTERNAL;
     }
 
+    flexi_cursor_s keys;
+    if (!cursor_map_keys(cursor, &keys)) {
+        // Could not locate keys.
+        return FLEXI_ERR_BADREAD;
+    }
+
     // Linear search.
     for (flexi_ssize_t i = 0; i < len; i++) {
         const char *cmp = NULL;
-        if (!cursor_map_key_at_index(cursor, i, &cmp)) {
+        if (!cursor_map_key_at_index(cursor, &keys, i, &cmp)) {
             return FLEXI_ERR_BADREAD;
         }
 
@@ -1399,12 +1401,18 @@ cursor_seek_map_key_bsearch(const flexi_cursor_s *cursor, flexi_ssize_t len,
         return FLEXI_ERR_INTERNAL;
     }
 
+    flexi_cursor_s keys;
+    if (!cursor_map_keys(cursor, &keys)) {
+        // Could not locate keys.
+        return FLEXI_ERR_BADREAD;
+    }
+
     flexi_ssize_t left = 0;
     flexi_ssize_t right = len - 1;
     while (left <= right) {
         flexi_ssize_t i = left + ((right - left) / 2);
         const char *cmp = NULL;
-        if (!cursor_map_key_at_index(cursor, i, &cmp)) {
+        if (!cursor_map_key_at_index(cursor, &keys, i, &cmp)) {
             return FLEXI_ERR_BADREAD;
         }
 
@@ -1423,6 +1431,120 @@ cursor_seek_map_key_bsearch(const flexi_cursor_s *cursor, flexi_ssize_t len,
     }
 
     return FLEXI_ERR_NOTFOUND;
+}
+
+/******************************************************************************/
+
+static flexi_result_e
+cursor_foreach_map(const flexi_cursor_s *cursor, flexi_foreach_fn foreach,
+    void *user)
+{
+    flexi_cursor_s each;
+    each.buffer = cursor->buffer;
+
+    flexi_cursor_s keys;
+    if (!cursor_map_keys(cursor, &keys)) {
+        // Could not locate keys.
+        return FLEXI_ERR_BADREAD;
+    }
+
+    flexi_ssize_t len;
+    if (!cursor_get_length_prefix_unsafe(cursor, &len)) {
+        // There is no length prefix.
+        return FLEXI_ERR_BADREAD;
+    }
+
+    const flexi_packed_t *types;
+    if (!cursor_vector_types_unsafe(cursor, &types)) {
+        // There is no types suffix.
+        return FLEXI_ERR_BADREAD;
+    }
+
+    for (flexi_ssize_t i = 0; i < len; i++) {
+        const char *key;
+        if (!cursor_map_key_at_index(cursor, &keys, i, &key)) {
+            // Couldn't find the map key.
+            return FLEXI_ERR_BADREAD;
+        }
+
+        flexi_type_e type = FLEXI_UNPACK_TYPE(types[i]);
+        if (type_is_direct(type)) {
+            each.cursor = cursor->cursor + (i * cursor->width);
+            each.type = type;
+            each.width = cursor->width;
+        } else {
+            flexi_ssize_t offset = 0;
+            const char *offset_ptr = cursor->cursor + (i * cursor->width);
+            if (!buffer_read_size_by_width_unsafe(offset_ptr, cursor->width,
+                    &offset)) {
+                return FLEXI_ERR_BADREAD;
+            }
+
+            if (!buffer_seek_back(&cursor->buffer, offset_ptr, offset,
+                    &each.cursor)) {
+                return FLEXI_ERR_BADREAD;
+            }
+
+            each.type = type;
+            each.width = FLEXI_WIDTH_TO_BYTES(FLEXI_UNPACK_WIDTH(types[i]));
+        }
+
+        if (!foreach (key, &each, user)) {
+            return FLEXI_OK;
+        }
+    }
+
+    return FLEXI_OK;
+}
+
+/******************************************************************************/
+
+static flexi_result_e
+cursor_foreach_untyped_vector(flexi_cursor_s *cursor, flexi_foreach_fn foreach,
+    void *user)
+{
+    flexi_cursor_s each;
+    each.buffer = cursor->buffer;
+
+    flexi_ssize_t len;
+    if (!cursor_get_length_prefix_unsafe(cursor, &len)) {
+        return FLEXI_ERR_BADREAD;
+    }
+
+    const flexi_packed_t *types;
+    if (!cursor_vector_types_unsafe(cursor, &types)) {
+        return FLEXI_ERR_BADREAD;
+    }
+
+    for (flexi_ssize_t i = 0; i < len; i++) {
+        flexi_type_e type = FLEXI_UNPACK_TYPE(types[i]);
+        if (type_is_direct(type)) {
+            each.cursor = cursor->cursor + (i * cursor->width);
+            each.type = type;
+            each.width = cursor->width;
+        } else {
+            flexi_ssize_t offset = 0;
+            const char *offset_ptr = cursor->cursor + (i * cursor->width);
+            if (!buffer_read_size_by_width_unsafe(offset_ptr, cursor->width,
+                    &offset)) {
+                return FLEXI_ERR_BADREAD;
+            }
+
+            if (!buffer_seek_back(&cursor->buffer, offset_ptr, offset,
+                    &each.cursor)) {
+                return FLEXI_ERR_BADREAD;
+            }
+
+            each.type = type;
+            each.width = FLEXI_WIDTH_TO_BYTES(FLEXI_UNPACK_WIDTH(types[i]));
+        }
+
+        if (!foreach (NULL, &each, user)) {
+            return FLEXI_OK;
+        }
+    }
+
+    return FLEXI_OK;
 }
 
 /**
@@ -1535,6 +1657,33 @@ parser_emit_string(const flexi_parser_s *parser, const char *key,
     return FLEXI_OK;
 }
 
+/******************************************************************************/
+
+typedef struct foreach_ctx_s {
+    const flexi_parser_s *parser;
+    void *user;
+    parse_limits_s *limits;
+    flexi_result_e err;
+} foreach_ctx_s;
+
+static bool
+parser_emit_foreach(const char *key, flexi_cursor_s *value, void *user)
+{
+    foreach_ctx_s *ctx = (foreach_ctx_s *)user;
+
+    ctx->limits->depth += 1;
+    flexi_result_e res =
+        parse_cursor(ctx->parser, key, value, ctx->user, ctx->limits);
+    ctx->limits->depth -= 1;
+
+    if (FLEXI_ERROR(res)) {
+        ctx->err = res;
+        return false;
+    }
+
+    return true;
+}
+
 /**
  * @brief Call the map callbacks and iterate map values.
  *
@@ -1557,32 +1706,15 @@ parser_emit_map(const flexi_parser_s *parser, const char *key,
         return FLEXI_ERR_BADREAD;
     }
 
-    flexi_cursor_s cur_keys;
-    if (!cursor_map_keys(cursor, &cur_keys)) {
-        return FLEXI_ERR_BADREAD;
-    }
+    foreach_ctx_s ctx;
+    ctx.parser = parser;
+    ctx.user = user;
+    ctx.limits = limits;
+    ctx.err = FLEXI_INVALID;
 
-    flexi_result_e res;
     parser->map_begin(key, len, user);
-    for (flexi_ssize_t i = 0; i < len; i++) {
-        // Grab the key of this map.
-        flexi_cursor_s scratch;
-        if (!cursor_seek_typed_vector_index(&cur_keys, i, &scratch)) {
-            return FLEXI_ERR_BADREAD;
-        }
-        const char *subkey = scratch.cursor;
-
-        // Grab the value to parse.
-        if (!cursor_seek_untyped_vector_index(cursor, i, &scratch)) {
-            return FLEXI_ERR_BADREAD;
-        }
-
-        limits->depth += 1;
-        res = parse_cursor(parser, subkey, &scratch, user, limits);
-        if (FLEXI_ERROR(res)) {
-            return res;
-        }
-        limits->depth -= 1;
+    if (!cursor_foreach_map(cursor, parser_emit_foreach, &ctx)) {
+        return ctx.err;
     }
 
     parser->map_end(user);
@@ -2767,7 +2899,13 @@ flexi_cursor_map_key_at_index(const flexi_cursor_s *cursor, flexi_ssize_t index,
         return FLEXI_ERR_BADTYPE;
     }
 
-    if (!cursor_map_key_at_index(cursor, index, str)) {
+    flexi_cursor_s keys;
+    if (!cursor_map_keys(cursor, &keys)) {
+        *str = "";
+        return FLEXI_ERR_BADREAD;
+    }
+
+    if (!cursor_map_key_at_index(cursor, &keys, index, str)) {
         *str = "";
         return FLEXI_ERR_INTERNAL;
     }
@@ -2894,6 +3032,20 @@ flexi_cursor_typed_vector_data(const flexi_cursor_s *cursor, const void **data,
     *stride = 0;
     *count = 0;
     return FLEXI_ERR_BADTYPE;
+}
+
+/******************************************************************************/
+
+flexi_result_e
+flexi_cursor_foreach(flexi_cursor_s *cursor, flexi_foreach_fn foreach,
+    void *user)
+{
+    switch (cursor->type) {
+    case FLEXI_TYPE_MAP: return cursor_foreach_map(cursor, foreach, user);
+    case FLEXI_TYPE_VECTOR:
+        return cursor_foreach_untyped_vector(cursor, foreach, user);
+    default: return FLEXI_ERR_BADTYPE;
+    }
 }
 
 /******************************************************************************/
