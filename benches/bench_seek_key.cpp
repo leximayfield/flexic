@@ -42,7 +42,7 @@ flexic_SeekMap50(const std::string &str)
     const char *value = nullptr;
     flexi_ssize_t len = -1;
     flexi_cursor_string(&cursorThree, &value, &len);
-    assert(!strcmp(str, "v-50-50"));
+    assert(!strcmp(str.c_str(), "v-50-50"));
     return value;
 }
 
