@@ -22,18 +22,6 @@
 
 #include "tests.hpp"
 
-#include <fstream>
-#include <sstream>
-
-static std::string
-ReadFileToString(const char *filename)
-{
-    std::ifstream file{filename, std::ios::binary};
-    std::stringstream stream;
-    stream << file.rdbuf();
-    return std::move(stream).str();
-}
-
 static void
 GetCursorLargeStrings(flexi_cursor_s &cursor)
 {

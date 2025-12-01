@@ -524,3 +524,41 @@ TEST(Parser, ParseTypedVectors)
         }
     }
 }
+
+TEST(Parser, MakeEmptyParser)
+{
+    flexi_parser_s parser = flexi_make_empty_parser();
+
+    {
+        flexi_buffer_s buffer =
+            flexi_make_buffer(&g_basic_types[0], std::size(g_basic_types));
+
+        flexi_cursor_s cursor{};
+        ASSERT_EQ(FLEXI_OK, flexi_open_buffer(&buffer, &cursor));
+
+        Results results;
+        ASSERT_EQ(FLEXI_OK, flexi_parse_cursor(&parser, &cursor, &results));
+    }
+
+    {
+        flexi_buffer_s buffer =
+            flexi_make_buffer(&g_nested_types[0], std::size(g_nested_types));
+
+        flexi_cursor_s cursor{};
+        ASSERT_EQ(FLEXI_OK, flexi_open_buffer(&buffer, &cursor));
+
+        Results results;
+        ASSERT_EQ(FLEXI_OK, flexi_parse_cursor(&parser, &cursor, &results));
+    }
+
+    {
+        flexi_buffer_s buffer =
+            flexi_make_buffer(&g_typed_vectors[0], std::size(g_typed_vectors));
+
+        flexi_cursor_s cursor{};
+        ASSERT_EQ(FLEXI_OK, flexi_open_buffer(&buffer, &cursor));
+
+        Results results;
+        ASSERT_EQ(FLEXI_OK, flexi_parse_cursor(&parser, &cursor, &results));
+    }
+}

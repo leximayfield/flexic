@@ -26,11 +26,13 @@ enable_testing()
 # Test suite.
 add_executable(flexic_test)
 target_sources(flexic_test PRIVATE
+    "${CMAKE_CURRENT_SOURCE_DIR}/tests.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/tests.hpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/cursor_error.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/cursor_float.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/cursor_foreach.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/cursor_int.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/cursor_map.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/cursor_string.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/cursor_typed_vector.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/parser.cpp"
@@ -72,6 +74,12 @@ if(FLEXIC_ENABLE_TEST_COVERAGE)
         message(FATAL_ERROR "Test coverage not supported by compiler")
     endif()
 endif()
+
+add_custom_command(
+        TARGET flexic_test POST_BUILD
+        COMMAND "${CMAKE_COMMAND}" -E copy
+                "${CMAKE_CURRENT_SOURCE_DIR}/large_doc1.flexbuf"
+                "${CMAKE_CURRENT_BINARY_DIR}/large_doc1.flexbuf")
 
 add_custom_command(
         TARGET flexic_test POST_BUILD

@@ -168,3 +168,6 @@ protected:
         ASSERT_EQ(FLEXI_OK, flexi_open_buffer(&buffer, cursor));
     }
 };
+
+std::string
+ReadFileToString(const char *filename);
