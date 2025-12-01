@@ -4061,7 +4061,7 @@ flexi_write_typed_vector_bool(flexi_writer_s *writer, const char *key,
 
     stack->u.offset = offset;
     stack->key = key;
-    stack->type = FLEXI_TYPE_VECTOR_FLOAT;
+    stack->type = FLEXI_TYPE_VECTOR_BOOL;
     stack->width = sizeof(bool);
     return FLEXI_OK;
 }

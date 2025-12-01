@@ -326,3 +326,47 @@ TEST_F(WriteFixture, VectorWidthTooSmall)
     ASSERT_EQ(4, flexi_cursor_width(&cursor));
     ASSERT_EQ(2, flexi_cursor_length(&cursor));
 }
+
+TEST_F(WriteFixture, VectorBool)
+{
+    {
+        constexpr std::array<bool, 5> data = {true, false, false, true, true};
+
+        ASSERT_EQ(FLEXI_OK, flexi_write_typed_vector_bool(&m_writer, NULL,
+                                data.data(), data.size()));
+        ASSERT_EQ(FLEXI_OK, flexi_write_finalize(&m_writer));
+    }
+
+    std::vector<uint8_t> expected = {
+        0x05, 0x01, 0x00, 0x00, 0x01, 0x01, 0x05, 0x90, 0x01};
+
+    AssertData(expected);
+
+    flexi_cursor_s cursor{};
+    GetCursor(&cursor);
+
+    ASSERT_EQ(FLEXI_TYPE_VECTOR_BOOL, flexi_cursor_type(&cursor));
+    ASSERT_EQ(1, flexi_cursor_width(&cursor));
+    ASSERT_EQ(5, flexi_cursor_length(&cursor));
+
+    {
+        const void *data;
+        flexi_type_e type;
+        int stride;
+        flexi_ssize_t count;
+        ASSERT_EQ(FLEXI_OK, flexi_cursor_typed_vector_data(&cursor, &data,
+                                &type, &stride, &count));
+        ASSERT_EQ(FLEXI_TYPE_VECTOR_BOOL, type);
+        ASSERT_EQ(1, stride);
+        ASSERT_EQ(5, count);
+
+        auto boolData = static_cast<const bool *>(data);
+
+        size_t i = 0;
+        ASSERT_EQ(true, boolData[i++]);
+        ASSERT_EQ(false, boolData[i++]);
+        ASSERT_EQ(false, boolData[i++]);
+        ASSERT_EQ(true, boolData[i++]);
+        ASSERT_EQ(true, boolData[i++]);
+    }
+}
