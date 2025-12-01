@@ -42,6 +42,8 @@ int
 main(const int, const char *[])
 {
     bench_BenchSeekKey();
+    bench_BenchParseSeekKey();
     bench_BenchWalk();
+    bench_BenchParseWalk();
     return 0;
 }

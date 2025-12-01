@@ -24,39 +24,61 @@
 
 /******************************************************************************/
 
-static flexi_result_e
-flexic_OpenAndParse(const std::string &str, const flexi_parser_s &parser)
+static void
+flexic_EmitString(const char *key, const char *str, flexi_ssize_t len, void *)
 {
-    flexi_cursor_s cursor;
+    volatile const char *k = key;
+    volatile const char *s = str;
+    volatile flexi_ssize_t l = len;
+}
 
-    flexi_buffer_s view = flexi_make_buffer(str.data(), str.length());
+static void
+flexic_EmitBeginMap(const char *key, flexi_ssize_t len, void *)
+{
+    volatile const char *k = key;
+    volatile size_t l = len;
+}
 
-    flexi_result_e res = flexi_open_buffer(&view, &cursor);
-    assert(FLEXI_SUCCESS(res));
+static void
+flexic_EmitEndMap(void *)
+{
+}
 
-    res = flexi_parse_cursor(&parser, &cursor, NULL);
-    assert(FLEXI_SUCCESS(res));
-    return res;
+static flexi_parser_s
+flexic_Parser()
+{
+    flexi_parser_s parser = flexi_make_empty_parser();
+    parser.map_begin = flexic_EmitBeginMap;
+    parser.map_end = flexic_EmitEndMap;
+    parser.string = flexic_EmitString;
+    return parser;
 }
 
 /******************************************************************************/
 
 static void
-flatbuffers_EmitString(const char *key, const char *str, size_t len)
+bench_EmitString(const char *key, const char *str, size_t len)
 {
+    volatile const char *k = key;
+    volatile const char *s = str;
+    volatile size_t l = len;
 }
 
 static void
-flatbuffers_EmitBeginObject(const char *key, size_t len)
+bench_EmitBeginObject(const char *key, size_t len)
 {
+    volatile const char *k = key;
+    volatile size_t l = len;
 }
 
 static void
-flatbuffers_EmitEndObject()
+bench_EmitEndObject()
 {
 }
 
-static void
+/******************************************************************************/
+
+static int
 flatbuffers_WalkValue(const char *key, const flexbuffers::Reference &ref)
 {
     switch (ref.GetType()) {
@@ -67,7 +89,7 @@ flatbuffers_WalkValue(const char *key, const flexbuffers::Reference &ref)
     case flexbuffers::FBT_KEY: assert(false); break;
     case flexbuffers::FBT_STRING: {
         flexbuffers::String str = ref.AsString();
-        flatbuffers_EmitString(key, str.c_str(), str.length());
+        bench_EmitString(key, str.c_str(), str.length());
         break;
     }
     case flexbuffers::FBT_INDIRECT_INT: assert(false); break;
@@ -75,13 +97,13 @@ flatbuffers_WalkValue(const char *key, const flexbuffers::Reference &ref)
     case flexbuffers::FBT_INDIRECT_FLOAT: assert(false); break;
     case flexbuffers::FBT_MAP: {
         flexbuffers::Map map = ref.AsMap();
-        flatbuffers_EmitBeginObject(key, map.size());
+        bench_EmitBeginObject(key, map.size());
         for (size_t i = 0; i < map.size(); i++) {
             const char *key = map.Keys()[i].AsKey();
             const auto &value = map.Values()[i];
             flatbuffers_WalkValue(key, value);
         }
-        flatbuffers_EmitEndObject();
+        bench_EmitEndObject();
         break;
     }
     case flexbuffers::FBT_VECTOR: assert(false); break;
@@ -103,6 +125,8 @@ flatbuffers_WalkValue(const char *key, const flexbuffers::Reference &ref)
     case flexbuffers::FBT_BOOL: assert(false); break;
     case flexbuffers::FBT_VECTOR_BOOL: assert(false); break;
     }
+
+    return 0;
 }
 
 static size_t
@@ -116,22 +140,121 @@ flatbuffers_GetRootAndWalk(const std::string &str)
 
 /******************************************************************************/
 
-static void
-yyjson_EmitString(const char *key, const char *str, size_t len)
+static int
+json_Parser(const char *key, nlohmann::json &value)
 {
+    switch (value.type()) {
+    case nlohmann::json::value_t::null: assert(false); break;
+    case nlohmann::json::value_t::object:
+        bench_EmitBeginObject(key, value.size());
+
+        for (auto pairs : value.items()) {
+            pairs.key();
+            pairs.value();
+            json_Parser(pairs.key().c_str(), pairs.value());
+        }
+
+        bench_EmitEndObject();
+        break;
+    case nlohmann::json::value_t::array: assert(false); break;
+    case nlohmann::json::value_t::string: {
+        const std::string &str = value.get<std::string>();
+        bench_EmitString(key, str.data(), str.length());
+        break;
+    }
+    case nlohmann::json::value_t::boolean: assert(false); break;
+    case nlohmann::json::value_t::number_integer: assert(false); break;
+    case nlohmann::json::value_t::number_unsigned: assert(false); break;
+    case nlohmann::json::value_t::number_float: assert(false); break;
+    case nlohmann::json::value_t::binary: assert(false); break;
+    case nlohmann::json::value_t::discarded: assert(false); break;
+    }
+    return 0;
 }
 
-static void
-yyjson_EmitBeginObject(const char *key, size_t len)
-{
-}
+/******************************************************************************/
 
-static void
-yyjson_EmitEndObject()
-{
-}
+class json_SAXParser : public nlohmann::json::json_sax_t {
+public:
+    virtual bool null()
+    {
+        assert(false);
+        return true;
+    }
+    virtual bool boolean(bool val)
+    {
+        assert(false);
+        return true;
+    }
 
-static void
+    virtual bool number_integer(number_integer_t val)
+    {
+        assert(false);
+        return true;
+    }
+
+    virtual bool number_unsigned(number_unsigned_t val)
+    {
+        assert(false);
+        return true;
+    }
+
+    virtual bool number_float(number_float_t val, const string_t &s)
+    {
+        assert(false);
+        return true;
+    }
+
+    virtual bool string(string_t &val)
+    {
+        volatile const char *v = val.c_str();
+        volatile size_t l = val.length();
+        return true;
+    }
+
+    virtual bool binary(binary_t &val)
+    {
+        assert(false);
+        return true;
+    }
+
+    virtual bool start_object(std::size_t elements)
+    {
+        volatile size_t e = elements;
+        return true;
+    }
+
+    virtual bool key(string_t &val)
+    {
+        volatile const char *v = val.c_str();
+        return true;
+    }
+
+    virtual bool end_object() { return true; }
+
+    virtual bool start_array(std::size_t elements)
+    {
+        assert(false);
+        return true;
+    }
+
+    virtual bool end_array()
+    {
+        assert(false);
+        return true;
+    }
+
+    virtual bool parse_error(std::size_t position,
+        const std::string &last_token, const nlohmann::json::exception &ex)
+    {
+        assert(false);
+        return true;
+    }
+};
+
+/******************************************************************************/
+
+static int
 yyjson_WalkValue(const char *key, yyjson_val *value)
 {
     switch (yyjson_get_type(value)) {
@@ -142,12 +265,12 @@ yyjson_WalkValue(const char *key, yyjson_val *value)
     case YYJSON_TYPE_STR: {
         const char *str = yyjson_get_str(value);
         size_t len = yyjson_get_len(value);
-        yyjson_EmitString(key, str, len);
+        bench_EmitString(key, str, len);
         break;
     }
     case YYJSON_TYPE_ARR: assert(false); break;
     case YYJSON_TYPE_OBJ: {
-        yyjson_EmitBeginObject(key, yyjson_obj_size(value));
+        bench_EmitBeginObject(key, yyjson_obj_size(value));
         size_t idx, imax;
         yyjson_val *ikey, *ival;
         yyjson_obj_foreach(value, idx, imax, ikey, ival)
@@ -155,19 +278,11 @@ yyjson_WalkValue(const char *key, yyjson_val *value)
             const char *keyStr = yyjson_get_str(ikey);
             yyjson_WalkValue(keyStr, ival);
         }
-        yyjson_EmitEndObject();
+        bench_EmitEndObject();
         break;
     }
     }
-}
 
-static size_t
-yyjson_ParseAndWalk(const std::string &str)
-{
-    yyjson_doc *doc = yyjson_read(str.c_str(), str.length(), 0);
-    yyjson_val *val = yyjson_doc_get_root(doc);
-    yyjson_WalkValue(NULL, val);
-    yyjson_doc_free(doc);
     return 0;
 }
 
@@ -180,16 +295,94 @@ bench_BenchWalk()
     std::string json_doc = bench_ReadFileToString("large_doc1.json");
 
     auto bench = ankerl::nanobench::Bench()
-                     .minEpochTime(std::chrono::milliseconds{500})
+                     .minEpochTime(std::chrono::milliseconds{100})
                      .title("Walk entire document");
 
-    flexi_parser_s parser = flexi_make_empty_parser();
-    bench.run("leximayfield/flexic",
-        [&] { return flexic_OpenAndParse(flexbuf_doc, parser); });
+    {
+        flexi_parser_s parser = flexic_Parser();
+        flexi_cursor_s cursor = flexi_StringToRoot(flexbuf_doc);
 
-    bench.run("google/flatbuffers",
-        [&] { return flatbuffers_GetRootAndWalk(flexbuf_doc); });
+        bench.run("leximayfield/flexic", [&] {
+            flexi_result_e res = flexi_parse_cursor(&parser, &cursor, NULL);
+            assert(FLEXI_SUCCESS(res));
+            ankerl::nanobench::doNotOptimizeAway(res);
+        });
+    }
 
-    bench.run("ibireme/yyjson.h",
-        [&] { return yyjson_ParseAndWalk(json_doc); });
+    {
+        flexbuffers::Reference rootRef = flatbuffers_StringToRoot(flexbuf_doc);
+
+        bench.run("google/flatbuffers", [&] {
+            ankerl::nanobench::doNotOptimizeAway(
+                flatbuffers_WalkValue(NULL, rootRef));
+        });
+    }
+
+    {
+        // [LM] Don't use SAX parser - it only works on strings.
+        nlohmann::json root = json_StringToRoot(json_doc);
+
+        bench.run("nlohmann/json (manual)", [&] {
+            ankerl::nanobench::doNotOptimizeAway(json_Parser(NULL, root));
+        });
+    }
+
+    {
+        yyjson_pair yypair = yyjson_StringToRoot(json_doc);
+
+        bench.run("ibireme/yyjson.h", [&] {
+            ankerl::nanobench::doNotOptimizeAway(
+                yyjson_WalkValue(NULL, yypair.yyroot));
+        });
+    }
+}
+
+/******************************************************************************/
+
+void
+bench_BenchParseWalk()
+{
+    std::string flexbuf_doc = bench_ReadFileToString("large_doc1.flexbuf");
+    std::string json_doc = bench_ReadFileToString("large_doc1.json");
+
+    auto bench = ankerl::nanobench::Bench()
+                     .minEpochTime(std::chrono::milliseconds{100})
+                     .title("Parse and Walk entire document");
+
+    {
+        bench.run("leximayfield/flexic", [&] {
+            flexi_parser_s parser = flexic_Parser();
+            flexi_cursor_s cursor = flexi_StringToRoot(flexbuf_doc);
+            flexi_result_e res = flexi_parse_cursor(&parser, &cursor, NULL);
+            assert(FLEXI_SUCCESS(res));
+            ankerl::nanobench::doNotOptimizeAway(res);
+        });
+    }
+
+    {
+        bench.run("google/flatbuffers", [&] {
+            flexbuffers::Reference rootRef =
+                flatbuffers_StringToRoot(flexbuf_doc);
+            ankerl::nanobench::doNotOptimizeAway(
+                flatbuffers_WalkValue(NULL, rootRef));
+        });
+    }
+
+    {
+        bench.run("nlohmann/json (sax_parse)", [&] {
+            // [LM] Now we can use the SAX parser.
+            json_SAXParser sax;
+            ankerl::nanobench::doNotOptimizeAway(
+                nlohmann::json::sax_parse<const char *, json_SAXParser>(
+                    json_doc.c_str(), &sax));
+        });
+    }
+
+    {
+        bench.run("ibireme/yyjson.h", [&] {
+            yyjson_pair yypair = yyjson_StringToRoot(json_doc);
+            ankerl::nanobench::doNotOptimizeAway(
+                yyjson_WalkValue(NULL, yypair.yyroot));
+        });
+    }
 }

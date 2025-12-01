@@ -76,29 +76,47 @@ packaging for a Linux distro to be a compelling use case.
 
 How Fast Is FlexiC?
 -------------------
-If this is a serious concern of yours, you should probably construct a
+If speed is a serious concern of yours, you should probably construct a
 benchmark that mirrors your own expected usage of the library.
 
 That being said, I decided to construct a few benchmarks of my own, just
 to get a ballpark idea of how fast this library compares to the official
-Google library, as well as a fast C JSON library.
-
-All benchmarks are started after loading the file, but before parsing.
+Google library, as well as two different JSON libraries.  These benchmarks
+can be found in the `flexic_bench` target.
 
 |               ns/op |                op/s |    err% |     total | Seek value of root[map-50][key-50]
 |--------------------:|--------------------:|--------:|----------:|:-----------------------------------
-|          117,622.22 |            8,501.79 |    0.4% |      0.02 | `ibireme/yyjson.h`
-|              275.42 |        3,630,787.50 |    0.7% |      0.01 | `google/flatbuffers`
-|              163.99 |        6,098,052.38 |    0.5% |      0.01 | `leximayfield/flexic`
+|               96.81 |       10,329,343.39 |    0.9% |      1.18 | `leximayfield/flexic`
+|              239.90 |        4,168,412.47 |    0.2% |      1.21 | `google/flatbuffers`
+|               85.78 |       11,658,272.96 |    0.4% |      1.18 | `nlohmann/json`
+|              104.66 |        9,554,830.12 |    0.5% |      1.22 | `ibireme/yyjson.h`
+
+|               ns/op |                op/s |    err% |     total | Parse and Seek value of root[map-50][key-50]
+|--------------------:|--------------------:|--------:|----------:|:---------------------------------------------
+|              100.79 |        9,921,357.37 |    0.2% |      1.21 | `leximayfield/flexic`
+|              201.69 |        4,958,078.12 |    0.2% |      1.21 | `google/flatbuffers`
+|        2,864,297.50 |              349.13 |    0.6% |      1.20 | `nlohmann/json`
+|          101,845.32 |            9,818.81 |    0.4% |      1.20 | `ibireme/yyjson.h`
 
 |               ns/op |                op/s |    err% |     total | Walk entire document
 |--------------------:|--------------------:|--------:|----------:|:---------------------
-|          117,772.22 |            8,490.97 |    0.6% |      0.02 | `ibireme/yyjson.h`
-|          844,100.00 |            1,184.69 |    0.2% |      0.15 | `google/flatbuffers`
-|          130,725.00 |            7,649.65 |    0.2% |      0.02 | `leximayfield/flexic`
+|          118,471.71 |            8,440.83 |    0.6% |      1.16 | `leximayfield/flexic`
+|          781,669.47 |            1,279.31 |    0.4% |      1.17 | `google/flatbuffers`
+|          237,325.23 |            4,213.63 |    0.3% |      1.21 | `nlohmann/json (manual)`
+|           13,805.84 |           72,433.10 |    0.7% |      1.21 | `ibireme/yyjson.h`
 
-For the seek benchmark, the JSON library is forced to do a linear scan to
-look up a specific key, so it's not exactly a fair comparison.
+|               ns/op |                op/s |    err% |     total | Parse and Walk entire document
+|--------------------:|--------------------:|--------:|----------:|:-------------------------------
+|          119,082.31 |            8,397.55 |    0.7% |      1.21 | `leximayfield/flexic`
+|          774,697.32 |            1,290.83 |    0.4% |      1.17 | `google/flatbuffers`
+|          730,900.00 |            1,368.18 |    0.7% |      1.23 | `nlohmann/json (sax_parse)`
+|          117,236.24 |            8,529.79 |    0.6% |      1.21 | `ibireme/yyjson.h`
+
+Compared to `google/flatbuffers`, FlexiC seems to be quicker across the board.
+Comparisons against JSON libraries is tricky, as `nlohmann/json` often runs
+into overhead from parsing, and `ibireme/yyjson.h` is a spectacularly optimized
+library.  Nevertheless, hopefully these numbers give you some idea about how
+fast FlexiC can go.
 
 Compiled with Clang 21.1.5 `-O3` and run on a Ryzen 7 5800X running Windows
 11 25H2.

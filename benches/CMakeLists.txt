@@ -13,6 +13,11 @@ FetchContent_Declare(
     GIT_REPOSITORY https://github.com/ibireme/yyjson
     GIT_TAG 0.12.0)
 FetchContent_MakeAvailable(yyjson)
+FetchContent_Declare(
+    nlohmann_json
+    GIT_REPOSITORY https://github.com/nlohmann/json
+    GIT_TAG v3.12.0)
+FetchContent_MakeAvailable(nlohmann_json)
 
 add_executable(flexic_bench)
 target_sources(flexic_bench PRIVATE
@@ -22,7 +27,8 @@ target_sources(flexic_bench PRIVATE
     "${CMAKE_CURRENT_SOURCE_DIR}/bench_walk.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/nanobench.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/nanobench.h")
-target_link_libraries(flexic_bench PRIVATE flexic flatbuffers yyjson)
+target_link_libraries(flexic_bench PRIVATE
+    flexic flatbuffers yyjson nlohmann_json)
 
 add_custom_command(
         TARGET flexic_bench POST_BUILD
