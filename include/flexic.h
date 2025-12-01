@@ -661,13 +661,6 @@ typedef struct flexi_parser_s {
 } flexi_parser_s;
 
 /**
- * @brief Returns a parser struct with every function pointer containing
- *        a dummied-out function that does nothing.
- */
-flexi_parser_s
-flexi_make_empty_parser(void);
-
-/**
  * @brief Starting from the value at the cursor, parse the FlexBuffer while
  *        calling the appropriate callbacks.
  *

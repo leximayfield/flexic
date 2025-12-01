@@ -47,7 +47,7 @@ flexic_EmitEndMap(void *)
 static flexi_parser_s
 flexic_Parser()
 {
-    flexi_parser_s parser = flexi_make_empty_parser();
+    flexi_parser_s parser;
     parser.map_begin = flexic_EmitBeginMap;
     parser.map_end = flexic_EmitEndMap;
     parser.string = flexic_EmitString;
