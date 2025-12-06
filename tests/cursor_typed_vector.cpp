@@ -20,7 +20,150 @@
 // 3. This notice may not be removed or altered from any source distribution.
 //
 
+#include "flexic.h"
 #include "tests.hpp"
+
+/******************************************************************************/
+
+static void
+GetCursorFiveSint(flexi_cursor_s &cursor)
+{
+    static std::array<uint8_t, 27> s_data = {
+        0x05, 0x00, 0x00, 0x00, // Vector length
+        0x01, 0x00, 0x00, 0x00, // Vector[0] (1)
+        0x02, 0x00, 0x00, 0x00, // Vector[1] (2)
+        0x03, 0x00, 0x00, 0x00, // Vector[2] (3)
+        0x04, 0x00, 0x00, 0x00, // Vector[3] (4)
+        0x05, 0x00, 0x00, 0x00, // Vector[4] (5)
+        0x14, 0x2e, 0x01        // Root
+    };
+
+    auto buffer = flexi_make_buffer(s_data.data(), s_data.size());
+    ASSERT_EQ(FLEXI_OK, flexi_open_buffer(&buffer, &cursor));
+}
+
+TEST(CursorTypedVector, Sint_Direct)
+{
+    flexi_cursor_s cursor{};
+    GetCursorFiveSint(cursor);
+
+    ASSERT_EQ(FLEXI_TYPE_VECTOR_SINT, flexi_cursor_type(&cursor));
+    ASSERT_EQ(4, flexi_cursor_width(&cursor));
+    ASSERT_EQ(5, flexi_cursor_length(&cursor));
+
+    const void *act_data = nullptr;
+    flexi_type_e act_type = FLEXI_TYPE_NULL;
+    int act_stride = -1;
+    flexi_ssize_t act_count = -1;
+
+    ASSERT_EQ(FLEXI_OK, flexi_cursor_typed_vector_data(&cursor, &act_data,
+                            &act_type, &act_stride, &act_count));
+    ASSERT_EQ(FLEXI_TYPE_VECTOR_SINT, act_type);
+    ASSERT_EQ(4, act_stride);
+    ASSERT_EQ(5, act_count);
+
+    const int32_t *vec = static_cast<const int32_t *>(act_data);
+    ASSERT_FLOAT_EQ(vec[0], 1);
+    ASSERT_FLOAT_EQ(vec[1], 2);
+    ASSERT_FLOAT_EQ(vec[2], 3);
+    ASSERT_FLOAT_EQ(vec[3], 4);
+    ASSERT_FLOAT_EQ(vec[4], 5);
+}
+
+TEST(CursorTypedVector, Sint_Seek)
+{
+    flexi_cursor_s cursor{};
+    GetCursorFiveSint(cursor);
+
+    ASSERT_EQ(FLEXI_TYPE_VECTOR_SINT, flexi_cursor_type(&cursor));
+    ASSERT_EQ(4, flexi_cursor_width(&cursor));
+    ASSERT_EQ(5, flexi_cursor_length(&cursor));
+
+    flexi_ssize_t len = flexi_cursor_length(&cursor);
+    for (flexi_ssize_t i = 0; i < len; i++) {
+        flexi_cursor_s vcursor{};
+        ASSERT_EQ(FLEXI_OK,
+            flexi_cursor_seek_vector_index(&cursor, i, &vcursor));
+        ASSERT_EQ(FLEXI_TYPE_SINT, flexi_cursor_type(&vcursor));
+        ASSERT_EQ(4, flexi_cursor_width(&cursor));
+
+        int64_t v = 0;
+        ASSERT_EQ(FLEXI_OK, flexi_cursor_sint(&vcursor, &v));
+        ASSERT_EQ(1 + int64_t(i), v);
+    }
+}
+
+/******************************************************************************/
+
+static void
+GetCursorFiveUint(flexi_cursor_s &cursor)
+{
+    static std::array<uint8_t, 27> s_data = {
+        0x05, 0x00, 0x00, 0x00, // Vector length
+        0x01, 0x00, 0x00, 0x00, // Vector[0] (1)
+        0x02, 0x00, 0x00, 0x00, // Vector[1] (2)
+        0x03, 0x00, 0x00, 0x00, // Vector[2] (3)
+        0x04, 0x00, 0x00, 0x00, // Vector[3] (4)
+        0x05, 0x00, 0x00, 0x00, // Vector[4] (5)
+        0x14, 0x32, 0x01        // Root
+    };
+
+    auto buffer = flexi_make_buffer(s_data.data(), s_data.size());
+    ASSERT_EQ(FLEXI_OK, flexi_open_buffer(&buffer, &cursor));
+}
+
+TEST(CursorTypedVector, Uint_Direct)
+{
+    flexi_cursor_s cursor{};
+    GetCursorFiveUint(cursor);
+
+    ASSERT_EQ(FLEXI_TYPE_VECTOR_UINT, flexi_cursor_type(&cursor));
+    ASSERT_EQ(4, flexi_cursor_width(&cursor));
+    ASSERT_EQ(5, flexi_cursor_length(&cursor));
+
+    const void *act_data = nullptr;
+    flexi_type_e act_type = FLEXI_TYPE_NULL;
+    int act_stride = -1;
+    flexi_ssize_t act_count = -1;
+
+    ASSERT_EQ(FLEXI_OK, flexi_cursor_typed_vector_data(&cursor, &act_data,
+                            &act_type, &act_stride, &act_count));
+    ASSERT_EQ(FLEXI_TYPE_VECTOR_UINT, act_type);
+    ASSERT_EQ(4, act_stride);
+    ASSERT_EQ(5, act_count);
+
+    const uint32_t *vec = static_cast<const uint32_t *>(act_data);
+    ASSERT_FLOAT_EQ(vec[0], 1);
+    ASSERT_FLOAT_EQ(vec[1], 2);
+    ASSERT_FLOAT_EQ(vec[2], 3);
+    ASSERT_FLOAT_EQ(vec[3], 4);
+    ASSERT_FLOAT_EQ(vec[4], 5);
+}
+
+TEST(CursorTypedVector, Uint_Seek)
+{
+    flexi_cursor_s cursor{};
+    GetCursorFiveUint(cursor);
+
+    ASSERT_EQ(FLEXI_TYPE_VECTOR_UINT, flexi_cursor_type(&cursor));
+    ASSERT_EQ(4, flexi_cursor_width(&cursor));
+    ASSERT_EQ(5, flexi_cursor_length(&cursor));
+
+    flexi_ssize_t len = flexi_cursor_length(&cursor);
+    for (flexi_ssize_t i = 0; i < len; i++) {
+        flexi_cursor_s vcursor{};
+        ASSERT_EQ(FLEXI_OK,
+            flexi_cursor_seek_vector_index(&cursor, i, &vcursor));
+        ASSERT_EQ(FLEXI_TYPE_UINT, flexi_cursor_type(&vcursor));
+        ASSERT_EQ(4, flexi_cursor_width(&cursor));
+
+        uint64_t v = 0;
+        ASSERT_EQ(FLEXI_OK, flexi_cursor_uint(&vcursor, &v));
+        ASSERT_EQ(1 + uint64_t(i), v);
+    }
+}
+
+/******************************************************************************/
 
 static void
 GetCursorFiveFloat32(flexi_cursor_s &cursor)
@@ -90,6 +233,8 @@ TEST(CursorTypedVector, Float32_Seek)
     }
 }
 
+/******************************************************************************/
+
 static void
 GetCursorThreeFloat64(flexi_cursor_s &cursor)
 {
@@ -150,5 +295,77 @@ TEST(CursorTypedVector, Float64_Seek)
         double f = 0.0;
         ASSERT_EQ(FLEXI_OK, flexi_cursor_f64(&vcursor, &f));
         ASSERT_EQ(1.0 + i, f);
+    }
+}
+
+/******************************************************************************/
+
+static void
+GetCursorFiveBool(flexi_cursor_s &cursor)
+{
+    static std::array<uint8_t, 9> s_data = {
+        0x05,            // Vector length
+        0x01,            // Vector[0] (true)
+        0x01,            // Vector[1] (true)
+        0x00,            // Vector[2] (false)
+        0x00,            // Vector[3] (false)
+        0x01,            // Vector[4] (true)
+        0x05, 0x90, 0x01 // Root
+    };
+
+    auto buffer = flexi_make_buffer(s_data.data(), s_data.size());
+    ASSERT_EQ(FLEXI_OK, flexi_open_buffer(&buffer, &cursor));
+}
+
+TEST(CursorTypedVector, Bool_Direct)
+{
+    flexi_cursor_s cursor{};
+    GetCursorFiveBool(cursor);
+
+    ASSERT_EQ(FLEXI_TYPE_VECTOR_BOOL, flexi_cursor_type(&cursor));
+    ASSERT_EQ(1, flexi_cursor_width(&cursor));
+    ASSERT_EQ(5, flexi_cursor_length(&cursor));
+
+    const void *act_data = nullptr;
+    flexi_type_e act_type = FLEXI_TYPE_NULL;
+    int act_stride = -1;
+    flexi_ssize_t act_count = -1;
+
+    ASSERT_EQ(FLEXI_OK, flexi_cursor_typed_vector_data(&cursor, &act_data,
+                            &act_type, &act_stride, &act_count));
+    ASSERT_EQ(FLEXI_TYPE_VECTOR_BOOL, act_type);
+    ASSERT_EQ(1, act_stride);
+    ASSERT_EQ(5, act_count);
+
+    const bool *vec = static_cast<const bool *>(act_data);
+    ASSERT_FLOAT_EQ(vec[0], true);
+    ASSERT_FLOAT_EQ(vec[1], true);
+    ASSERT_FLOAT_EQ(vec[2], false);
+    ASSERT_FLOAT_EQ(vec[3], false);
+    ASSERT_FLOAT_EQ(vec[4], true);
+}
+
+TEST(CursorTypedVector, Bool_Seek)
+{
+    flexi_cursor_s cursor{};
+    GetCursorFiveBool(cursor);
+
+    ASSERT_EQ(FLEXI_TYPE_VECTOR_BOOL, flexi_cursor_type(&cursor));
+    ASSERT_EQ(1, flexi_cursor_width(&cursor));
+    ASSERT_EQ(5, flexi_cursor_length(&cursor));
+
+    constexpr std::array<bool, 5> s_expected = {true, true, false, false, true};
+
+    flexi_ssize_t len = flexi_cursor_length(&cursor);
+    for (flexi_ssize_t i = 0; i < len; i++) {
+        flexi_cursor_s vcursor{};
+        ASSERT_EQ(FLEXI_OK,
+            flexi_cursor_seek_vector_index(&cursor, i, &vcursor));
+        ASSERT_EQ(FLEXI_TYPE_BOOL, flexi_cursor_type(&vcursor));
+        ASSERT_EQ(1, flexi_cursor_width(&cursor));
+
+        bool v = false;
+        ASSERT_EQ(FLEXI_OK, flexi_cursor_bool(&vcursor, &v));
+        ASSERT_EQ(s_expected[i], v);
     }
 }
