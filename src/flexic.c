@@ -1411,60 +1411,13 @@ cursor_foreach_untyped_vector(flexi_cursor_s *cursor, flexi_foreach_fn foreach,
 }
 
 /**
- * @brief Call the signed integer callback.
- *
- * @param[in] parser Parser to operate on.
- * @param[in] key Key of value.
- * @param[in] cursor Location of cursor to read with.
- * @param[in] user User pointer.
- * @return FLEXI_OK Successful read.
- * @return FLEXI_ERR_BADREAD Read was invalid.
- */
-static flexi_result_e
-parser_emit_sint(const flexi_parser_s *parser, const char *key,
-    const flexi_cursor_s *cursor, void *user)
-{
-    int64_t v;
-    if (!buffer_read_sint(&cursor->buffer, cursor->cursor, cursor->width, &v)) {
-        return FLEXI_ERR_BADREAD;
-    }
-
-    parser->sint(key, v, user);
-    return FLEXI_OK;
-}
-
-/**
- * @brief Call the unsigned integer callback.
- *
- * @param[in] parser Parser to operate on.
- * @param[in] key Key of value.
- * @param[in] cursor Location of cursor to read with.
- * @param[in] user User pointer.
- * @return FLEXI_OK Successful read.
- * @return FLEXI_ERR_BADREAD Read was invalid.
- */
-static flexi_result_e
-parser_emit_uint(const flexi_parser_s *parser, const char *key,
-    const flexi_cursor_s *cursor, void *user)
-{
-    uint64_t v;
-    if (!buffer_read_uint(&cursor->buffer, cursor->cursor, cursor->width, &v)) {
-        return FLEXI_ERR_BADREAD;
-    }
-
-    parser->uint(key, v, user);
-    return FLEXI_OK;
-}
-
-/**
  * @brief Call the float callback.
  *
  * @param[in] parser Parser to operate on.
  * @param[in] key Key of value.
  * @param[in] cursor Location of cursor to read with.
  * @param[in] user User pointer.
- * @return FLEXI_OK Successful read.
- * @return FLEXI_ERR_BADREAD Read was invalid.
+ * @return FLEXI_OK || FLEXI_ERR_BADREAD.
  */
 static flexi_result_e
 parser_emit_flt(const flexi_parser_s *parser, const char *key,
@@ -1493,31 +1446,6 @@ parser_emit_flt(const flexi_parser_s *parser, const char *key,
     }
     }
     return FLEXI_ERR_INTERNAL;
-}
-
-/**
- * @brief Call the string callback.
- *
- * @param[in] parser Parser to operate on.
- * @param[in] key Key of value.
- * @param[in] cursor Location of cursor to read with.
- * @param[in] user User pointer.
- * @return FLEXI_OK Successful read.
- * @return FLEXI_ERR_BADREAD Read was invalid.
- */
-static flexi_result_e
-parser_emit_string(const flexi_parser_s *parser, const char *key,
-    const flexi_cursor_s *cursor, void *user)
-{
-    ASSERT(cursor->type == FLEXI_TYPE_STRING);
-
-    flexi_ssize_t len;
-    if (!cursor_get_length_prefix_unsafe(cursor, &len)) {
-        return FLEXI_ERR_BADREAD;
-    }
-
-    parser->string(key, cursor->cursor, len, user);
-    return FLEXI_OK;
 }
 
 /******************************************************************************/
@@ -1555,8 +1483,7 @@ parser_emit_foreach(const char *key, flexi_cursor_s *value, void *user)
  * @param[in] cursor Location of cursor to read with.
  * @param[in] user User pointer.
  * @param[in] limits Parse limit tracking.
- * @return FLEXI_OK Successful read.
- * @return FLEXI_ERR_BADREAD Read was invalid.
+ * @return FLEXI_OK || FLEXI_ERR_BADREAD.
  */
 static flexi_result_e
 parser_emit_map(const flexi_parser_s *parser, const char *key,
@@ -1592,9 +1519,7 @@ parser_emit_map(const flexi_parser_s *parser, const char *key,
  * @param[in] cursor Location of cursor to read with.
  * @param[in] user User pointer.
  * @param[in] limits Parse limit tracking.
- * @return FLEXI_OK Successful read.
- * @return FLEXI_ERR_BADREAD Read was invalid.
- * @return FLEXI_ERR_PARSELIMIT Read hit a configured parse limit.
+ * @return FLEXI_OK || FLEXI_ERR_BADREAD || FLEXI_ERR_PARSELIMIT.
  */
 static flexi_result_e
 parser_emit_vector(const flexi_parser_s *parser, const char *key,
@@ -1627,39 +1552,13 @@ parser_emit_vector(const flexi_parser_s *parser, const char *key,
 }
 
 /**
- * @brief Call the typed vector callback.
- *
- * @param[in] parser Parser to operate on.
- * @param[in] key Key of value.
- * @param[in] cursor Location of cursor to read with.
- * @param[in] user User pointer.
- * @return FLEXI_OK || FLEXI_ERR_BADREAD.
- */
-static flexi_result_e
-parser_emit_typed_vector(const flexi_parser_s *parser, const char *key,
-    const flexi_cursor_s *cursor, void *user)
-{
-    ASSERT(type_has_length_prefix(cursor->type));
-
-    flexi_ssize_t count;
-    if (!cursor_get_length_prefix_unsafe(cursor, &count)) {
-        return FLEXI_ERR_BADREAD;
-    }
-
-    parser->typed_vector(key, cursor->cursor, cursor->type, cursor->width,
-        count, user);
-    return FLEXI_OK;
-}
-
-/**
  * @brief Call the vector callbacks and iterate keys in vector.
  *
  * @param[in] parser Parser to operate on.
  * @param[in] key Key of value.
  * @param[in] cursor Location of cursor to read with.
  * @param[in] user User pointer.
- * @return FLEXI_OK Successful read.
- * @return FLEXI_ERR_BADREAD Read was invalid.
+ * @return FLEXI_OK || FLEXI_ERR_BADREAD.
  */
 static flexi_result_e
 parser_emit_vector_keys(const flexi_parser_s *parser, const char *key,
@@ -1695,31 +1594,6 @@ parser_emit_vector_keys(const flexi_parser_s *parser, const char *key,
 }
 
 /**
- * @brief Call the blob callback.
- *
- * @param[in] parser Parser to operate on.
- * @param[in] key Key of value.
- * @param[in] cursor Location of cursor to read with.
- * @param[in] user User pointer.
- * @return FLEXI_OK Successful read.
- * @return FLEXI_ERR_BADREAD Read was invalid.
- */
-static flexi_result_e
-parser_emit_vector_blob(const flexi_parser_s *parser, const char *key,
-    const flexi_cursor_s *cursor, void *user)
-{
-    ASSERT(cursor->type == FLEXI_TYPE_BLOB);
-
-    flexi_ssize_t len;
-    if (!cursor_get_length_prefix_unsafe(cursor, &len)) {
-        return FLEXI_ERR_BADREAD;
-    }
-
-    parser->blob(key, cursor->cursor, len, user);
-    return FLEXI_OK;
-}
-
-/**
  * @brief Call the appropriate parser callbacks at the given cursor.
  *
  * @param[in] parser Parser to operate on.
@@ -1727,9 +1601,7 @@ parser_emit_vector_blob(const flexi_parser_s *parser, const char *key,
  * @param[in] cursor Location of cursor to read with.
  * @param[in] user User pointer.
  * @param[in] limits Parse limit tracking.
- * @return FLEXI_OK Successful parse.
- * @return FLEXI_ERR_BADREAD Read was invalid.
- * @return FLEXI_ERR_PARSELIMIT Read hit a configured parse limit.
+ * @return FLEXI_OK || FLEXI_ERR_BADREAD || FLEXI_ERR_PARSELIMIT.
  */
 static flexi_result_e
 parse_cursor(const flexi_parser_s *parser, const char *key,
@@ -1743,19 +1615,42 @@ parse_cursor(const flexi_parser_s *parser, const char *key,
     switch (cursor->type) {
     case FLEXI_TYPE_NULL: parser->null(key, user); return FLEXI_OK;
     case FLEXI_TYPE_SINT:
-    case FLEXI_TYPE_INDIRECT_SINT:
-        return parser_emit_sint(parser, key, cursor, user);
+    case FLEXI_TYPE_INDIRECT_SINT: {
+        int64_t v;
+        if (!buffer_read_sint(&cursor->buffer, cursor->cursor, cursor->width,
+                &v)) {
+            return FLEXI_ERR_BADREAD;
+        }
+
+        parser->sint(key, v, user);
+        return FLEXI_OK;
+    }
     case FLEXI_TYPE_UINT:
-    case FLEXI_TYPE_INDIRECT_UINT:
-        return parser_emit_uint(parser, key, cursor, user);
+    case FLEXI_TYPE_INDIRECT_UINT: {
+        uint64_t v;
+        if (!buffer_read_uint(&cursor->buffer, cursor->cursor, cursor->width,
+                &v)) {
+            return FLEXI_ERR_BADREAD;
+        }
+
+        parser->uint(key, v, user);
+        return FLEXI_OK;
+    }
     case FLEXI_TYPE_FLOAT:
     case FLEXI_TYPE_INDIRECT_FLOAT:
         return parser_emit_flt(parser, key, cursor, user);
     case FLEXI_TYPE_KEY:
         parser->key(key, cursor->cursor, user);
         return FLEXI_OK;
-    case FLEXI_TYPE_STRING:
-        return parser_emit_string(parser, key, cursor, user);
+    case FLEXI_TYPE_STRING: {
+        flexi_ssize_t len;
+        if (!cursor_get_length_prefix_unsafe(cursor, &len)) {
+            return FLEXI_ERR_BADREAD;
+        }
+
+        parser->string(key, cursor->cursor, len, user);
+        return FLEXI_OK;
+    }
     case FLEXI_TYPE_MAP:
         limits->iterables += 1;
         if (limits->iterables >= FLEXI_CONFIG_MAX_ITERABLES) {
@@ -1774,8 +1669,16 @@ parse_cursor(const flexi_parser_s *parser, const char *key,
     case FLEXI_TYPE_VECTOR_SINT:
     case FLEXI_TYPE_VECTOR_UINT:
     case FLEXI_TYPE_VECTOR_FLOAT:
-    case FLEXI_TYPE_VECTOR_BOOL:
-        return parser_emit_typed_vector(parser, key, cursor, user);
+    case FLEXI_TYPE_VECTOR_BOOL: {
+        flexi_ssize_t count;
+        if (!cursor_get_length_prefix_unsafe(cursor, &count)) {
+            return FLEXI_ERR_BADREAD;
+        }
+
+        parser->typed_vector(key, cursor->cursor, cursor->type, cursor->width,
+            count, user);
+        return FLEXI_OK;
+    }
     case FLEXI_TYPE_VECTOR_KEY:
         return parser_emit_vector_keys(parser, key, cursor, user);
     case FLEXI_TYPE_VECTOR_SINT2:
@@ -1796,8 +1699,15 @@ parse_cursor(const flexi_parser_s *parser, const char *key,
         parser->typed_vector(key, cursor->cursor, cursor->type, cursor->width,
             4, user);
         return FLEXI_OK;
-    case FLEXI_TYPE_BLOB:
-        return parser_emit_vector_blob(parser, key, cursor, user);
+    case FLEXI_TYPE_BLOB: {
+        flexi_ssize_t len;
+        if (!cursor_get_length_prefix_unsafe(cursor, &len)) {
+            return FLEXI_ERR_BADREAD;
+        }
+
+        parser->blob(key, cursor->cursor, len, user);
+        return FLEXI_OK;
+    }
     case FLEXI_TYPE_BOOL:
         parser->boolean(key, *(const bool *)(cursor->cursor), user);
         return FLEXI_OK;
