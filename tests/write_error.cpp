@@ -33,6 +33,7 @@ TEST(WriteError, FailSafe)
     EXPECT_EQ(FLEXI_ERR_FAILSAFE, flexi_write_f32(&writer, NULL, 0));
     EXPECT_EQ(FLEXI_ERR_FAILSAFE, flexi_write_f64(&writer, NULL, 0));
     EXPECT_EQ(FLEXI_ERR_FAILSAFE, flexi_write_key(&writer, ""));
+    EXPECT_EQ(FLEXI_ERR_FAILSAFE, flexi_write_keyed_key(&writer, NULL, ""));
     EXPECT_EQ(FLEXI_ERR_FAILSAFE, flexi_write_strlen(&writer, NULL, ""));
     EXPECT_EQ(FLEXI_ERR_FAILSAFE, flexi_write_indirect_sint(&writer, NULL, 0));
     EXPECT_EQ(FLEXI_ERR_FAILSAFE, flexi_write_indirect_uint(&writer, NULL, 0));

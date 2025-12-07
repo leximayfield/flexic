@@ -32,6 +32,9 @@ TEST_F(WriteFixture, Immediate)
 
     // There should be nothing on the stack, especially not the keys that
     // flexi_write_map used internally.
+    flexi_value_s *stack_value;
+    ASSERT_EQ(FLEXI_ERR_BADSTACK,
+        flexi_writer_debug_stack_at(&m_writer, 0, &stack_value));
     ASSERT_EQ(0, flexi_writer_debug_stack_count(&m_writer));
 
     std::vector<uint8_t> expected = {
@@ -77,6 +80,7 @@ TEST_F(WriteFixture, Immediate)
     ASSERT_EQ(FLEXI_OK, flexi_cursor_uint(&value, &vuint));
     ASSERT_EQ(UINT16_MAX, vuint);
 }
+
 TEST_F(WriteFixture, MapInts)
 {
     ASSERT_EQ(FLEXI_OK, flexi_write_key(&m_writer, "bool"));

@@ -142,7 +142,7 @@ TEST_F(WriteFixture, VectorFloats)
 
 TEST_F(WriteFixture, VectorStringBlob)
 {
-    constexpr std::array<uint8_t, 8> BLOB = {
+    static constexpr std::array<uint8_t, 8> BLOB = {
         0xD0, 0xCF, 0x11, 0xE0, 0xA1, 0xB1, 0x1A, 0xE1};
 
     ASSERT_EQ(FLEXI_OK, flexi_write_strlen(&m_writer, NULL, "xyzzy"));
@@ -197,7 +197,7 @@ TEST_F(WriteFixture, VectorStringBlob)
 
 TEST_F(WriteFixture, VectorAlignedBlob4)
 {
-    constexpr std::array<uint8_t, 8> BLOB = {
+    static constexpr std::array<uint8_t, 8> BLOB = {
         0xD0, 0xCF, 0x11, 0xE0, 0xA1, 0xB1, 0x1A, 0xE1};
 
     ASSERT_EQ(FLEXI_OK, flexi_write_strlen(&m_writer, NULL, "xyzzy"));
@@ -252,7 +252,7 @@ TEST_F(WriteFixture, VectorAlignedBlob4)
 
 TEST_F(WriteFixture, VectorAlignedBlob16)
 {
-    constexpr std::array<uint8_t, 8> BLOB = {
+    static constexpr std::array<uint8_t, 8> BLOB = {
         0xD0, 0xCF, 0x11, 0xE0, 0xA1, 0xB1, 0x1A, 0xE1};
 
     ASSERT_EQ(FLEXI_OK, flexi_write_strlen(&m_writer, NULL, "xyzzy"));
@@ -330,7 +330,8 @@ TEST_F(WriteFixture, VectorWidthTooSmall)
 TEST_F(WriteFixture, VectorBool)
 {
     {
-        constexpr std::array<bool, 5> data = {true, false, false, true, true};
+        static constexpr std::array<bool, 5> data = {
+            true, false, false, true, true};
 
         ASSERT_EQ(FLEXI_OK, flexi_write_typed_vector_bool(&m_writer, NULL,
                                 data.data(), data.size()));

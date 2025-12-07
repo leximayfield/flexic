@@ -241,6 +241,7 @@ type_has_length_prefix(flexi_type_e type)
     case FLEXI_TYPE_VECTOR_SINT:
     case FLEXI_TYPE_VECTOR_UINT:
     case FLEXI_TYPE_VECTOR_FLOAT:
+    case FLEXI_TYPE_VECTOR_KEY:
     case FLEXI_TYPE_BLOB:
     case FLEXI_TYPE_VECTOR_BOOL: return true;
     default: return false;

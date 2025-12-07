@@ -354,7 +354,8 @@ TEST(CursorTypedVector, Bool_Seek)
     ASSERT_EQ(1, flexi_cursor_width(&cursor));
     ASSERT_EQ(5, flexi_cursor_length(&cursor));
 
-    constexpr std::array<bool, 5> s_expected = {true, true, false, false, true};
+    static constexpr std::array<bool, 5> s_expected = {
+        true, true, false, false, true};
 
     flexi_ssize_t len = flexi_cursor_length(&cursor);
     for (flexi_ssize_t i = 0; i < len; i++) {
@@ -367,5 +368,48 @@ TEST(CursorTypedVector, Bool_Seek)
         bool v = false;
         ASSERT_EQ(FLEXI_OK, flexi_cursor_bool(&vcursor, &v));
         ASSERT_EQ(s_expected[i], v);
+    }
+}
+
+/******************************************************************************/
+
+static void
+GetCursorKeys(flexi_cursor_s &cursor)
+{
+    static constexpr std::array<uint8_t, 19> s_data = {
+        'f', 'i', 'r', 's', 't', '\0',      // First key
+        's', 'e', 'c', 'o', 'n', 'd', '\0', // Second key
+        0x02,                               // Vector length
+        0x0E,                               // Vector[0] ("first")
+        0x09,                               // Vector[1] ("second")
+        0x02, 0x38, 0x01                    // Root
+    };
+
+    auto buffer = flexi_make_buffer(s_data.data(), s_data.size());
+    ASSERT_EQ(FLEXI_OK, flexi_open_buffer(&buffer, &cursor));
+}
+
+TEST(CursorTypedVector, Key_Seek)
+{
+    flexi_cursor_s cursor{};
+    GetCursorKeys(cursor);
+
+    ASSERT_EQ(FLEXI_TYPE_VECTOR_KEY, flexi_cursor_type(&cursor));
+    ASSERT_EQ(1, flexi_cursor_width(&cursor));
+    ASSERT_EQ(2, flexi_cursor_length(&cursor));
+
+    std::array<const char *, 2> s_expected = {"first", "second"};
+
+    flexi_ssize_t len = flexi_cursor_length(&cursor);
+    for (flexi_ssize_t i = 0; i < len; i++) {
+        flexi_cursor_s vcursor{};
+        ASSERT_EQ(FLEXI_OK,
+            flexi_cursor_seek_vector_index(&cursor, i, &vcursor));
+        ASSERT_EQ(FLEXI_TYPE_KEY, flexi_cursor_type(&vcursor));
+        ASSERT_EQ(1, flexi_cursor_width(&cursor));
+
+        const char *s = "";
+        ASSERT_EQ(FLEXI_OK, flexi_cursor_key(&vcursor, &s));
+        ASSERT_STREQ(s_expected[i], s);
     }
 }
