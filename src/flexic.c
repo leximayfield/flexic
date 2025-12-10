@@ -1364,8 +1364,8 @@ cursor_foreach_map(const flexi_cursor_s *cursor, flexi_foreach_fn foreach,
 /******************************************************************************/
 
 static flexi_result_e
-cursor_foreach_untyped_vector(flexi_cursor_s *cursor, flexi_foreach_fn foreach,
-    void *user)
+cursor_foreach_untyped_vector(const flexi_cursor_s *cursor,
+    flexi_foreach_fn foreach, void *user)
 {
     flexi_cursor_s each;
     each.buffer = cursor->buffer;
@@ -1504,7 +1504,10 @@ parser_emit_map(const flexi_parser_s *parser, const char *key,
     ctx.err = FLEXI_INVALID;
 
     parser->map_begin(key, len, user);
-    if (!cursor_foreach_map(cursor, parser_emit_foreach, &ctx)) {
+    flexi_result_e res = cursor_foreach_map(cursor, parser_emit_foreach, &ctx);
+    if (FLEXI_ERROR(res)) {
+        return res;
+    } else if (FLEXI_ERROR(ctx.err)) {
         return ctx.err;
     }
 
@@ -1513,14 +1516,14 @@ parser_emit_map(const flexi_parser_s *parser, const char *key,
 }
 
 /**
- * @brief Call the vector callbacks and iterate vector values.
+ * @brief Call the vector callbacks and iterate map values.
  *
  * @param[in] parser Parser to operate on.
  * @param[in] key Key of value.
  * @param[in] cursor Location of cursor to read with.
  * @param[in] user User pointer.
  * @param[in] limits Parse limit tracking.
- * @return FLEXI_OK || FLEXI_ERR_BADREAD || FLEXI_ERR_PARSELIMIT.
+ * @return FLEXI_OK || FLEXI_ERR_BADREAD.
  */
 static flexi_result_e
 parser_emit_vector(const flexi_parser_s *parser, const char *key,
@@ -1533,19 +1536,19 @@ parser_emit_vector(const flexi_parser_s *parser, const char *key,
         return FLEXI_ERR_BADREAD;
     }
 
-    flexi_result_e res;
+    foreach_ctx_s ctx;
+    ctx.parser = parser;
+    ctx.user = user;
+    ctx.limits = limits;
+    ctx.err = FLEXI_INVALID;
+
     parser->vector_begin(key, len, user);
-    for (flexi_ssize_t i = 0; i < len; i++) {
-        flexi_cursor_s value;
-        if (!cursor_seek_untyped_vector_index(cursor, i, &value)) {
-            return FLEXI_ERR_BADREAD;
-        }
-        limits->depth += 1;
-        res = parse_cursor(parser, NULL, &value, user, limits);
-        if (FLEXI_ERROR(res)) {
-            return res;
-        }
-        limits->depth -= 1;
+    flexi_result_e res =
+        cursor_foreach_untyped_vector(cursor, parser_emit_foreach, &ctx);
+    if (FLEXI_ERROR(res)) {
+        return res;
+    } else if (FLEXI_ERROR(ctx.err)) {
+        return ctx.err;
     }
 
     parser->vector_end(user);
