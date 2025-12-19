@@ -380,6 +380,7 @@ typedef struct flexi_cursor_s {
     const char *cursor;
     flexi_type_e type;
     int width;
+    flexi_ssize_t length;
 } flexi_cursor_s;
 
 /**

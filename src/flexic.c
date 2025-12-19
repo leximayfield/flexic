@@ -108,6 +108,11 @@
         : (w) == 4 ? (flexi_packed_t)(2)                                       \
                    : (flexi_packed_t)(3))
 
+#define UNPACK_WIDTH_TO_BYTES(p) (FLEXI_WIDTH_TO_BYTES(FLEXI_UNPACK_WIDTH(p)))
+
+#define WIDTH_IS_VALID(w) ((w) == 1 || (w) == 2 || (w) == 4 || (w) == 8)
+#define WIDTH_IS_VALID_FLOAT(w) ((w) == 4 || (w) == 8)
+
 typedef struct parse_limits_s {
     int depth;
     int iterables;
@@ -277,15 +282,6 @@ type_is_typed_vector(flexi_type_e type)
 }
 
 /**
- * @brief Return true if the type is a typed vector of fixed length.
- */
-static bool
-type_is_typed_vector_fixed(flexi_type_e type)
-{
-    return type >= FLEXI_TYPE_VECTOR_SINT2 && type <= FLEXI_TYPE_VECTOR_FLOAT4;
-}
-
-/**
  * @brief Check to see if the type has a valid width.
  */
 static bool
@@ -413,7 +409,7 @@ buffer_read_size_by_width(const flexi_buffer_s *buffer, const char *src,
 {
     // This is an assert because in most cases, the input width is coming
     // from a source that can only ever be valid.
-    ASSERT(width == 1 || width == 2 || width == 4 || width == 8);
+    ASSERT(WIDTH_IS_VALID(width));
 
     if (!read_is_valid(buffer, src, width)) {
         return false;
@@ -909,111 +905,6 @@ cursor_set_error(flexi_cursor_s *cursor)
 }
 
 /**
- * @brief Return true if there is room in the buffer to read a length prefix.
- */
-static bool
-cursor_can_read_length_prefix(const flexi_cursor_s *cursor)
-{
-    return cursor->cursor - cursor->width >= cursor->buffer.data;
-}
-
-/**
- * @brief Given a cursor pointing at the base of a vector or vector-like
- *        type, obtain its length.
- *
- * @pre Type must be a type that has a length prefix.
- * @pre Buffer must have room for length at cursor position.
- *
- * @param[in] cursor Cursor to check.
- * @param[out] len Length of vector.
- * @return True if length was found.
- */
-static bool
-cursor_get_length_prefix_unsafe(const flexi_cursor_s *cursor,
-    flexi_ssize_t *len)
-{
-    ASSERT(type_has_length_prefix(cursor->type));
-    ASSERT(cursor_can_read_length_prefix(cursor));
-
-    return buffer_read_size_by_width_unsafe(cursor->cursor - cursor->width,
-        cursor->width, len);
-}
-
-/**
- * @brief Given a cursor pointing at the base of a vector or vector-like
- *        type, obtain its length.
- *
- * @pre Type must be a type that has a length prefix.
- *
- * @param[in] cursor Cursor to check.
- * @param[out] len Length of vector.
- * @return True if length was found.
- */
-static bool
-cursor_get_length_prefix(const flexi_cursor_s *cursor, flexi_ssize_t *len)
-{
-    ASSERT(type_has_length_prefix(cursor->type));
-
-    if (!cursor_can_read_length_prefix(cursor)) {
-        return false;
-    }
-
-    return buffer_read_size_by_width_unsafe(cursor->cursor - cursor->width,
-        cursor->width, len);
-}
-
-/**
- * @brief Obtain the length of a fixed vector purely based on type.
- *
- * @param[in] cursor Cursor to check.
- * @param[out] len Length of vector.
- * @return True if length was found.
- */
-static bool
-cursor_get_fixed_len(const flexi_cursor_s *cursor, flexi_ssize_t *len)
-{
-    switch (cursor->type) {
-    case FLEXI_TYPE_VECTOR_SINT2:
-    case FLEXI_TYPE_VECTOR_UINT2:
-    case FLEXI_TYPE_VECTOR_FLOAT2: *len = 2; return true;
-    case FLEXI_TYPE_VECTOR_SINT3:
-    case FLEXI_TYPE_VECTOR_UINT3:
-    case FLEXI_TYPE_VECTOR_FLOAT3: *len = 3; return true;
-    case FLEXI_TYPE_VECTOR_SINT4:
-    case FLEXI_TYPE_VECTOR_UINT4:
-    case FLEXI_TYPE_VECTOR_FLOAT4: *len = 4; return true;
-    default: return false;
-    }
-}
-
-/**
- * @brief Obtain the length of a cursor, no matter what type it is.
- *
- * @param[in] cursor Cursor to examine.
- * @return Length of cursor, or 0 if cursor has no length.
- */
-static flexi_ssize_t
-cursor_length(const flexi_cursor_s *cursor)
-{
-    flexi_ssize_t len = -1;
-    if (type_has_length_prefix(cursor->type)) {
-        // Get the length prefix.
-        if (!cursor_get_length_prefix(cursor, &len)) {
-            return 0;
-        }
-        return len;
-    } else if (type_is_typed_vector_fixed(cursor->type)) {
-        // Convert length type to return value.
-        if (!cursor_get_fixed_len(cursor, &len)) {
-            return 0;
-        }
-        return len;
-    }
-
-    return 0;
-}
-
-/**
  * @brief Given a cursor pointing at the base of a vector which contains
  *        trailing types, return a pointer to the first type.
  *
@@ -1032,20 +923,228 @@ cursor_vector_types_unsafe(const flexi_cursor_s *cursor,
     const flexi_packed_t **packed)
 {
     ASSERT(type_is_map_or_untyped_vector(cursor->type));
-    ASSERT(cursor_can_read_length_prefix(cursor));
-
-    flexi_ssize_t len;
-    if (!cursor_get_length_prefix_unsafe(cursor, &len)) {
-        return false;
-    }
 
     // Make sure the destination pointer is in-bounds at all valid offsets.
-    const char *dest = cursor->cursor + (len * cursor->width);
-    if (dest + len >= cursor->buffer.data + cursor->buffer.length) {
+    const char *dest = cursor->cursor + (cursor->length * cursor->width);
+    if (dest + cursor->length >= cursor->buffer.data + cursor->buffer.length) {
         return false;
     }
 
     *packed = (const flexi_packed_t *)dest;
+    return true;
+}
+
+/**
+ * @brief Set values on a cursor, checking some preconditions of the type
+ *        to ensure that the resulting cursor is usable.
+ *
+ * @details Doing checks here is less bug-prone than doing checks at the
+ *          point where we use the cursor.  Most of the gnarly checks concern
+ *          maps and vectors, as we need to make sure the map or vector we're
+ *          about to create a cursor for is valid.
+ *
+ * @param[out] cursor Cursor to assign to.
+ * @param[in] buffer Buffer to constrain values to.
+ * @param[in] pos Anchor of the cursor.
+ * @param[in] type Type of the cursor.
+ * @param[in] width Width of the cursor in bytes.
+ * @return True if resulting cursor is valid.
+ */
+static bool
+cursor_set_checked(flexi_cursor_s *cursor, const flexi_buffer_s *buffer,
+    const char *pos, flexi_type_e type, int width)
+{
+    switch (type) {
+    case FLEXI_TYPE_NULL:
+    case FLEXI_TYPE_SINT:
+    case FLEXI_TYPE_UINT:
+    case FLEXI_TYPE_INDIRECT_SINT:
+    case FLEXI_TYPE_INDIRECT_UINT:
+    case FLEXI_TYPE_BOOL:
+        if (!WIDTH_IS_VALID(width)) {
+            // Not a valid width.
+            return false;
+        }
+        cursor->length = 0;
+        break;
+    case FLEXI_TYPE_FLOAT:
+    case FLEXI_TYPE_INDIRECT_FLOAT:
+        if (!WIDTH_IS_VALID_FLOAT(width)) {
+            // Not a valid width.
+            return false;
+        }
+        cursor->length = 0;
+        break;
+    case FLEXI_TYPE_KEY: cursor->length = 0; break;
+    case FLEXI_TYPE_STRING:
+        if (!WIDTH_IS_VALID(width)) {
+            // Not a valid width.
+            return false;
+        }
+        if (pos - width < buffer->data) {
+            // Map doesn't have room for length.
+            return false;
+        }
+        if (!buffer_read_size_by_width_unsafe(pos - width, width,
+                &cursor->length)) {
+            // Could not read the length.
+            return false;
+        }
+        if (pos + cursor->length + 1 >= buffer->data + buffer->length) {
+            // Not enough room for the entire string with the given
+            // length.
+            return false;
+        }
+        break;
+    case FLEXI_TYPE_MAP:
+        if (!WIDTH_IS_VALID(width)) {
+            // Not a valid width.
+            return false;
+        }
+        if (pos - (width * 3) < buffer->data) {
+            // Map doesn't have room for required negative indexes.
+            return false;
+        }
+        if (!buffer_read_size_by_width_unsafe(pos - width, width,
+                &cursor->length)) {
+            // Could not read the length.
+            return false;
+        }
+        if (pos + (cursor->length * width) + cursor->length >=
+            buffer->data + buffer->length) {
+            // Not enough room for the entire map with the given length.
+            return false;
+        }
+        break;
+    case FLEXI_TYPE_VECTOR:
+        if (!WIDTH_IS_VALID(width)) {
+            // Not a valid width.
+            return false;
+        }
+        if (pos - width < buffer->data) {
+            // Map doesn't have room for map metadata.
+            return false;
+        }
+        if (!buffer_read_size_by_width_unsafe(pos - width, width,
+                &cursor->length)) {
+            // Could not read the length.
+            return false;
+        }
+        if (pos + (cursor->length * width) + cursor->length >=
+            buffer->data + buffer->length) {
+            // Not enough room for the entire vector with the given length.
+            return false;
+        }
+        break;
+    case FLEXI_TYPE_VECTOR_SINT:
+    case FLEXI_TYPE_VECTOR_UINT:
+    case FLEXI_TYPE_VECTOR_KEY:
+    case FLEXI_TYPE_VECTOR_BOOL:
+        if (!WIDTH_IS_VALID(width)) {
+            // Not a valid width.
+            return false;
+        }
+        if (pos - width < buffer->data) {
+            // Map doesn't have room for length.
+            return false;
+        }
+        if (!buffer_read_size_by_width_unsafe(pos - width, width,
+                &cursor->length)) {
+            // Could not read the length.
+            return false;
+        }
+        if (pos + (cursor->length * width) >= buffer->data + buffer->length) {
+            // Not enough room for the entire vector with the given
+            // length.
+            return false;
+        }
+        break;
+    case FLEXI_TYPE_VECTOR_FLOAT:
+        if (!WIDTH_IS_VALID_FLOAT(width)) {
+            // Not a valid width.
+            return false;
+        }
+        if (pos - width < buffer->data) {
+            // Map doesn't have room for length.
+            return false;
+        }
+        if (!buffer_read_size_by_width_unsafe(pos - width, width,
+                &cursor->length)) {
+            // Could not read the length.
+            return false;
+        }
+        if (pos + (cursor->length * width) >= buffer->data + buffer->length) {
+            // Not enough room for the entire vector with the given
+            // length.
+            return false;
+        }
+        break;
+    case FLEXI_TYPE_VECTOR_SINT2:
+    case FLEXI_TYPE_VECTOR_UINT2:
+        if (!WIDTH_IS_VALID(width)) {
+            return false;
+        }
+        cursor->length = 2;
+        break;
+    case FLEXI_TYPE_VECTOR_FLOAT2:
+        if (!WIDTH_IS_VALID_FLOAT(width)) {
+            return false;
+        }
+        cursor->length = 2;
+        break;
+    case FLEXI_TYPE_VECTOR_SINT3:
+    case FLEXI_TYPE_VECTOR_UINT3:
+        if (!WIDTH_IS_VALID(width)) {
+            return false;
+        }
+        cursor->length = 3;
+        break;
+    case FLEXI_TYPE_VECTOR_FLOAT3:
+        if (!WIDTH_IS_VALID_FLOAT(width)) {
+            return false;
+        }
+        cursor->length = 3;
+        break;
+    case FLEXI_TYPE_VECTOR_SINT4:
+    case FLEXI_TYPE_VECTOR_UINT4:
+        if (!WIDTH_IS_VALID(width)) {
+            return false;
+        }
+        cursor->length = 4;
+        break;
+    case FLEXI_TYPE_VECTOR_FLOAT4:
+        if (!WIDTH_IS_VALID_FLOAT(width)) {
+            return false;
+        }
+        cursor->length = 4;
+        break;
+    case FLEXI_TYPE_BLOB:
+        if (!WIDTH_IS_VALID(width)) {
+            // Not a valid width.
+            return false;
+        }
+        if (pos - width < buffer->data) {
+            // Map doesn't have room for length.
+            return false;
+        }
+        if (!buffer_read_size_by_width_unsafe(pos - width, width,
+                &cursor->length)) {
+            // Could not read the length.
+            return false;
+        }
+        if (pos + cursor->length >= buffer->data + buffer->length) {
+            // Not enough room for the entire blob with the given
+            // length.
+            return false;
+        }
+        break;
+    default: return false;
+    }
+
+    cursor->buffer = *buffer;
+    cursor->cursor = pos;
+    cursor->type = type;
+    cursor->width = width;
     return true;
 }
 
@@ -1067,7 +1166,6 @@ cursor_seek_untyped_vector_index(const flexi_cursor_s *cursor,
     flexi_ssize_t index, flexi_cursor_s *dest)
 {
     ASSERT(type_is_map_or_untyped_vector(cursor->type));
-    ASSERT(cursor_can_read_length_prefix(cursor));
 
     const flexi_packed_t *types = NULL;
     if (!cursor_vector_types_unsafe(cursor, &types)) {
@@ -1077,11 +1175,8 @@ cursor_seek_untyped_vector_index(const flexi_cursor_s *cursor,
     flexi_type_e type = FLEXI_UNPACK_TYPE(types[index]);
     if (type_is_direct(type)) {
         // No need to resolve an offset, we're pretty much done.
-        dest->buffer = cursor->buffer;
-        dest->cursor = cursor->cursor + (index * cursor->width);
-        dest->type = type;
-        dest->width = cursor->width;
-        return true;
+        return cursor_set_checked(dest, &cursor->buffer,
+            cursor->cursor + (index * cursor->width), type, cursor->width);
     }
 
     flexi_ssize_t offset = 0;
@@ -1094,10 +1189,8 @@ cursor_seek_untyped_vector_index(const flexi_cursor_s *cursor,
         return false;
     }
 
-    dest->buffer = cursor->buffer;
-    dest->type = type;
-    dest->width = FLEXI_WIDTH_TO_BYTES(FLEXI_UNPACK_WIDTH(types[index]));
-    return true;
+    return cursor_set_checked(dest, &cursor->buffer, dest->cursor, type,
+        UNPACK_WIDTH_TO_BYTES(types[index]));
 }
 
 /**
@@ -1122,6 +1215,7 @@ cursor_seek_typed_vector_index(const flexi_cursor_s *cursor,
         dest->cursor = cursor->cursor + (index * cursor->width);
         dest->type = FLEXI_TYPE_SINT;
         dest->width = cursor->width;
+        dest->length = 0;
         return true;
     case FLEXI_TYPE_VECTOR_UINT:
     case FLEXI_TYPE_VECTOR_UINT2:
@@ -1131,6 +1225,7 @@ cursor_seek_typed_vector_index(const flexi_cursor_s *cursor,
         dest->cursor = cursor->cursor + (index * cursor->width);
         dest->type = FLEXI_TYPE_UINT;
         dest->width = cursor->width;
+        dest->length = 0;
         return true;
     case FLEXI_TYPE_VECTOR_FLOAT:
     case FLEXI_TYPE_VECTOR_FLOAT2:
@@ -1140,12 +1235,14 @@ cursor_seek_typed_vector_index(const flexi_cursor_s *cursor,
         dest->cursor = cursor->cursor + (index * cursor->width);
         dest->type = FLEXI_TYPE_FLOAT;
         dest->width = cursor->width;
+        dest->length = 0;
         return true;
     case FLEXI_TYPE_VECTOR_BOOL:
         dest->buffer = cursor->buffer;
         dest->cursor = cursor->cursor + index;
         dest->type = FLEXI_TYPE_BOOL;
         dest->width = 1;
+        dest->length = 0;
         return true;
     case FLEXI_TYPE_VECTOR_KEY: {
         flexi_ssize_t offset;
@@ -1162,6 +1259,7 @@ cursor_seek_typed_vector_index(const flexi_cursor_s *cursor,
         dest->cursor = cur;
         dest->type = FLEXI_TYPE_KEY;
         dest->width = 0;
+        dest->length = 0;
         return true;
     }
     default: return false;
@@ -1251,9 +1349,7 @@ cursor_map_key_at_index(const flexi_cursor_s *cursor,
  * @param[in] len Length of map at cursor.
  * @param[in] key Key to check for.
  * @param[out] dest Destination cursor.
- * @return FLEXI_OK Key was found.
- * @return FLEXI_ERR_NOTFOUND Key was not found.
- * @return FLEXI_ERR_BADREAD Read error while looking up key.
+ * @return FLEXI_OK || FLEXI_ERR_NOTFOUND || FLEXI_ERR_BADREAD.
  */
 static flexi_result_e
 cursor_seek_map_key_linear(const flexi_cursor_s *cursor, flexi_ssize_t len,
@@ -1293,9 +1389,7 @@ cursor_seek_map_key_linear(const flexi_cursor_s *cursor, flexi_ssize_t len,
  * @param[in] len Length of map at cursor.
  * @param[in] key Key to check for.
  * @param[out] dest Destination cursor.
- * @return FLEXI_OK Key was found.
- * @return FLEXI_ERR_NOTFOUND Key was not found.
- * @return FLEXI_ERR_BADREAD Read error while looking up key.
+ * @return FLEXI_OK || FLEXI_ERR_NOTFOUND || FLEXI_ERR_BADREAD.
  */
 static flexi_result_e
 cursor_seek_map_key_bsearch(const flexi_cursor_s *cursor, flexi_ssize_t len,
@@ -1344,17 +1438,10 @@ cursor_foreach_map(const flexi_cursor_s *cursor, flexi_foreach_fn foreach,
     void *user)
 {
     flexi_cursor_s each;
-    each.buffer = cursor->buffer;
 
     flexi_cursor_s keys;
     if (!cursor_map_keys(cursor, &keys)) {
         // Could not locate keys.
-        return FLEXI_ERR_BADREAD;
-    }
-
-    flexi_ssize_t len;
-    if (!cursor_get_length_prefix_unsafe(cursor, &len)) {
-        // There is no length prefix.
         return FLEXI_ERR_BADREAD;
     }
 
@@ -1364,7 +1451,7 @@ cursor_foreach_map(const flexi_cursor_s *cursor, flexi_foreach_fn foreach,
         return FLEXI_ERR_BADREAD;
     }
 
-    for (flexi_ssize_t i = 0; i < len; i++) {
+    for (flexi_ssize_t i = 0; i < cursor->length; i++) {
         const char *key;
         if (!cursor_map_key_at_index(cursor, &keys, i, &key)) {
             // Couldn't find the map key.
@@ -1373,9 +1460,11 @@ cursor_foreach_map(const flexi_cursor_s *cursor, flexi_foreach_fn foreach,
 
         flexi_type_e type = FLEXI_UNPACK_TYPE(types[i]);
         if (type_is_direct(type)) {
-            each.cursor = cursor->cursor + (i * cursor->width);
-            each.type = type;
-            each.width = cursor->width;
+            if (!cursor_set_checked(&each, &cursor->buffer,
+                    cursor->cursor + (i * cursor->width), type,
+                    cursor->width)) {
+                return FLEXI_ERR_BADREAD;
+            }
         } else {
             flexi_ssize_t offset = 0;
             const char *offset_ptr = cursor->cursor + (i * cursor->width);
@@ -1389,8 +1478,10 @@ cursor_foreach_map(const flexi_cursor_s *cursor, flexi_foreach_fn foreach,
                 return FLEXI_ERR_BADREAD;
             }
 
-            each.type = type;
-            each.width = FLEXI_WIDTH_TO_BYTES(FLEXI_UNPACK_WIDTH(types[i]));
+            if (!cursor_set_checked(&each, &cursor->buffer, each.cursor, type,
+                    UNPACK_WIDTH_TO_BYTES(types[i]))) {
+                return FLEXI_ERR_BADREAD;
+            }
         }
 
         if (!foreach (key, &each, user)) {
@@ -1408,24 +1499,20 @@ cursor_foreach_untyped_vector(const flexi_cursor_s *cursor,
     flexi_foreach_fn foreach, void *user)
 {
     flexi_cursor_s each;
-    each.buffer = cursor->buffer;
-
-    flexi_ssize_t len;
-    if (!cursor_get_length_prefix_unsafe(cursor, &len)) {
-        return FLEXI_ERR_BADREAD;
-    }
 
     const flexi_packed_t *types;
     if (!cursor_vector_types_unsafe(cursor, &types)) {
         return FLEXI_ERR_BADREAD;
     }
 
-    for (flexi_ssize_t i = 0; i < len; i++) {
+    for (flexi_ssize_t i = 0; i < cursor->length; i++) {
         flexi_type_e type = FLEXI_UNPACK_TYPE(types[i]);
         if (type_is_direct(type)) {
-            each.cursor = cursor->cursor + (i * cursor->width);
-            each.type = type;
-            each.width = cursor->width;
+            if (!cursor_set_checked(&each, &cursor->buffer,
+                    cursor->cursor + (i * cursor->width), type,
+                    cursor->width)) {
+                return FLEXI_ERR_BADREAD;
+            }
         } else {
             flexi_ssize_t offset = 0;
             const char *offset_ptr = cursor->cursor + (i * cursor->width);
@@ -1439,8 +1526,10 @@ cursor_foreach_untyped_vector(const flexi_cursor_s *cursor,
                 return FLEXI_ERR_BADREAD;
             }
 
-            each.type = type;
-            each.width = FLEXI_WIDTH_TO_BYTES(FLEXI_UNPACK_WIDTH(types[i]));
+            if (!cursor_set_checked(&each, &cursor->buffer, each.cursor, type,
+                    UNPACK_WIDTH_TO_BYTES(types[i]))) {
+                return FLEXI_ERR_BADREAD;
+            }
         }
 
         if (!foreach (NULL, &each, user)) {
@@ -1532,18 +1621,13 @@ parser_emit_map(const flexi_parser_s *parser, const char *key,
 {
     ASSERT(cursor->type == FLEXI_TYPE_MAP);
 
-    flexi_ssize_t len;
-    if (!cursor_get_length_prefix(cursor, &len)) {
-        return FLEXI_ERR_BADREAD;
-    }
-
     foreach_ctx_s ctx;
     ctx.parser = parser;
     ctx.user = user;
     ctx.limits = limits;
     ctx.err = FLEXI_INVALID;
 
-    parser->map_begin(key, len, user);
+    parser->map_begin(key, cursor->length, user);
     flexi_result_e res = cursor_foreach_map(cursor, parser_emit_foreach, &ctx);
     if (FLEXI_ERROR(res)) {
         return res;
@@ -1571,18 +1655,13 @@ parser_emit_vector(const flexi_parser_s *parser, const char *key,
 {
     ASSERT(cursor->type == FLEXI_TYPE_VECTOR);
 
-    flexi_ssize_t len;
-    if (!cursor_get_length_prefix(cursor, &len)) {
-        return FLEXI_ERR_BADREAD;
-    }
-
     foreach_ctx_s ctx;
     ctx.parser = parser;
     ctx.user = user;
     ctx.limits = limits;
     ctx.err = FLEXI_INVALID;
 
-    parser->vector_begin(key, len, user);
+    parser->vector_begin(key, cursor->length, user);
     flexi_result_e res =
         cursor_foreach_untyped_vector(cursor, parser_emit_foreach, &ctx);
     if (FLEXI_ERROR(res)) {
@@ -1610,13 +1689,8 @@ parser_emit_vector_keys(const flexi_parser_s *parser, const char *key,
 {
     ASSERT(cursor->type == FLEXI_TYPE_VECTOR_KEY);
 
-    flexi_ssize_t len;
-    if (!cursor_get_length_prefix(cursor, &len)) {
-        return FLEXI_ERR_BADREAD;
-    }
-
-    parser->vector_begin(key, len, user);
-    for (flexi_ssize_t i = 0; i < len; i++) {
+    parser->vector_begin(key, cursor->length, user);
+    for (flexi_ssize_t i = 0; i < cursor->length; i++) {
         // Access the offset by hand.
         flexi_ssize_t offset = 0;
         const char *offset_ptr = cursor->cursor + (i * cursor->width);
@@ -1687,12 +1761,7 @@ parse_cursor(const flexi_parser_s *parser, const char *key,
         parser->key(key, cursor->cursor, user);
         return FLEXI_OK;
     case FLEXI_TYPE_STRING: {
-        flexi_ssize_t len;
-        if (!cursor_get_length_prefix(cursor, &len)) {
-            return FLEXI_ERR_BADREAD;
-        }
-
-        parser->string(key, cursor->cursor, len, user);
+        parser->string(key, cursor->cursor, cursor->length, user);
         return FLEXI_OK;
     }
     case FLEXI_TYPE_MAP:
@@ -1714,13 +1783,8 @@ parse_cursor(const flexi_parser_s *parser, const char *key,
     case FLEXI_TYPE_VECTOR_UINT:
     case FLEXI_TYPE_VECTOR_FLOAT:
     case FLEXI_TYPE_VECTOR_BOOL: {
-        flexi_ssize_t count;
-        if (!cursor_get_length_prefix(cursor, &count)) {
-            return FLEXI_ERR_BADREAD;
-        }
-
         parser->typed_vector(key, cursor->cursor, cursor->type, cursor->width,
-            count, user);
+            cursor->length, user);
         return FLEXI_OK;
     }
     case FLEXI_TYPE_VECTOR_KEY:
@@ -1744,12 +1808,7 @@ parse_cursor(const flexi_parser_s *parser, const char *key,
             4, user);
         return FLEXI_OK;
     case FLEXI_TYPE_BLOB: {
-        flexi_ssize_t len;
-        if (!cursor_get_length_prefix(cursor, &len)) {
-            return FLEXI_ERR_BADREAD;
-        }
-
-        parser->blob(key, cursor->cursor, len, user);
+        parser->blob(key, cursor->cursor, cursor->length, user);
         return FLEXI_OK;
     }
     case FLEXI_TYPE_BOOL:
@@ -1776,9 +1835,9 @@ writer_peek_tail(flexi_writer_s *writer, flexi_ssize_t offset)
 }
 
 /**
- * @brief Peek at the value in the stack, starting with the n-th value in the
- *        stack (0 is head, towards tail) and then offseting by the given
- *        index (0 is start value, towards head).
+ * @brief Peek at the value in the stack, starting with the n-th value in
+ * the stack (0 is head, towards tail) and then offseting by the given index
+ * (0 is start value, towards head).
  *
  * @param[in] writer Writer to use.
  * @param[in] start Stack offset to start from (towards tail).
@@ -2219,8 +2278,8 @@ write_map_values(flexi_writer_s *writer, const char *key,
         return FLEXI_ERR_INTERNAL;
     }
 
-    // The stride the developer passed in might not be wide enough to contain
-    // all of the values.  Calculate a minimum stride.
+    // The stride the developer passed in might not be wide enough to
+    // contain all of the values.  Calculate a minimum stride.
     int min_stride_bytes;
     flexi_result_e res =
         writer_vector_calc_min_stride(writer, len, &min_stride_bytes);
@@ -2354,9 +2413,12 @@ flexi_open_buffer(const flexi_buffer_s *buffer, flexi_cursor_s *cursor)
         return FLEXI_ERR_BADREAD;
     }
 
-    cursor->cursor = dest;
-    cursor->type = type;
-    cursor->width = FLEXI_WIDTH_TO_BYTES(FLEXI_UNPACK_WIDTH(packed));
+    if (!cursor_set_checked(cursor, buffer, dest, type,
+            UNPACK_WIDTH_TO_BYTES(packed))) {
+        cursor_set_error(cursor);
+        return FLEXI_ERR_BADREAD;
+    }
+
     return FLEXI_OK;
 }
 
@@ -2381,7 +2443,11 @@ flexi_cursor_width(const flexi_cursor_s *cursor)
 flexi_ssize_t
 flexi_cursor_length(const flexi_cursor_s *cursor)
 {
-    return cursor_length(cursor);
+    if (cursor->type == FLEXI_TYPE_KEY) {
+        return strlen(cursor->cursor);
+    } else {
+        return cursor->length;
+    }
 }
 
 /******************************************************************************/
@@ -2683,19 +2749,8 @@ flexi_cursor_string(const flexi_cursor_s *cursor, const char **str,
         return FLEXI_OK;
     }
     case FLEXI_TYPE_STRING: {
-        flexi_ssize_t l;
-        if (!cursor_get_length_prefix_unsafe(cursor, &l)) {
-            *str = "";
-            *len = 0;
-            return FLEXI_ERR_BADREAD;
-        } else if (l < 0) {
-            *str = "";
-            *len = 0;
-            return FLEXI_ERR_INTERNAL;
-        }
-
         *str = cursor->cursor;
-        *len = l;
+        *len = cursor->length;
         return FLEXI_OK;
     }
     default: {
@@ -2752,16 +2807,10 @@ flexi_cursor_seek_map_key(const flexi_cursor_s *cursor, const char *key,
         return FLEXI_ERR_BADTYPE;
     }
 
-    flexi_ssize_t len;
-    if (!cursor_get_length_prefix(cursor, &len)) {
-        cursor_set_error(dest);
-        return FLEXI_ERR_BADREAD;
-    }
-
-    if (len <= FLEXI_CONFIG_SEEK_MAP_KEY_LINEAR_MAX) {
-        return cursor_seek_map_key_linear(cursor, len, key, dest);
+    if (cursor->length <= FLEXI_CONFIG_SEEK_MAP_KEY_LINEAR_MAX) {
+        return cursor_seek_map_key_linear(cursor, cursor->length, key, dest);
     } else {
-        return cursor_seek_map_key_bsearch(cursor, len, key, dest);
+        return cursor_seek_map_key_bsearch(cursor, cursor->length, key, dest);
     }
 }
 
@@ -2779,11 +2828,6 @@ flexi_cursor_vector_types(const flexi_cursor_s *cursor,
     if (cursor->type != FLEXI_TYPE_VECTOR && cursor->type != FLEXI_TYPE_MAP) {
         *packed = &g_empty_packed;
         return FLEXI_ERR_BADTYPE;
-    }
-
-    if (!cursor_can_read_length_prefix(cursor)) {
-        *packed = &g_empty_packed;
-        return FLEXI_ERR_BADREAD;
     }
 
     if (!cursor_vector_types_unsafe(cursor, packed)) {
@@ -2814,8 +2858,8 @@ flexi_cursor_seek_vector_index(const flexi_cursor_s *cursor,
 
         return FLEXI_OK;
     } else if (type_is_typed_vector(cursor->type)) {
-        // Typed vectors can still be seeked.  It's slower than direct access,
-        // but it should still work.
+        // Typed vectors can still be seeked.  It's slower than direct
+        // access, but it should still work.
         if (!cursor_seek_typed_vector_index(cursor, index, dest)) {
             cursor_set_error(dest);
             return FLEXI_ERR_INTERNAL;
@@ -2846,7 +2890,7 @@ flexi_cursor_typed_vector_data(const flexi_cursor_s *cursor, const void **data,
         *data = cursor->cursor;
         *type = cursor->type;
         *stride = cursor->width;
-        *count = cursor_length(cursor);
+        *count = cursor->length;
         return FLEXI_OK;
     }
 
@@ -2889,13 +2933,8 @@ flexi_cursor_blob(const flexi_cursor_s *cursor, const uint8_t **blob,
         return FLEXI_ERR_BADTYPE;
     }
 
-    if (!cursor_get_length_prefix_unsafe(cursor, len)) {
-        *blob = &g_empty_blob;
-        *len = 0;
-        return FLEXI_ERR_BADREAD;
-    }
-
     *blob = (const uint8_t *)cursor->cursor;
+    *len = cursor->length;
     return FLEXI_OK;
 }
 
@@ -3468,8 +3507,8 @@ flexi_write_vector(flexi_writer_s *writer, const char *key, flexi_ssize_t len,
         return FLEXI_ERR_FAILSAFE;
     }
 
-    // The stride the developer passed in might not be wide enough to contain
-    // all of the values.  Calculate a minimum stride.
+    // The stride the developer passed in might not be wide enough to
+    // contain all of the values.  Calculate a minimum stride.
     int min_stride_bytes;
     flexi_result_e res =
         writer_vector_calc_min_stride(writer, len, &min_stride_bytes);
