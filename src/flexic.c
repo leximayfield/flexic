@@ -871,29 +871,16 @@ cursor_set_error(flexi_cursor_s *cursor)
  * @brief Given a cursor pointing at the base of a vector which contains
  *        trailing types, return a pointer to the first type.
  *
- * @warning This is a bug-prone function, be careful when working on it.
- *
- * @pre Cursor must be a map or untyped vector.
- * @pre Buffer must have room for length at cursor position.
- * @post Every vector value is in-bounds.
- *
  * @param[in] cursor Cursor to check.
- * @param[out] packed Pointer to first packed type.
- * @return True if types were located.
+ * @return Pointer to first packed type.
  */
-static bool
-cursor_vector_types(const flexi_cursor_s *cursor, const flexi_packed_t **packed)
+static const flexi_packed_t *
+cursor_vector_types(const flexi_cursor_s *cursor)
 {
     ASSERT(type_is_map_or_untyped_vector(cursor->type));
 
-    // Make sure the destination pointer is in-bounds at all valid offsets.
-    const char *dest = cursor->cursor + (cursor->length * cursor->width);
-    if (dest + cursor->length >= cursor->buffer.data + cursor->buffer.length) {
-        return false;
-    }
-
-    *packed = (const flexi_packed_t *)dest;
-    return true;
+    return (const flexi_packed_t *)(cursor->cursor +
+                                    (cursor->length * cursor->width));
 }
 
 /**
@@ -1123,11 +1110,7 @@ cursor_seek_untyped_vector_index(const flexi_cursor_s *cursor,
 {
     ASSERT(type_is_map_or_untyped_vector(cursor->type));
 
-    const flexi_packed_t *types = NULL;
-    if (!cursor_vector_types(cursor, &types)) {
-        return false;
-    }
-
+    const flexi_packed_t *types = cursor_vector_types(cursor);
     flexi_type_e type = FLEXI_UNPACK_TYPE(types[index]);
     if (type_is_direct(type)) {
         // No need to resolve an offset, we're pretty much done.
@@ -1400,12 +1383,7 @@ cursor_foreach_map(const flexi_cursor_s *cursor, flexi_foreach_fn foreach,
         return FLEXI_ERR_BADREAD;
     }
 
-    const flexi_packed_t *types;
-    if (!cursor_vector_types(cursor, &types)) {
-        // There is no types suffix.
-        return FLEXI_ERR_BADREAD;
-    }
-
+    const flexi_packed_t *types = cursor_vector_types(cursor);
     for (flexi_ssize_t i = 0; i < cursor->length; i++) {
         const char *key;
         if (!cursor_map_key_at_index(cursor, &keys, i, &key)) {
@@ -1455,11 +1433,7 @@ cursor_foreach_untyped_vector(const flexi_cursor_s *cursor,
 {
     flexi_cursor_s each;
 
-    const flexi_packed_t *types;
-    if (!cursor_vector_types(cursor, &types)) {
-        return FLEXI_ERR_BADREAD;
-    }
-
+    const flexi_packed_t *types = cursor_vector_types(cursor);
     for (flexi_ssize_t i = 0; i < cursor->length; i++) {
         flexi_type_e type = FLEXI_UNPACK_TYPE(types[i]);
         if (type_is_direct(type)) {
@@ -2783,11 +2757,7 @@ flexi_cursor_vector_types(const flexi_cursor_s *cursor,
         return FLEXI_ERR_BADTYPE;
     }
 
-    if (!cursor_vector_types(cursor, packed)) {
-        *packed = &g_empty_packed;
-        return FLEXI_ERR_INTERNAL;
-    }
-
+    *packed = cursor_vector_types(cursor);
     return FLEXI_OK;
 }
 
