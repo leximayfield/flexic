@@ -1,6 +1,10 @@
-include(FindFSan)
-
-add_executable(flexic_fuzzer fuzzer.cpp)
-target_link_libraries(flexic_fuzzer PRIVATE flexic)
-add_sanitize_address(flexic_fuzzer)
-add_sanitize_fuzzer(flexic_fuzzer)
+add_executable(flexic_fuzzer
+    "fuzzer.cpp"
+    "../src/flexic.c")
+target_include_directories(flexic_fuzzer PRIVATE "../include")
+if(MSVC)
+    target_compile_options(flexic_fuzzer PRIVATE "/fsanitize=fuzzer")
+else()
+    target_compile_options(flexic_fuzzer PRIVATE "-fsanitize=address,fuzzer,undefined")
+    target_link_options(flexic_fuzzer PRIVATE "-fsanitize=address,fuzzer,undefined")
+endif()

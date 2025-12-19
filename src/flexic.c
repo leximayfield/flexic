@@ -69,6 +69,9 @@
 /******************************************************************************/
 
 #ifndef NDEBUG
+#if 0
+#define ASSERT(ex) ((ex) ? (void)0 : (__debugbreak(), (void)0))
+#else
 #include <stdlib.h>
 
 /**
@@ -79,6 +82,7 @@
  *          of a function should return an error.
  */
 #define ASSERT(ex) ((ex) ? (void)0 : (abort(), (void)0))
+#endif
 #else
 #define ASSERT(ex) (void)0
 #endif
@@ -282,6 +286,39 @@ type_is_typed_vector_fixed(flexi_type_e type)
 }
 
 /**
+ * @brief Check to see if the type has a valid width.
+ */
+static bool
+type_has_valid_width(flexi_type_e type, int width)
+{
+    // Check the width before going any further.
+    switch (width) {
+    case 1:
+        if (type == FLEXI_TYPE_FLOAT) {
+            return false;
+        }
+        return true;
+    case 2:
+        if (type == FLEXI_TYPE_NULL || type == FLEXI_TYPE_FLOAT ||
+            type == FLEXI_TYPE_BOOL) {
+            return false;
+        }
+        return true;
+    case 4:
+        if (type == FLEXI_TYPE_NULL || type == FLEXI_TYPE_BOOL) {
+            return false;
+        }
+        return true;
+    case 8:
+        if (type == FLEXI_TYPE_NULL || type == FLEXI_TYPE_BOOL) {
+            return false;
+        }
+        return true;
+    default: return false;
+    }
+}
+
+/**
  * @brief Returns true if read would be valid for the given source and width.
  */
 static bool
@@ -304,8 +341,8 @@ static bool
 buffer_seek_back(const flexi_buffer_s *buffer, const char *src,
     flexi_ssize_t offset, const char **dest)
 {
-    if (offset == 0) {
-        // An offset of 0 means someone is being sneaky.
+    if (offset <= 0) {
+        // An offset south of 1 means someone is being sneaky.
         return false;
     }
 
@@ -358,13 +395,8 @@ buffer_read_size_by_width_unsafe(const char *src, int width, flexi_ssize_t *dst)
     case 8: {
         uint64_t v;
         memcpy(&v, src, 8);
-#if (SIZE_MAX == UINT32_MAX)
         *dst = (size_t)v;
-        return v <= SIZE_MAX;
-#else
-        *dst = v;
-        return true;
-#endif
+        return v <= UINT32_MAX;
     }
     default: {
         ASSERT(false);
@@ -379,6 +411,10 @@ static bool
 buffer_read_size_by_width(const flexi_buffer_s *buffer, const char *src,
     int width, flexi_ssize_t *dst)
 {
+    // This is an assert because in most cases, the input width is coming
+    // from a source that can only ever be valid.
+    ASSERT(width == 1 || width == 2 || width == 4 || width == 8);
+
     if (!read_is_valid(buffer, src, width)) {
         return false;
     }
@@ -1162,6 +1198,10 @@ cursor_map_keys(const flexi_cursor_s *cursor, flexi_cursor_s *dest)
     // [-2] contains key vector width.
     uint64_t keys_width =
         buffer_read_uint_unsafe(cur + cursor->width, cursor->width);
+    if (keys_width != 1 && keys_width != 2 && keys_width != 4 &&
+        keys_width != 8) {
+        return false;
+    }
 
     if (!buffer_seek_back(&cursor->buffer, cur, keys_offset, &cur)) {
         // Tried to seek keys base, went out of bounds.
@@ -1493,7 +1533,7 @@ parser_emit_map(const flexi_parser_s *parser, const char *key,
     ASSERT(cursor->type == FLEXI_TYPE_MAP);
 
     flexi_ssize_t len;
-    if (!cursor_get_length_prefix_unsafe(cursor, &len)) {
+    if (!cursor_get_length_prefix(cursor, &len)) {
         return FLEXI_ERR_BADREAD;
     }
 
@@ -1532,7 +1572,7 @@ parser_emit_vector(const flexi_parser_s *parser, const char *key,
     ASSERT(cursor->type == FLEXI_TYPE_VECTOR);
 
     flexi_ssize_t len;
-    if (!cursor_get_length_prefix_unsafe(cursor, &len)) {
+    if (!cursor_get_length_prefix(cursor, &len)) {
         return FLEXI_ERR_BADREAD;
     }
 
@@ -1571,7 +1611,7 @@ parser_emit_vector_keys(const flexi_parser_s *parser, const char *key,
     ASSERT(cursor->type == FLEXI_TYPE_VECTOR_KEY);
 
     flexi_ssize_t len;
-    if (!cursor_get_length_prefix_unsafe(cursor, &len)) {
+    if (!cursor_get_length_prefix(cursor, &len)) {
         return FLEXI_ERR_BADREAD;
     }
 
@@ -1648,7 +1688,7 @@ parse_cursor(const flexi_parser_s *parser, const char *key,
         return FLEXI_OK;
     case FLEXI_TYPE_STRING: {
         flexi_ssize_t len;
-        if (!cursor_get_length_prefix_unsafe(cursor, &len)) {
+        if (!cursor_get_length_prefix(cursor, &len)) {
             return FLEXI_ERR_BADREAD;
         }
 
@@ -1675,7 +1715,7 @@ parse_cursor(const flexi_parser_s *parser, const char *key,
     case FLEXI_TYPE_VECTOR_FLOAT:
     case FLEXI_TYPE_VECTOR_BOOL: {
         flexi_ssize_t count;
-        if (!cursor_get_length_prefix_unsafe(cursor, &count)) {
+        if (!cursor_get_length_prefix(cursor, &count)) {
             return FLEXI_ERR_BADREAD;
         }
 
@@ -1705,7 +1745,7 @@ parse_cursor(const flexi_parser_s *parser, const char *key,
         return FLEXI_OK;
     case FLEXI_TYPE_BLOB: {
         flexi_ssize_t len;
-        if (!cursor_get_length_prefix_unsafe(cursor, &len)) {
+        if (!cursor_get_length_prefix(cursor, &len)) {
             return FLEXI_ERR_BADREAD;
         }
 
@@ -2287,6 +2327,12 @@ flexi_open_buffer(const flexi_buffer_s *buffer, flexi_cursor_s *cursor)
     // Point at the root object.
     flexi_type_e type = FLEXI_UNPACK_TYPE(packed);
     cursor->cursor -= root_bytes;
+
+    // Check the width before going any further.
+    if (!type_has_valid_width(type, root_bytes)) {
+        return FLEXI_ERR_BADREAD;
+    }
+
     if (type_is_direct(type)) {
         // No need to resolve an offset, we're done.
         cursor->type = type;
