@@ -884,6 +884,34 @@ cursor_vector_types(const flexi_cursor_s *cursor)
 }
 
 /**
+ * @brief Set values on a cursor with no bounds-checking.
+ *
+ * @details This is safe to do if you are setting a cursor based on directly-
+ *          accessed values in a map or vector.  The wrapper function is
+ *          used to catch bugs in debug mode.
+ *
+ * @param[out] cursor Cursor to assign to.
+ * @param[in] buffer Buffer to set on cursor.
+ * @param[in] pos Anchor of the cursor.
+ * @param[in] type Type of the cursor.
+ * @param[in] width Width of the cursor in bytes.
+ */
+static void
+cursor_set_direct(flexi_cursor_s *cursor, const flexi_buffer_s *buffer,
+    const char *pos, flexi_type_e type, int width)
+{
+    ASSERT(type_is_direct(type));
+    ASSERT((type != FLEXI_TYPE_FLOAT && WIDTH_IS_VALID(width)) ||
+           (type == FLEXI_TYPE_FLOAT && WIDTH_IS_VALID_FLOAT(width)));
+
+    cursor->buffer = *buffer;
+    cursor->cursor = pos;
+    cursor->type = type;
+    cursor->width = width;
+    cursor->length = 0;
+}
+
+/**
  * @brief Set values on a cursor, checking some preconditions of the type
  *        to ensure that the resulting cursor is usable.
  *
@@ -914,12 +942,22 @@ cursor_set_checked(flexi_cursor_s *cursor, const flexi_buffer_s *buffer,
             // Not a valid width.
             return false;
         }
+        if (pos < buffer->data ||
+            pos + width >= buffer->data + buffer->length) {
+            // Read would be out-of-bounds.
+            return false;
+        }
         cursor->length = 0;
         break;
     case FLEXI_TYPE_FLOAT:
     case FLEXI_TYPE_INDIRECT_FLOAT:
         if (!WIDTH_IS_VALID_FLOAT(width)) {
             // Not a valid width.
+            return false;
+        }
+        if (pos < buffer->data ||
+            pos + width >= buffer->data + buffer->length) {
+            // Read would be out-of-bounds.
             return false;
         }
         cursor->length = 0;
@@ -1109,13 +1147,15 @@ cursor_seek_untyped_vector_index(const flexi_cursor_s *cursor,
     flexi_ssize_t index, flexi_cursor_s *dest)
 {
     ASSERT(type_is_map_or_untyped_vector(cursor->type));
+    ASSERT(index >= 0 && index < cursor->length);
 
     const flexi_packed_t *types = cursor_vector_types(cursor);
     flexi_type_e type = FLEXI_UNPACK_TYPE(types[index]);
     if (type_is_direct(type)) {
         // No need to resolve an offset, we're pretty much done.
-        return cursor_set_checked(dest, &cursor->buffer,
+        cursor_set_direct(dest, &cursor->buffer,
             cursor->cursor + (index * cursor->width), type, cursor->width);
+        return true;
     }
 
     flexi_ssize_t offset = 0;
@@ -1145,43 +1185,36 @@ static bool
 cursor_seek_typed_vector_index(const flexi_cursor_s *cursor,
     flexi_ssize_t index, flexi_cursor_s *dest)
 {
+    ASSERT(index >= 0 && index < cursor->length);
+
     switch (cursor->type) {
     case FLEXI_TYPE_VECTOR_SINT:
     case FLEXI_TYPE_VECTOR_SINT2:
     case FLEXI_TYPE_VECTOR_SINT3:
     case FLEXI_TYPE_VECTOR_SINT4:
-        dest->buffer = cursor->buffer;
-        dest->cursor = cursor->cursor + (index * cursor->width);
-        dest->type = FLEXI_TYPE_SINT;
-        dest->width = cursor->width;
-        dest->length = 0;
+        cursor_set_direct(dest, &cursor->buffer,
+            cursor->cursor + (index * cursor->width), FLEXI_TYPE_SINT,
+            cursor->width);
         return true;
     case FLEXI_TYPE_VECTOR_UINT:
     case FLEXI_TYPE_VECTOR_UINT2:
     case FLEXI_TYPE_VECTOR_UINT3:
     case FLEXI_TYPE_VECTOR_UINT4:
-        dest->buffer = cursor->buffer;
-        dest->cursor = cursor->cursor + (index * cursor->width);
-        dest->type = FLEXI_TYPE_UINT;
-        dest->width = cursor->width;
-        dest->length = 0;
+        cursor_set_direct(dest, &cursor->buffer,
+            cursor->cursor + (index * cursor->width), FLEXI_TYPE_UINT,
+            cursor->width);
         return true;
     case FLEXI_TYPE_VECTOR_FLOAT:
     case FLEXI_TYPE_VECTOR_FLOAT2:
     case FLEXI_TYPE_VECTOR_FLOAT3:
     case FLEXI_TYPE_VECTOR_FLOAT4:
-        dest->buffer = cursor->buffer;
-        dest->cursor = cursor->cursor + (index * cursor->width);
-        dest->type = FLEXI_TYPE_FLOAT;
-        dest->width = cursor->width;
-        dest->length = 0;
+        cursor_set_direct(dest, &cursor->buffer,
+            cursor->cursor + (index * cursor->width), FLEXI_TYPE_FLOAT,
+            cursor->width);
         return true;
     case FLEXI_TYPE_VECTOR_BOOL:
-        dest->buffer = cursor->buffer;
-        dest->cursor = cursor->cursor + index;
-        dest->type = FLEXI_TYPE_BOOL;
-        dest->width = 1;
-        dest->length = 0;
+        cursor_set_direct(dest, &cursor->buffer, cursor->cursor + index,
+            FLEXI_TYPE_BOOL, 1);
         return true;
     case FLEXI_TYPE_VECTOR_KEY: {
         flexi_ssize_t offset;
@@ -1194,14 +1227,10 @@ cursor_seek_typed_vector_index(const flexi_cursor_s *cursor,
             return false;
         }
 
-        dest->buffer = cursor->buffer;
-        dest->cursor = cur;
-        dest->type = FLEXI_TYPE_KEY;
-        dest->width = 0;
-        dest->length = 0;
-        return true;
+        return cursor_set_checked(dest, &cursor->buffer, cur, FLEXI_TYPE_KEY,
+            1);
     }
-    default: return false;
+    default: ASSERT(false); return false;
     }
 }
 
@@ -1245,11 +1274,8 @@ cursor_map_keys(const flexi_cursor_s *cursor, flexi_cursor_s *dest)
         return false;
     }
 
-    dest->buffer = cursor->buffer;
-    dest->cursor = cur;
-    dest->type = FLEXI_TYPE_VECTOR_KEY;
-    dest->width = (int)keys_width;
-    return true;
+    return cursor_set_checked(dest, &cursor->buffer, cur, FLEXI_TYPE_VECTOR_KEY,
+        (int)keys_width);
 }
 
 /**
@@ -1269,6 +1295,7 @@ cursor_map_key_at_index(const flexi_cursor_s *cursor,
     // Calling this with a non-map is a contract violation.
     ASSERT(cursor->type == FLEXI_TYPE_MAP);
     ASSERT(keys->type == FLEXI_TYPE_VECTOR_KEY);
+    ASSERT(index >= 0 && index < keys->length);
 
     // Resolve the key.
     flexi_ssize_t offset = 0;
@@ -1375,9 +1402,7 @@ static flexi_result_e
 cursor_foreach_map(const flexi_cursor_s *cursor, flexi_foreach_fn foreach,
     void *user)
 {
-    flexi_cursor_s each;
-
-    flexi_cursor_s keys;
+    flexi_cursor_s each, keys;
     if (!cursor_map_keys(cursor, &keys)) {
         // Could not locate keys.
         return FLEXI_ERR_BADREAD;
@@ -1393,11 +1418,8 @@ cursor_foreach_map(const flexi_cursor_s *cursor, flexi_foreach_fn foreach,
 
         flexi_type_e type = FLEXI_UNPACK_TYPE(types[i]);
         if (type_is_direct(type)) {
-            if (!cursor_set_checked(&each, &cursor->buffer,
-                    cursor->cursor + (i * cursor->width), type,
-                    cursor->width)) {
-                return FLEXI_ERR_BADREAD;
-            }
+            cursor_set_direct(&each, &cursor->buffer,
+                cursor->cursor + (i * cursor->width), type, cursor->width);
         } else {
             flexi_ssize_t offset = 0;
             const char *offset_ptr = cursor->cursor + (i * cursor->width);
@@ -1437,11 +1459,8 @@ cursor_foreach_untyped_vector(const flexi_cursor_s *cursor,
     for (flexi_ssize_t i = 0; i < cursor->length; i++) {
         flexi_type_e type = FLEXI_UNPACK_TYPE(types[i]);
         if (type_is_direct(type)) {
-            if (!cursor_set_checked(&each, &cursor->buffer,
-                    cursor->cursor + (i * cursor->width), type,
-                    cursor->width)) {
-                return FLEXI_ERR_BADREAD;
-            }
+            cursor_set_direct(&each, &cursor->buffer,
+                cursor->cursor + (i * cursor->width), type, cursor->width);
         } else {
             flexi_ssize_t offset = 0;
             const char *offset_ptr = cursor->cursor + (i * cursor->width);
@@ -2699,7 +2718,8 @@ flexi_cursor_map_key_at_index(const flexi_cursor_s *cursor, flexi_ssize_t index,
         return FLEXI_ERR_FAILSAFE;
     }
 
-    if (cursor->type != FLEXI_TYPE_MAP) {
+    if (cursor->type != FLEXI_TYPE_MAP || index < 0 ||
+        index >= cursor->length) {
         *str = "";
         return FLEXI_ERR_BADTYPE;
     }
@@ -2773,6 +2793,12 @@ flexi_cursor_seek_vector_index(const flexi_cursor_s *cursor,
     }
 
     if (type_is_map_or_untyped_vector(cursor->type)) {
+        if (index < 0 || index >= cursor->length) {
+            // Index is out of range.
+            cursor_set_error(dest);
+            return FLEXI_ERR_FAILSAFE;
+        }
+
         // Untyped vectors and maps can be seeked.
         if (!cursor_seek_untyped_vector_index(cursor, index, dest)) {
             cursor_set_error(dest);
@@ -2781,6 +2807,12 @@ flexi_cursor_seek_vector_index(const flexi_cursor_s *cursor,
 
         return FLEXI_OK;
     } else if (type_is_typed_vector(cursor->type)) {
+        if (index < 0 || index >= cursor->length) {
+            // Index is out of range.
+            cursor_set_error(dest);
+            return FLEXI_ERR_FAILSAFE;
+        }
+
         // Typed vectors can still be seeked.  It's slower than direct
         // access, but it should still work.
         if (!cursor_seek_typed_vector_index(cursor, index, dest)) {
