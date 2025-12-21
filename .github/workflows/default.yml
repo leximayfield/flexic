@@ -13,6 +13,8 @@ jobs:
     runs-on: windows-2022
     steps:
       - uses: actions/checkout@v4
+        with:
+          lfs: true
       - uses: lukka/get-cmake@latest
       - uses: ilammy/msvc-dev-cmd@v1
         with:
