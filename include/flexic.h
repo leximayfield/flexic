@@ -22,27 +22,31 @@
 
 #pragma once
 
+/**
+ * @file flexic.h
+ */
+
 #if defined(__cplusplus)
 #if defined(_MSVC_LANG)
-#define FLEXI_CPLUSPLUS _MSVC_LANG
+#define FLEXI_IMPL_CPLUSPLUS _MSVC_LANG
 #else
-#define FLEXI_CPLUSPLUS __cplusplus
+#define FLEXI_IMPL_CPLUSPLUS __cplusplus
 #endif
 #else
-#define FLEXI_CPLUSPLUS 0L
+#define FLEXI_IMPL_CPLUSPLUS 0L
 #endif
 
-#if FLEXI_CPLUSPLUS >= 201103L
-#define FLEXI_CPP11_EQ_DELETE = delete
+#if FLEXI_IMPL_CPLUSPLUS >= 201103L
+#define FLEXI_IMPL_CPP11_EQ_DELETE = delete
 #else
-#define FLEXI_CPP11_EQ_DELETE
+#define FLEXI_IMPL_CPP11_EQ_DELETE
 #endif
 
 #include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
 
-#if FLEXI_CPLUSPLUS
+#if FLEXI_IMPL_CPLUSPLUS
 extern "C" {
 #endif
 
@@ -370,13 +374,23 @@ typedef uint8_t flexi_packed_t;
  */
 extern const flexi_type_e FLEXI_TYPE_INVALID;
 
-typedef struct flexi_buffer_s {
+/**
+ * @brief A non-owning contiguous span of memory.
+ */
+typedef struct flexi_span_s {
     const char *data;
     flexi_ssize_t length;
-} flexi_buffer_s;
+} flexi_span_s;
 
+/**
+ * @brief A cursor is a structure that is used to point at a specific part
+ *        of a FlexBuffer.
+ *
+ * @warning All members of this struct are considered implementation details
+ *          and should not be used directly.
+ */
 typedef struct flexi_cursor_s {
-    flexi_buffer_s buffer;
+    flexi_span_s msg;
     const char *cursor;
     flexi_type_e type;
     int width;
@@ -395,20 +409,20 @@ typedef bool (*flexi_foreach_fn)(const char *key, flexi_cursor_s *value,
     void *user);
 
 /**
- * @brief Create a buffer from a void pointer/len.
+ * @brief Create a span from a void pointer/len.
  */
-flexi_buffer_s
-flexi_make_buffer(const void *buffer, flexi_ssize_t len);
+flexi_span_s
+flexi_make_span(const void *data, flexi_ssize_t len);
 
 /**
  * @brief "Open" a buffer and seek to the root object.
  *
- * @param[in] buffer Buffer to open.
+ * @param[in] msg Span pointing to FlexBuffer message to open.
  * @param[out] cursor Cursor pointing to root object.
  * @return FLEXI_OK || FLEXI_ERR_BADREAD.
  */
 flexi_result_e
-flexi_open_buffer(const flexi_buffer_s *buffer, flexi_cursor_s *cursor);
+flexi_open_span(const flexi_span_s *msg, flexi_cursor_s *cursor);
 
 /**
  * @brief Obtain the type of the value pointed to by the cursor.
@@ -1223,13 +1237,13 @@ flexi_writer_debug_stack_at(const flexi_writer_s *writer, flexi_ssize_t offset,
 flexi_ssize_t
 flexi_writer_debug_stack_count(flexi_writer_s *writer);
 
-#if FLEXI_CPLUSPLUS
+#if FLEXI_IMPL_CPLUSPLUS
 }
 #endif
 
-#if FLEXI_CPLUSPLUS
+#if FLEXI_IMPL_CPLUSPLUS
 
-#if FLEXI_CPLUSPLUS >= 201703L
+#if FLEXI_IMPL_CPLUSPLUS >= 201703L
 
 #include <string_view>
 
@@ -1244,7 +1258,7 @@ flexi_write_string(flexi_writer_s *writer, const char *key,
 
 template<typename T> inline flexi_result_e
 flexi_write_typed_vector(flexi_writer_s *writer, const char *key, const T *arr,
-    flexi_ssize_t len) FLEXI_CPP11_EQ_DELETE;
+    flexi_ssize_t len) FLEXI_IMPL_CPP11_EQ_DELETE;
 
 template<> inline flexi_result_e
 flexi_write_typed_vector<int8_t>(flexi_writer_s *writer, const char *key,
@@ -1316,4 +1330,4 @@ flexi_write_typed_vector<double>(flexi_writer_s *writer, const char *key,
     return flexi_write_typed_vector_flt(writer, key, arr, FLEXI_WIDTH_8B, len);
 }
 
-#endif // #if FLEXI_CPLUSPLUS
+#endif // #if FLEXI_IMPL_CPLUSPLUS

@@ -5,9 +5,9 @@
 extern "C" int
 LLVMFuzzerTestOneInput(const uint8_t *data, size_t size)
 {
-    flexi_buffer_s buffer = flexi_make_buffer(data, size);
+    flexi_span_s span = flexi_make_span(data, size);
     flexi_cursor_s cursor;
-    if (flexi_open_buffer(&buffer, &cursor) != FLEXI_OK) {
+    if (flexi_open_span(&span, &cursor) != FLEXI_OK) {
         return 0;
     }
 

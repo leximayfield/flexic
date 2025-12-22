@@ -164,8 +164,8 @@ protected:
         flexi_ssize_t offset = 0;
         ASSERT_TRUE(m_actual.Tell(&offset));
 
-        auto buffer = flexi_make_buffer(m_actual.DataAt(0), offset);
-        ASSERT_EQ(FLEXI_OK, flexi_open_buffer(&buffer, cursor));
+        auto span = flexi_make_span(m_actual.DataAt(0), offset);
+        ASSERT_EQ(FLEXI_OK, flexi_open_span(&span, cursor));
     }
 };
 

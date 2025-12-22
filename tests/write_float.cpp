@@ -54,8 +54,8 @@ TEST_P(WriteF32Fixture, WriteAndRead)
     ASSERT_TRUE(m_actual.Tell(&offset));
 
     flexi_cursor_s cursor{};
-    auto buffer = flexi_make_buffer(m_actual.DataAt(0), offset);
-    ASSERT_EQ(FLEXI_OK, flexi_open_buffer(&buffer, &cursor));
+    auto span = flexi_make_span(m_actual.DataAt(0), offset);
+    ASSERT_EQ(FLEXI_OK, flexi_open_span(&span, &cursor));
     if (direct == direct_e::direct) {
         ASSERT_EQ(FLEXI_TYPE_FLOAT, flexi_cursor_type(&cursor));
     } else {
@@ -108,8 +108,8 @@ TEST_P(WriteF64Fixture, WriteAndRead)
     ASSERT_TRUE(m_actual.Tell(&offset));
 
     flexi_cursor_s cursor{};
-    auto buffer = flexi_make_buffer(m_actual.DataAt(0), offset);
-    ASSERT_EQ(FLEXI_OK, flexi_open_buffer(&buffer, &cursor));
+    auto span = flexi_make_span(m_actual.DataAt(0), offset);
+    ASSERT_EQ(FLEXI_OK, flexi_open_span(&span, &cursor));
     if (direct == direct_e::direct) {
         ASSERT_EQ(FLEXI_TYPE_FLOAT, flexi_cursor_type(&cursor));
     } else {
@@ -162,8 +162,8 @@ TEST_P(WriteVecF32Fixture, WriteAndRead)
     ASSERT_TRUE(m_actual.Tell(&offset));
 
     flexi_cursor_s cursor{};
-    auto buffer = flexi_make_buffer(m_actual.DataAt(0), offset);
-    ASSERT_EQ(FLEXI_OK, flexi_open_buffer(&buffer, &cursor));
+    auto span = flexi_make_span(m_actual.DataAt(0), offset);
+    ASSERT_EQ(FLEXI_OK, flexi_open_span(&span, &cursor));
 
     ASSERT_EQ(ex_type, flexi_cursor_type(&cursor));
     ASSERT_EQ(ex_width, flexi_cursor_width(&cursor));
@@ -240,8 +240,8 @@ TEST_P(WriteVecF64Fixture, WriteAndRead)
     ASSERT_TRUE(m_actual.Tell(&offset));
 
     flexi_cursor_s cursor{};
-    auto buffer = flexi_make_buffer(m_actual.DataAt(0), offset);
-    ASSERT_EQ(FLEXI_OK, flexi_open_buffer(&buffer, &cursor));
+    auto span = flexi_make_span(m_actual.DataAt(0), offset);
+    ASSERT_EQ(FLEXI_OK, flexi_open_span(&span, &cursor));
 
     ASSERT_EQ(ex_type, flexi_cursor_type(&cursor));
     ASSERT_EQ(ex_width, flexi_cursor_width(&cursor));

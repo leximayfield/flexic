@@ -28,8 +28,8 @@ GetCursorInt64Pattern(flexi_cursor_s &cursor)
     static std::array<uint8_t, 10> s_data = {
         0x88, 0x99, 0xaa, 0xbb, 0xcc, 0xdd, 0xee, 0xff, 0x07, 0x08};
 
-    auto buffer = flexi_make_buffer(s_data.data(), s_data.size());
-    ASSERT_EQ(FLEXI_OK, flexi_open_buffer(&buffer, &cursor));
+    auto span = flexi_make_span(s_data.data(), s_data.size());
+    ASSERT_EQ(FLEXI_OK, flexi_open_span(&span, &cursor));
 }
 
 static void
@@ -38,8 +38,8 @@ GetCursorUint64Pattern(flexi_cursor_s &cursor)
     static std::array<uint8_t, 10> s_data = {
         0x88, 0x99, 0xaa, 0xbb, 0xcc, 0xdd, 0xee, 0xff, 0x0b, 0x08};
 
-    auto buffer = flexi_make_buffer(s_data.data(), s_data.size());
-    ASSERT_EQ(FLEXI_OK, flexi_open_buffer(&buffer, &cursor));
+    auto span = flexi_make_span(s_data.data(), s_data.size());
+    ASSERT_EQ(FLEXI_OK, flexi_open_span(&span, &cursor));
 }
 
 TEST(CursorInt, Types_Int64Pattern)

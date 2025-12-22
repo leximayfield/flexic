@@ -53,8 +53,8 @@ TEST_P(WriteSintFixture, WriteAndRead)
     ASSERT_TRUE(m_actual.Tell(&offset));
 
     flexi_cursor_s cursor{};
-    auto buffer = flexi_make_buffer(m_actual.DataAt(0), offset);
-    ASSERT_EQ(FLEXI_OK, flexi_open_buffer(&buffer, &cursor));
+    auto span = flexi_make_span(m_actual.DataAt(0), offset);
+    ASSERT_EQ(FLEXI_OK, flexi_open_span(&span, &cursor));
     ASSERT_EQ(FLEXI_TYPE_SINT, flexi_cursor_type(&cursor));
     ASSERT_EQ(ex_width, flexi_cursor_width(&cursor));
 
@@ -105,8 +105,8 @@ TEST_P(WriteUintFixture, WriteAndRead)
     ASSERT_TRUE(m_actual.Tell(&offset));
 
     flexi_cursor_s cursor{};
-    auto buffer = flexi_make_buffer(m_actual.DataAt(0), offset);
-    ASSERT_EQ(FLEXI_OK, flexi_open_buffer(&buffer, &cursor));
+    auto span = flexi_make_span(m_actual.DataAt(0), offset);
+    ASSERT_EQ(FLEXI_OK, flexi_open_span(&span, &cursor));
     ASSERT_EQ(FLEXI_TYPE_UINT, flexi_cursor_type(&cursor));
     ASSERT_EQ(ex_width, flexi_cursor_width(&cursor));
 

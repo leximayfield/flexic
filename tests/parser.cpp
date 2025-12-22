@@ -168,11 +168,11 @@ static constexpr std::array<uint8_t, 55> g_basic_types = {0x4B, 0x65, 0x79,
 
 TEST(Parser, ParseBasicTypes)
 {
-    flexi_buffer_s buffer =
-        flexi_make_buffer(&g_basic_types[0], std::size(g_basic_types));
+    flexi_span_s span =
+        flexi_make_span(&g_basic_types[0], std::size(g_basic_types));
 
     flexi_cursor_s cursor{};
-    ASSERT_EQ(FLEXI_OK, flexi_open_buffer(&buffer, &cursor));
+    ASSERT_EQ(FLEXI_OK, flexi_open_span(&span, &cursor));
 
     Results results;
     ASSERT_EQ(FLEXI_OK, flexi_parse_cursor(&g_parser, &cursor, &results));
@@ -270,11 +270,11 @@ static constexpr std::array<uint8_t, 76> g_nested_types = {0x66, 0x6F, 0x6F,
 
 TEST(Parser, ParseNestedTypes)
 {
-    flexi_buffer_s buffer =
-        flexi_make_buffer(&g_nested_types[0], std::size(g_nested_types));
+    flexi_span_s span =
+        flexi_make_span(&g_nested_types[0], std::size(g_nested_types));
 
     flexi_cursor_s cursor{};
-    ASSERT_EQ(FLEXI_OK, flexi_open_buffer(&buffer, &cursor));
+    ASSERT_EQ(FLEXI_OK, flexi_open_span(&span, &cursor));
 
     Results results;
     ASSERT_EQ(FLEXI_OK, flexi_parse_cursor(&g_parser, &cursor, &results));
@@ -384,11 +384,11 @@ static constexpr std::array<uint8_t, 177> g_typed_vectors = {0x6B, 0x65, 0x79,
 
 TEST(Parser, ParseTypedVectors)
 {
-    flexi_buffer_s buffer =
-        flexi_make_buffer(&g_typed_vectors[0], std::size(g_typed_vectors));
+    flexi_span_s span =
+        flexi_make_span(&g_typed_vectors[0], std::size(g_typed_vectors));
 
     flexi_cursor_s cursor{};
-    ASSERT_EQ(FLEXI_OK, flexi_open_buffer(&buffer, &cursor));
+    ASSERT_EQ(FLEXI_OK, flexi_open_span(&span, &cursor));
 
     Results results;
     ASSERT_EQ(FLEXI_OK, flexi_parse_cursor(&g_parser, &cursor, &results));

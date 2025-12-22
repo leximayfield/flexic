@@ -27,8 +27,8 @@ GetCursorLargeStrings(flexi_cursor_s &cursor)
 {
     static std::string s_data = ReadFileToString("large_strings.flexbuf");
 
-    auto buffer = flexi_make_buffer(s_data.data(), s_data.size());
-    ASSERT_EQ(FLEXI_OK, flexi_open_buffer(&buffer, &cursor));
+    auto span = flexi_make_span(s_data.data(), s_data.size());
+    ASSERT_EQ(FLEXI_OK, flexi_open_span(&span, &cursor));
 }
 
 TEST(CursorString, String_LargeStrings)

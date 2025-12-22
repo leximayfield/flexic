@@ -81,11 +81,11 @@ ForeachCB(const char *key, flexi_cursor_s *cursor, void *user)
 
 TEST(CursorForeach, ForeachVector)
 {
-    flexi_buffer_s buffer =
-        flexi_make_buffer(g_test_vector.data(), g_test_vector.size());
+    flexi_span_s span =
+        flexi_make_span(g_test_vector.data(), g_test_vector.size());
 
     flexi_cursor_s cursor;
-    ASSERT_EQ(FLEXI_OK, flexi_open_buffer(&buffer, &cursor));
+    ASSERT_EQ(FLEXI_OK, flexi_open_span(&span, &cursor));
 
     foreach_results_t results;
     ASSERT_EQ(FLEXI_OK, flexi_cursor_foreach(&cursor, &ForeachCB, &results));
@@ -147,11 +147,10 @@ TEST(CursorForeach, ForeachVector)
 
 TEST(CursorForeach, ForeachMap)
 {
-    flexi_buffer_s buffer =
-        flexi_make_buffer(g_test_map.data(), g_test_map.size());
+    flexi_span_s span = flexi_make_span(g_test_map.data(), g_test_map.size());
 
     flexi_cursor_s cursor;
-    ASSERT_EQ(FLEXI_OK, flexi_open_buffer(&buffer, &cursor));
+    ASSERT_EQ(FLEXI_OK, flexi_open_span(&span, &cursor));
 
     foreach_results_t results;
     ASSERT_EQ(FLEXI_OK, flexi_cursor_foreach(&cursor, &ForeachCB, &results));

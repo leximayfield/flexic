@@ -22,22 +22,22 @@
 
 #include "tests.hpp"
 
-TEST(CursorError, OpenBuffer_TooSmall)
+TEST(CursorError, OpenSpan_TooSmall)
 {
-    flexi_buffer_s buffer;
-    buffer.data = nullptr;
-    buffer.length = 0;
+    flexi_span_s span;
+    span.data = nullptr;
+    span.length = 0;
 
     flexi_cursor_s cursor;
-    ASSERT_EQ(FLEXI_ERR_BADREAD, flexi_open_buffer(&buffer, &cursor));
+    ASSERT_EQ(FLEXI_ERR_BADREAD, flexi_open_span(&span, &cursor));
 }
 
-TEST(CursorError, OpenBuffer_ZeroWidth)
+TEST(CursorError, OpenSpan_ZeroWidth)
 {
     std::array<uint8_t, 3> data{0x00, 0x00, 0x00};
 
-    flexi_buffer_s buffer = flexi_make_buffer(data.data(), data.size());
+    flexi_span_s span = flexi_make_span(data.data(), data.size());
 
     flexi_cursor_s cursor;
-    ASSERT_EQ(FLEXI_ERR_BADREAD, flexi_open_buffer(&buffer, &cursor));
+    ASSERT_EQ(FLEXI_ERR_BADREAD, flexi_open_span(&span, &cursor));
 }

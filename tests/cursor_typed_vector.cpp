@@ -38,8 +38,8 @@ GetCursorFiveSint(flexi_cursor_s &cursor)
         0x14, 0x2e, 0x01        // Root
     };
 
-    auto buffer = flexi_make_buffer(s_data.data(), s_data.size());
-    ASSERT_EQ(FLEXI_OK, flexi_open_buffer(&buffer, &cursor));
+    auto span = flexi_make_span(s_data.data(), s_data.size());
+    ASSERT_EQ(FLEXI_OK, flexi_open_span(&span, &cursor));
 }
 
 TEST(CursorTypedVector, Sint_Direct)
@@ -108,8 +108,8 @@ GetCursorFiveUint(flexi_cursor_s &cursor)
         0x14, 0x32, 0x01        // Root
     };
 
-    auto buffer = flexi_make_buffer(s_data.data(), s_data.size());
-    ASSERT_EQ(FLEXI_OK, flexi_open_buffer(&buffer, &cursor));
+    auto span = flexi_make_span(s_data.data(), s_data.size());
+    ASSERT_EQ(FLEXI_OK, flexi_open_span(&span, &cursor));
 }
 
 TEST(CursorTypedVector, Uint_Direct)
@@ -178,8 +178,8 @@ GetCursorFiveFloat32(flexi_cursor_s &cursor)
         0x14, 0x36, 0x01        // Root
     };
 
-    auto buffer = flexi_make_buffer(s_data.data(), s_data.size());
-    ASSERT_EQ(FLEXI_OK, flexi_open_buffer(&buffer, &cursor));
+    auto span = flexi_make_span(s_data.data(), s_data.size());
+    ASSERT_EQ(FLEXI_OK, flexi_open_span(&span, &cursor));
 }
 
 TEST(CursorTypedVector, Float32_Direct)
@@ -245,8 +245,8 @@ GetCursorThreeFloat64(flexi_cursor_s &cursor)
         0x18, 0x57, 0x01                                // Root
     };
 
-    auto buf = flexi_make_buffer(s_data.data(), s_data.size());
-    ASSERT_EQ(FLEXI_OK, flexi_open_buffer(&buf, &cursor));
+    auto buf = flexi_make_span(s_data.data(), s_data.size());
+    ASSERT_EQ(FLEXI_OK, flexi_open_span(&buf, &cursor));
 }
 
 TEST(CursorTypedVector, Float64_Direct)
@@ -313,8 +313,8 @@ GetCursorFiveBool(flexi_cursor_s &cursor)
         0x05, 0x90, 0x01 // Root
     };
 
-    auto buffer = flexi_make_buffer(s_data.data(), s_data.size());
-    ASSERT_EQ(FLEXI_OK, flexi_open_buffer(&buffer, &cursor));
+    auto span = flexi_make_span(s_data.data(), s_data.size());
+    ASSERT_EQ(FLEXI_OK, flexi_open_span(&span, &cursor));
 }
 
 TEST(CursorTypedVector, Bool_Direct)
@@ -385,8 +385,8 @@ GetCursorKeys(flexi_cursor_s &cursor)
         0x02, 0x38, 0x01                    // Root
     };
 
-    auto buffer = flexi_make_buffer(s_data.data(), s_data.size());
-    ASSERT_EQ(FLEXI_OK, flexi_open_buffer(&buffer, &cursor));
+    auto span = flexi_make_span(s_data.data(), s_data.size());
+    ASSERT_EQ(FLEXI_OK, flexi_open_span(&span, &cursor));
 }
 
 TEST(CursorTypedVector, Key_Seek)

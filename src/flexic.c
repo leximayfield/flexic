@@ -295,41 +295,45 @@ type_has_valid_width(flexi_type_e type, int width)
 }
 
 /**
- * @brief Returns true if read would be valid for the given source and width.
- */
-static bool
-read_is_valid(const flexi_buffer_s *buffer, const char *src, int width)
-{
-    return src >= buffer->data &&
-           src + width - 1 < buffer->data + buffer->length;
-}
-
-/**
- * @brief Safely seek backwards in the buffer.
+ * @brief Read an unsigned integer from the passed span.
  *
- * @param [in] buffer Buffer to constrain offset resolution.
- * @param [in] src Starting point for offset.
- * @param [in] offset Extent of offset in the negative direction.
- * @param [out] dest Output destination value.
- * @return True if offset was resolved.
+ * @note Values of width < 8 bytes will be promoted to uint64_t.
+ *
+ * @pre Width must be a valid width in bytes.
+ *
+ * @param[in] src Pointer to data to read from.
+ * @param[in] width Width of data to read.
+ * @return Output value.
  */
-static bool
-buffer_seek_back(const flexi_buffer_s *buffer, const char *src,
-    flexi_ssize_t offset, const char **dest)
+static uint64_t
+read_uint_unsafe(const char *src, int width)
 {
-    if (offset <= 0) {
-        // An offset south of 1 means someone is being sneaky.
-        return false;
+    switch (width) {
+    case 1: {
+        uint8_t v;
+        memcpy(&v, src, 1);
+        return v;
     }
-
-    flexi_ssize_t max_offset = src - buffer->data;
-    if (offset > max_offset) {
-        // We would fall off the front of the buffer.
-        return false;
+    case 2: {
+        uint16_t v;
+        memcpy(&v, src, 2);
+        return v;
     }
-
-    *dest = src - offset;
-    return true;
+    case 4: {
+        uint32_t v;
+        memcpy(&v, src, 4);
+        return v;
+    }
+    case 8: {
+        uint64_t v;
+        memcpy(&v, src, 8);
+        return v;
+    }
+    default: {
+        ASSERT(false);
+        return 0;
+    }
+    }
 }
 
 /**
@@ -347,7 +351,7 @@ buffer_seek_back(const flexi_buffer_s *buffer, const char *src,
  *         for the given size type.
  */
 static bool
-buffer_read_size_by_width(const char *src, int width, flexi_ssize_t *dst)
+read_size_unsafe(const char *src, int width, flexi_ssize_t *dst)
 {
     switch (width) {
     case 1: {
@@ -382,21 +386,76 @@ buffer_read_size_by_width(const char *src, int width, flexi_ssize_t *dst)
 }
 
 /**
- * @brief Read a signed integer from the passed buffer.
+ * @brief Return pointer to start of span.
+ */
+static const char *
+span_begin(const flexi_span_s *span)
+{
+    return span->data;
+}
+
+/**
+ * @brief Return pointer to end of span, one past the end of the last value.
+ */
+static const char *
+span_end(const flexi_span_s *span)
+{
+    return span->data + span->length;
+}
+
+/**
+ * @brief Returns true if read would be valid for the given source and width.
+ */
+static bool
+span_read_is_valid(const flexi_span_s *span, const char *src, int width)
+{
+    return src >= span_begin(span) && src + width <= span_end(span);
+}
+
+/**
+ * @brief Safely seek backwards in the buffer.
+ *
+ * @param [in] span Span to constrain offset resolution.
+ * @param [in] src Starting point for offset.
+ * @param [in] offset Extent of offset in the negative direction.
+ * @param [out] dest Output destination value.
+ * @return True if offset was resolved.
+ */
+static bool
+span_seek_back(const flexi_span_s *span, const char *src, flexi_ssize_t offset,
+    const char **dest)
+{
+    if (offset <= 0) {
+        // An offset south of 1 means someone is being sneaky.
+        return false;
+    }
+
+    flexi_ssize_t max_offset = src - span->data;
+    if (offset > max_offset) {
+        // We would fall off the front of the buffer.
+        return false;
+    }
+
+    *dest = src - offset;
+    return true;
+}
+
+/**
+ * @brief Read a signed integer from the passed span.
  *
  * @note Values of width < 8 bytes will be promoted to int64_t.
  *
- * @param[in] buffer Buffer to constrain read inside.
+ * @param[in] span Span to constrain read inside.
  * @param[in] src Pointer to data to read from.
  * @param[in] width Width of data to read.
  * @param[out] dst Output value.
  * @return True if read was successful.
  */
 static bool
-buffer_read_sint(const flexi_buffer_s *buffer, const char *src, int width,
+span_read_sint(const flexi_span_s *span, const char *src, int width,
     int64_t *dst)
 {
-    if (!read_is_valid(buffer, src, width)) {
+    if (!span_read_is_valid(span, src, width)) {
         return false;
     }
 
@@ -430,77 +489,43 @@ buffer_read_sint(const flexi_buffer_s *buffer, const char *src, int width,
 }
 
 /**
- * @brief Read an unsigned integer from the passed buffer.
+ * @brief Read an unsigned integer from the passed span.
  *
  * @note Values of width < 8 bytes will be promoted to uint64_t.
  *
- * @pre Width must be a valid width in bytes.
- *
- * @param[in] src Pointer to data to read from.
- * @param[in] width Width of data to read.
- * @return Output value.
- */
-static uint64_t
-buffer_read_uint_unsafe(const char *src, int width)
-{
-    switch (width) {
-    case 1: {
-        uint8_t v;
-        memcpy(&v, src, 1);
-        return v;
-    }
-    case 2: {
-        uint16_t v;
-        memcpy(&v, src, 2);
-        return v;
-    }
-    case 4: {
-        uint32_t v;
-        memcpy(&v, src, 4);
-        return v;
-    }
-    case 8: {
-        uint64_t v;
-        memcpy(&v, src, 8);
-        return v;
-    }
-    default: {
-        ASSERT(false);
-        return 0;
-    }
-    }
-}
-
-/******************************************************************************/
-
-static bool
-buffer_read_uint(const flexi_buffer_s *buffer, const char *src, int width,
-    uint64_t *dst)
-{
-    if (!read_is_valid(buffer, src, width)) {
-        return false;
-    }
-
-    *dst = buffer_read_uint_unsafe(src, width);
-    return true;
-}
-
-/**
- * @brief Read a 4-byte float from the passed buffer.
- *
- * @note Floats of width != 4 bytes will be converted.
- *
- * @param[in] buffer Buffer to constrain read inside.
+ * @param[in] span Span to constrain read inside.
  * @param[in] src Pointer to data to read from.
  * @param[in] width Width of data to read.
  * @param[out] dst Output value.
  * @return True if read was successful.
  */
 static bool
-buffer_read_f32(const flexi_buffer_s *buffer, const char *src, int width,
-    float *dst)
+span_read_uint(const flexi_span_s *span, const char *src, int width,
+    uint64_t *dst)
 {
-    if (!read_is_valid(buffer, src, width)) {
+    if (!span_read_is_valid(span, src, width)) {
+        return false;
+    }
+
+    *dst = read_uint_unsafe(src, width);
+    return true;
+}
+
+/**
+ * @brief Read a 4-byte float from the passed span.
+ *
+ * @note Floats of width != 4 bytes will be converted.
+ *
+ * @param[in] span Span to constrain read inside.
+ * @param[in] src Pointer to data to read from.
+ * @param[in] width Width of data to read.
+ * @param[out] dst Output value.
+ * @return True if read was successful.
+ */
+static bool
+span_read_f32(const flexi_span_s *span, const char *src, int width, float *dst)
+{
+    if (!span_read_is_valid(span, src, width)) {
         return false;
     }
 
@@ -522,21 +547,20 @@ buffer_read_f32(const flexi_buffer_s *buffer, const char *src, int width,
 }
 
 /**
- * @brief Read an 8-byte float from the passed buffer.
+ * @brief Read an 8-byte float from the passed span.
  *
  * @note Floats of width != 8 bytes will be converted.
  *
- * @param[in] buffer Buffer to constrain read inside.
+ * @param[in] span Span to constrain read inside.
  * @param[in] src Pointer to data to read from.
  * @param[in] width Width of data to read.
  * @param[out] dst Output value.
  * @return True if read was successful.
  */
 static bool
-buffer_read_f64(const flexi_buffer_s *buffer, const char *src, int width,
-    double *dst)
+span_read_f64(const flexi_span_s *span, const char *src, int width, double *dst)
 {
-    if (!read_is_valid(buffer, src, width)) {
+    if (!span_read_is_valid(span, src, width)) {
         return false;
     }
 
@@ -860,8 +884,8 @@ cursor_is_error(const flexi_cursor_s *cursor)
 static void
 cursor_set_error(flexi_cursor_s *cursor)
 {
-    cursor->buffer.data = "";
-    cursor->buffer.length = 0;
+    cursor->msg.data = "";
+    cursor->msg.length = 0;
     cursor->cursor = NULL;
     cursor->type = FLEXI_TYPE_INVALID;
     cursor->width = 0;
@@ -891,20 +915,20 @@ cursor_vector_types(const flexi_cursor_s *cursor)
  *          used to catch bugs in debug mode.
  *
  * @param[out] cursor Cursor to assign to.
- * @param[in] buffer Buffer to set on cursor.
+ * @param[in] msg Span pointing to message data.
  * @param[in] pos Anchor of the cursor.
  * @param[in] type Type of the cursor.
  * @param[in] width Width of the cursor in bytes.
  */
 static void
-cursor_set_direct(flexi_cursor_s *cursor, const flexi_buffer_s *buffer,
+cursor_set_direct(flexi_cursor_s *cursor, const flexi_span_s *msg,
     const char *pos, flexi_type_e type, int width)
 {
     ASSERT(type_is_direct(type));
     ASSERT((type != FLEXI_TYPE_FLOAT && WIDTH_IS_VALID(width)) ||
            (type == FLEXI_TYPE_FLOAT && WIDTH_IS_VALID_FLOAT(width)));
 
-    cursor->buffer = *buffer;
+    cursor->msg = *msg;
     cursor->cursor = pos;
     cursor->type = type;
     cursor->width = width;
@@ -921,14 +945,14 @@ cursor_set_direct(flexi_cursor_s *cursor, const flexi_buffer_s *buffer,
  *          about to create a cursor for is valid.
  *
  * @param[out] cursor Cursor to assign to.
- * @param[in] buffer Buffer to constrain values to.
+ * @param[in] msg Span pointing to message data.
  * @param[in] pos Anchor of the cursor.
  * @param[in] type Type of the cursor.
  * @param[in] width Width of the cursor in bytes.
  * @return True if resulting cursor is valid.
  */
 static bool
-cursor_set_checked(flexi_cursor_s *cursor, const flexi_buffer_s *buffer,
+cursor_set_checked(flexi_cursor_s *cursor, const flexi_span_s *msg,
     const char *pos, flexi_type_e type, int width)
 {
     switch (type) {
@@ -942,8 +966,7 @@ cursor_set_checked(flexi_cursor_s *cursor, const flexi_buffer_s *buffer,
             // Not a valid width.
             return false;
         }
-        if (pos < buffer->data ||
-            pos + width >= buffer->data + buffer->length) {
+        if (pos < span_begin(msg) || pos + width >= span_end(msg)) {
             // Read would be out-of-bounds.
             return false;
         }
@@ -955,8 +978,7 @@ cursor_set_checked(flexi_cursor_s *cursor, const flexi_buffer_s *buffer,
             // Not a valid width.
             return false;
         }
-        if (pos < buffer->data ||
-            pos + width >= buffer->data + buffer->length) {
+        if (pos < span_begin(msg) || pos + width >= span_end(msg)) {
             // Read would be out-of-bounds.
             return false;
         }
@@ -968,15 +990,15 @@ cursor_set_checked(flexi_cursor_s *cursor, const flexi_buffer_s *buffer,
             // Not a valid width.
             return false;
         }
-        if (pos - width < buffer->data) {
+        if (pos - width < span_begin(msg)) {
             // Map doesn't have room for length.
             return false;
         }
-        if (!buffer_read_size_by_width(pos - width, width, &cursor->length)) {
+        if (!read_size_unsafe(pos - width, width, &cursor->length)) {
             // Could not read the length.
             return false;
         }
-        if (pos + cursor->length + 1 >= buffer->data + buffer->length) {
+        if (pos + cursor->length + 1 >= span_end(msg)) {
             // Not enough room for the entire string with the given
             // length.
             return false;
@@ -987,16 +1009,15 @@ cursor_set_checked(flexi_cursor_s *cursor, const flexi_buffer_s *buffer,
             // Not a valid width.
             return false;
         }
-        if (pos - (width * 3) < buffer->data) {
+        if (pos - (width * 3) < span_begin(msg)) {
             // Map doesn't have room for required negative indexes.
             return false;
         }
-        if (!buffer_read_size_by_width(pos - width, width, &cursor->length)) {
+        if (!read_size_unsafe(pos - width, width, &cursor->length)) {
             // Could not read the length.
             return false;
         }
-        if (pos + (cursor->length * width) + cursor->length >=
-            buffer->data + buffer->length) {
+        if (pos + (cursor->length * width) + cursor->length >= span_end(msg)) {
             // Not enough room for the entire map with the given length.
             return false;
         }
@@ -1006,16 +1027,15 @@ cursor_set_checked(flexi_cursor_s *cursor, const flexi_buffer_s *buffer,
             // Not a valid width.
             return false;
         }
-        if (pos - width < buffer->data) {
+        if (pos - width < span_begin(msg)) {
             // Map doesn't have room for map metadata.
             return false;
         }
-        if (!buffer_read_size_by_width(pos - width, width, &cursor->length)) {
+        if (!read_size_unsafe(pos - width, width, &cursor->length)) {
             // Could not read the length.
             return false;
         }
-        if (pos + (cursor->length * width) + cursor->length >=
-            buffer->data + buffer->length) {
+        if (pos + (cursor->length * width) + cursor->length >= span_end(msg)) {
             // Not enough room for the entire vector with the given length.
             return false;
         }
@@ -1028,15 +1048,15 @@ cursor_set_checked(flexi_cursor_s *cursor, const flexi_buffer_s *buffer,
             // Not a valid width.
             return false;
         }
-        if (pos - width < buffer->data) {
+        if (pos - width < span_begin(msg)) {
             // Map doesn't have room for length.
             return false;
         }
-        if (!buffer_read_size_by_width(pos - width, width, &cursor->length)) {
+        if (!read_size_unsafe(pos - width, width, &cursor->length)) {
             // Could not read the length.
             return false;
         }
-        if (pos + (cursor->length * width) >= buffer->data + buffer->length) {
+        if (pos + (cursor->length * width) >= span_end(msg)) {
             // Not enough room for the entire vector with the given
             // length.
             return false;
@@ -1047,15 +1067,15 @@ cursor_set_checked(flexi_cursor_s *cursor, const flexi_buffer_s *buffer,
             // Not a valid width.
             return false;
         }
-        if (pos - width < buffer->data) {
+        if (pos - width < span_begin(msg)) {
             // Map doesn't have room for length.
             return false;
         }
-        if (!buffer_read_size_by_width(pos - width, width, &cursor->length)) {
+        if (!read_size_unsafe(pos - width, width, &cursor->length)) {
             // Could not read the length.
             return false;
         }
-        if (pos + (cursor->length * width) >= buffer->data + buffer->length) {
+        if (pos + (cursor->length * width) >= span_end(msg)) {
             // Not enough room for the entire vector with the given
             // length.
             return false;
@@ -1105,15 +1125,15 @@ cursor_set_checked(flexi_cursor_s *cursor, const flexi_buffer_s *buffer,
             // Not a valid width.
             return false;
         }
-        if (pos - width < buffer->data) {
+        if (pos - width < span_begin(msg)) {
             // Map doesn't have room for length.
             return false;
         }
-        if (!buffer_read_size_by_width(pos - width, width, &cursor->length)) {
+        if (!read_size_unsafe(pos - width, width, &cursor->length)) {
             // Could not read the length.
             return false;
         }
-        if (pos + cursor->length >= buffer->data + buffer->length) {
+        if (pos + cursor->length >= span_end(msg)) {
             // Not enough room for the entire blob with the given
             // length.
             return false;
@@ -1122,7 +1142,7 @@ cursor_set_checked(flexi_cursor_s *cursor, const flexi_buffer_s *buffer,
     default: return false;
     }
 
-    cursor->buffer = *buffer;
+    cursor->msg = *msg;
     cursor->cursor = pos;
     cursor->type = type;
     cursor->width = width;
@@ -1153,22 +1173,22 @@ cursor_seek_untyped_vector_index(const flexi_cursor_s *cursor,
     flexi_type_e type = FLEXI_UNPACK_TYPE(types[index]);
     if (type_is_direct(type)) {
         // No need to resolve an offset, we're pretty much done.
-        cursor_set_direct(dest, &cursor->buffer,
+        cursor_set_direct(dest, &cursor->msg,
             cursor->cursor + (index * cursor->width), type, cursor->width);
         return true;
     }
 
     flexi_ssize_t offset = 0;
     const char *offset_ptr = cursor->cursor + (index * cursor->width);
-    if (!buffer_read_size_by_width(offset_ptr, cursor->width, &offset)) {
+    if (!read_size_unsafe(offset_ptr, cursor->width, &offset)) {
         return false;
     }
 
-    if (!buffer_seek_back(&cursor->buffer, offset_ptr, offset, &dest->cursor)) {
+    if (!span_seek_back(&cursor->msg, offset_ptr, offset, &dest->cursor)) {
         return false;
     }
 
-    return cursor_set_checked(dest, &cursor->buffer, dest->cursor, type,
+    return cursor_set_checked(dest, &cursor->msg, dest->cursor, type,
         UNPACK_WIDTH_TO_BYTES(types[index]));
 }
 
@@ -1192,7 +1212,7 @@ cursor_seek_typed_vector_index(const flexi_cursor_s *cursor,
     case FLEXI_TYPE_VECTOR_SINT2:
     case FLEXI_TYPE_VECTOR_SINT3:
     case FLEXI_TYPE_VECTOR_SINT4:
-        cursor_set_direct(dest, &cursor->buffer,
+        cursor_set_direct(dest, &cursor->msg,
             cursor->cursor + (index * cursor->width), FLEXI_TYPE_SINT,
             cursor->width);
         return true;
@@ -1200,7 +1220,7 @@ cursor_seek_typed_vector_index(const flexi_cursor_s *cursor,
     case FLEXI_TYPE_VECTOR_UINT2:
     case FLEXI_TYPE_VECTOR_UINT3:
     case FLEXI_TYPE_VECTOR_UINT4:
-        cursor_set_direct(dest, &cursor->buffer,
+        cursor_set_direct(dest, &cursor->msg,
             cursor->cursor + (index * cursor->width), FLEXI_TYPE_UINT,
             cursor->width);
         return true;
@@ -1208,27 +1228,26 @@ cursor_seek_typed_vector_index(const flexi_cursor_s *cursor,
     case FLEXI_TYPE_VECTOR_FLOAT2:
     case FLEXI_TYPE_VECTOR_FLOAT3:
     case FLEXI_TYPE_VECTOR_FLOAT4:
-        cursor_set_direct(dest, &cursor->buffer,
+        cursor_set_direct(dest, &cursor->msg,
             cursor->cursor + (index * cursor->width), FLEXI_TYPE_FLOAT,
             cursor->width);
         return true;
     case FLEXI_TYPE_VECTOR_BOOL:
-        cursor_set_direct(dest, &cursor->buffer, cursor->cursor + index,
+        cursor_set_direct(dest, &cursor->msg, cursor->cursor + index,
             FLEXI_TYPE_BOOL, 1);
         return true;
     case FLEXI_TYPE_VECTOR_KEY: {
         flexi_ssize_t offset;
         const char *cur = cursor->cursor + (index * cursor->width);
-        if (!buffer_read_size_by_width(cur, cursor->width, &offset)) {
+        if (!read_size_unsafe(cur, cursor->width, &offset)) {
             return false;
         }
 
-        if (!buffer_seek_back(&cursor->buffer, cur, offset, &cur)) {
+        if (!span_seek_back(&cursor->msg, cur, offset, &cur)) {
             return false;
         }
 
-        return cursor_set_checked(dest, &cursor->buffer, cur, FLEXI_TYPE_KEY,
-            1);
+        return cursor_set_checked(dest, &cursor->msg, cur, FLEXI_TYPE_KEY, 1);
     }
     default: ASSERT(false); return false;
     }
@@ -1249,7 +1268,7 @@ cursor_map_keys(const flexi_cursor_s *cursor, flexi_cursor_s *dest)
     ASSERT(cursor->type == FLEXI_TYPE_MAP);
 
     const char *cur;
-    if (!buffer_seek_back(&cursor->buffer, cursor->cursor, cursor->width * 3,
+    if (!span_seek_back(&cursor->msg, cursor->cursor, cursor->width * 3,
             &cur)) {
         // Not enough room for the header.
         return false;
@@ -1257,24 +1276,23 @@ cursor_map_keys(const flexi_cursor_s *cursor, flexi_cursor_s *dest)
 
     // [-3] contains key vector offset.
     flexi_ssize_t keys_offset;
-    if (!buffer_read_size_by_width(cur, cursor->width, &keys_offset)) {
+    if (!read_size_unsafe(cur, cursor->width, &keys_offset)) {
         return false;
     }
 
     // [-2] contains key vector width.
-    uint64_t keys_width =
-        buffer_read_uint_unsafe(cur + cursor->width, cursor->width);
+    uint64_t keys_width = read_uint_unsafe(cur + cursor->width, cursor->width);
     if (keys_width != 1 && keys_width != 2 && keys_width != 4 &&
         keys_width != 8) {
         return false;
     }
 
-    if (!buffer_seek_back(&cursor->buffer, cur, keys_offset, &cur)) {
+    if (!span_seek_back(&cursor->msg, cur, keys_offset, &cur)) {
         // Tried to seek keys base, went out of bounds.
         return false;
     }
 
-    return cursor_set_checked(dest, &cursor->buffer, cur, FLEXI_TYPE_VECTOR_KEY,
+    return cursor_set_checked(dest, &cursor->msg, cur, FLEXI_TYPE_VECTOR_KEY,
         (int)keys_width);
 }
 
@@ -1300,11 +1318,11 @@ cursor_map_key_at_index(const flexi_cursor_s *cursor,
     // Resolve the key.
     flexi_ssize_t offset = 0;
     const char *offset_ptr = keys->cursor + (index * keys->width);
-    if (!buffer_read_size_by_width(offset_ptr, keys->width, &offset)) {
+    if (!read_size_unsafe(offset_ptr, keys->width, &offset)) {
         return false;
     }
 
-    return buffer_seek_back(&cursor->buffer, offset_ptr, offset, str);
+    return span_seek_back(&cursor->msg, offset_ptr, offset, str);
 }
 
 /**
@@ -1418,22 +1436,21 @@ cursor_foreach_map(const flexi_cursor_s *cursor, flexi_foreach_fn foreach,
 
         flexi_type_e type = FLEXI_UNPACK_TYPE(types[i]);
         if (type_is_direct(type)) {
-            cursor_set_direct(&each, &cursor->buffer,
+            cursor_set_direct(&each, &cursor->msg,
                 cursor->cursor + (i * cursor->width), type, cursor->width);
         } else {
             flexi_ssize_t offset = 0;
             const char *offset_ptr = cursor->cursor + (i * cursor->width);
-            if (!buffer_read_size_by_width(offset_ptr, cursor->width,
-                    &offset)) {
+            if (!read_size_unsafe(offset_ptr, cursor->width, &offset)) {
                 return FLEXI_ERR_BADREAD;
             }
 
-            if (!buffer_seek_back(&cursor->buffer, offset_ptr, offset,
+            if (!span_seek_back(&cursor->msg, offset_ptr, offset,
                     &each.cursor)) {
                 return FLEXI_ERR_BADREAD;
             }
 
-            if (!cursor_set_checked(&each, &cursor->buffer, each.cursor, type,
+            if (!cursor_set_checked(&each, &cursor->msg, each.cursor, type,
                     UNPACK_WIDTH_TO_BYTES(types[i]))) {
                 return FLEXI_ERR_BADREAD;
             }
@@ -1459,22 +1476,21 @@ cursor_foreach_untyped_vector(const flexi_cursor_s *cursor,
     for (flexi_ssize_t i = 0; i < cursor->length; i++) {
         flexi_type_e type = FLEXI_UNPACK_TYPE(types[i]);
         if (type_is_direct(type)) {
-            cursor_set_direct(&each, &cursor->buffer,
+            cursor_set_direct(&each, &cursor->msg,
                 cursor->cursor + (i * cursor->width), type, cursor->width);
         } else {
             flexi_ssize_t offset = 0;
             const char *offset_ptr = cursor->cursor + (i * cursor->width);
-            if (!buffer_read_size_by_width(offset_ptr, cursor->width,
-                    &offset)) {
+            if (!read_size_unsafe(offset_ptr, cursor->width, &offset)) {
                 return FLEXI_ERR_BADREAD;
             }
 
-            if (!buffer_seek_back(&cursor->buffer, offset_ptr, offset,
+            if (!span_seek_back(&cursor->msg, offset_ptr, offset,
                     &each.cursor)) {
                 return FLEXI_ERR_BADREAD;
             }
 
-            if (!cursor_set_checked(&each, &cursor->buffer, each.cursor, type,
+            if (!cursor_set_checked(&each, &cursor->msg, each.cursor, type,
                     UNPACK_WIDTH_TO_BYTES(types[i]))) {
                 return FLEXI_ERR_BADREAD;
             }
@@ -1504,8 +1520,7 @@ parser_emit_flt(const flexi_parser_s *parser, const char *key,
     switch (cursor->width) {
     case 4: {
         float v;
-        if (!buffer_read_f32(&cursor->buffer, cursor->cursor, cursor->width,
-                &v)) {
+        if (!span_read_f32(&cursor->msg, cursor->cursor, cursor->width, &v)) {
             return FLEXI_ERR_BADREAD;
         }
 
@@ -1514,8 +1529,7 @@ parser_emit_flt(const flexi_parser_s *parser, const char *key,
     }
     case 8: {
         double v;
-        if (!buffer_read_f64(&cursor->buffer, cursor->cursor, cursor->width,
-                &v)) {
+        if (!span_read_f64(&cursor->msg, cursor->cursor, cursor->width, &v)) {
             return FLEXI_ERR_BADREAD;
         }
 
@@ -1642,12 +1656,12 @@ parser_emit_vector_keys(const flexi_parser_s *parser, const char *key,
         // Access the offset by hand.
         flexi_ssize_t offset = 0;
         const char *offset_ptr = cursor->cursor + (i * cursor->width);
-        if (!buffer_read_size_by_width(offset_ptr, cursor->width, &offset)) {
+        if (!read_size_unsafe(offset_ptr, cursor->width, &offset)) {
             return FLEXI_ERR_BADREAD;
         }
 
         const char *dest = NULL;
-        if (!buffer_seek_back(&cursor->buffer, offset_ptr, offset, &dest)) {
+        if (!span_seek_back(&cursor->msg, offset_ptr, offset, &dest)) {
             return FLEXI_ERR_BADREAD;
         }
 
@@ -1682,8 +1696,7 @@ parse_cursor(const flexi_parser_s *parser, const char *key,
     case FLEXI_TYPE_SINT:
     case FLEXI_TYPE_INDIRECT_SINT: {
         int64_t v;
-        if (!buffer_read_sint(&cursor->buffer, cursor->cursor, cursor->width,
-                &v)) {
+        if (!span_read_sint(&cursor->msg, cursor->cursor, cursor->width, &v)) {
             return FLEXI_ERR_BADREAD;
         }
 
@@ -1693,8 +1706,7 @@ parse_cursor(const flexi_parser_s *parser, const char *key,
     case FLEXI_TYPE_UINT:
     case FLEXI_TYPE_INDIRECT_UINT: {
         uint64_t v;
-        if (!buffer_read_uint(&cursor->buffer, cursor->cursor, cursor->width,
-                &v)) {
+        if (!span_read_uint(&cursor->msg, cursor->cursor, cursor->width, &v)) {
             return FLEXI_ERR_BADREAD;
         }
 
@@ -2297,11 +2309,11 @@ write_map_values(flexi_writer_s *writer, const char *key,
 
 /******************************************************************************/
 
-flexi_buffer_s
-flexi_make_buffer(const void *buffer, flexi_ssize_t len)
+flexi_span_s
+flexi_make_span(const void *data, flexi_ssize_t len)
 {
-    flexi_buffer_s rvo;
-    rvo.data = (const char *)buffer;
+    flexi_span_s rvo;
+    rvo.data = (const char *)data;
     rvo.length = len;
     return rvo;
 }
@@ -2309,19 +2321,19 @@ flexi_make_buffer(const void *buffer, flexi_ssize_t len)
 /******************************************************************************/
 
 flexi_result_e
-flexi_open_buffer(const flexi_buffer_s *buffer, flexi_cursor_s *cursor)
+flexi_open_span(const flexi_span_s *msg, flexi_cursor_s *cursor)
 {
-    if (buffer->length < 3) {
+    if (msg->length < 3) {
         // Shortest length we can discard without checking.
         cursor_set_error(cursor);
         return FLEXI_ERR_BADREAD;
     }
 
     // Width of root object.
-    cursor->buffer = *buffer;
-    cursor->cursor = buffer->data + buffer->length - 1;
+    cursor->msg = *msg;
+    cursor->cursor = span_end(msg) - 1;
     uint8_t root_bytes = *(const uint8_t *)(cursor->cursor);
-    if (root_bytes == 0 || (size_t)buffer->length < root_bytes + 2u) {
+    if (root_bytes == 0 || (size_t)msg->length < root_bytes + 2u) {
         cursor_set_error(cursor);
         return FLEXI_ERR_BADREAD;
     }
@@ -2348,18 +2360,18 @@ flexi_open_buffer(const flexi_buffer_s *buffer, flexi_cursor_s *cursor)
 
     // We're pointing at an offset, resolve it.
     flexi_ssize_t offset = 0;
-    if (!buffer_read_size_by_width(cursor->cursor, root_bytes, &offset)) {
+    if (!read_size_unsafe(cursor->cursor, root_bytes, &offset)) {
         cursor_set_error(cursor);
         return FLEXI_ERR_BADREAD;
     }
 
     const char *dest = NULL;
-    if (!buffer_seek_back(&cursor->buffer, cursor->cursor, offset, &dest)) {
+    if (!span_seek_back(&cursor->msg, cursor->cursor, offset, &dest)) {
         cursor_set_error(cursor);
         return FLEXI_ERR_BADREAD;
     }
 
-    if (!cursor_set_checked(cursor, buffer, dest, type,
+    if (!cursor_set_checked(cursor, msg, dest, type,
             UNPACK_WIDTH_TO_BYTES(packed))) {
         cursor_set_error(cursor);
         return FLEXI_ERR_BADREAD;
@@ -2408,8 +2420,7 @@ flexi_cursor_sint(const flexi_cursor_s *cursor, int64_t *val)
 
     if (type_is_sint(cursor->type)) {
         int64_t v;
-        if (!buffer_read_sint(&cursor->buffer, cursor->cursor, cursor->width,
-                &v)) {
+        if (!span_read_sint(&cursor->msg, cursor->cursor, cursor->width, &v)) {
             *val = 0;
             return FLEXI_ERR_BADREAD;
         }
@@ -2418,8 +2429,7 @@ flexi_cursor_sint(const flexi_cursor_s *cursor, int64_t *val)
         return FLEXI_OK;
     } else if (type_is_uint(cursor->type)) {
         uint64_t v;
-        if (!buffer_read_uint(&cursor->buffer, cursor->cursor, cursor->width,
-                &v)) {
+        if (!span_read_uint(&cursor->msg, cursor->cursor, cursor->width, &v)) {
             *val = 0;
             return FLEXI_ERR_BADREAD;
         }
@@ -2432,8 +2442,7 @@ flexi_cursor_sint(const flexi_cursor_s *cursor, int64_t *val)
         return FLEXI_OK;
     } else if (type_is_flt(cursor->type) && cursor->width == 4) {
         float v;
-        if (!buffer_read_f32(&cursor->buffer, cursor->cursor, cursor->width,
-                &v)) {
+        if (!span_read_f32(&cursor->msg, cursor->cursor, cursor->width, &v)) {
             *val = 0;
             return FLEXI_ERR_BADREAD;
         }
@@ -2450,8 +2459,7 @@ flexi_cursor_sint(const flexi_cursor_s *cursor, int64_t *val)
         return FLEXI_OK;
     } else if (type_is_flt(cursor->type) && cursor->width == 8) {
         double v;
-        if (!buffer_read_f64(&cursor->buffer, cursor->cursor, cursor->width,
-                &v)) {
+        if (!span_read_f64(&cursor->msg, cursor->cursor, cursor->width, &v)) {
             *val = 0;
             return FLEXI_ERR_BADREAD;
         }
@@ -2487,8 +2495,7 @@ flexi_cursor_uint(const flexi_cursor_s *cursor, uint64_t *val)
 
     if (type_is_sint(cursor->type)) {
         int64_t v;
-        if (!buffer_read_sint(&cursor->buffer, cursor->cursor, cursor->width,
-                &v)) {
+        if (!span_read_sint(&cursor->msg, cursor->cursor, cursor->width, &v)) {
             *val = 0;
             return FLEXI_ERR_BADREAD;
         }
@@ -2501,8 +2508,7 @@ flexi_cursor_uint(const flexi_cursor_s *cursor, uint64_t *val)
         return FLEXI_OK;
     } else if (type_is_uint(cursor->type)) {
         uint64_t v;
-        if (!buffer_read_uint(&cursor->buffer, cursor->cursor, cursor->width,
-                &v)) {
+        if (!span_read_uint(&cursor->msg, cursor->cursor, cursor->width, &v)) {
             *val = 0;
             return FLEXI_ERR_BADREAD;
         }
@@ -2511,8 +2517,7 @@ flexi_cursor_uint(const flexi_cursor_s *cursor, uint64_t *val)
         return FLEXI_OK;
     } else if (type_is_flt(cursor->type) && cursor->width == 4) {
         float v;
-        if (!buffer_read_f32(&cursor->buffer, cursor->cursor, cursor->width,
-                &v)) {
+        if (!span_read_f32(&cursor->msg, cursor->cursor, cursor->width, &v)) {
             *val = 0;
             return FLEXI_ERR_BADREAD;
         }
@@ -2521,8 +2526,7 @@ flexi_cursor_uint(const flexi_cursor_s *cursor, uint64_t *val)
         return FLEXI_OK;
     } else if (type_is_flt(cursor->type) && cursor->width == 8) {
         double v;
-        if (!buffer_read_f64(&cursor->buffer, cursor->cursor, cursor->width,
-                &v)) {
+        if (!span_read_f64(&cursor->msg, cursor->cursor, cursor->width, &v)) {
             *val = 0;
             return FLEXI_ERR_BADREAD;
         }
@@ -2550,8 +2554,7 @@ flexi_cursor_f32(const flexi_cursor_s *cursor, float *val)
 
     if (type_is_sint(cursor->type)) {
         int64_t v;
-        if (!buffer_read_sint(&cursor->buffer, cursor->cursor, cursor->width,
-                &v)) {
+        if (!span_read_sint(&cursor->msg, cursor->cursor, cursor->width, &v)) {
             *val = 0.0f;
             return FLEXI_ERR_BADREAD;
         }
@@ -2560,8 +2563,7 @@ flexi_cursor_f32(const flexi_cursor_s *cursor, float *val)
         return FLEXI_OK;
     } else if (type_is_uint(cursor->type)) {
         uint64_t v;
-        if (!buffer_read_uint(&cursor->buffer, cursor->cursor, cursor->width,
-                &v)) {
+        if (!span_read_uint(&cursor->msg, cursor->cursor, cursor->width, &v)) {
             *val = 0.0f;
             return FLEXI_ERR_BADREAD;
         }
@@ -2570,8 +2572,7 @@ flexi_cursor_f32(const flexi_cursor_s *cursor, float *val)
         return FLEXI_OK;
     } else if (type_is_flt(cursor->type) && cursor->width == 4) {
         float v;
-        if (!buffer_read_f32(&cursor->buffer, cursor->cursor, cursor->width,
-                &v)) {
+        if (!span_read_f32(&cursor->msg, cursor->cursor, cursor->width, &v)) {
             *val = 0.0f;
             return FLEXI_ERR_BADREAD;
         }
@@ -2580,8 +2581,7 @@ flexi_cursor_f32(const flexi_cursor_s *cursor, float *val)
         return FLEXI_OK;
     } else if (type_is_flt(cursor->type) && cursor->width == 8) {
         double v;
-        if (!buffer_read_f64(&cursor->buffer, cursor->cursor, cursor->width,
-                &v)) {
+        if (!span_read_f64(&cursor->msg, cursor->cursor, cursor->width, &v)) {
             *val = 0.0f;
             return FLEXI_ERR_BADREAD;
         }
@@ -2609,8 +2609,7 @@ flexi_cursor_f64(const flexi_cursor_s *cursor, double *val)
 
     if (type_is_sint(cursor->type)) {
         int64_t v;
-        if (!buffer_read_sint(&cursor->buffer, cursor->cursor, cursor->width,
-                &v)) {
+        if (!span_read_sint(&cursor->msg, cursor->cursor, cursor->width, &v)) {
             *val = 0.0;
             return FLEXI_ERR_BADREAD;
         }
@@ -2619,8 +2618,7 @@ flexi_cursor_f64(const flexi_cursor_s *cursor, double *val)
         return FLEXI_OK;
     } else if (type_is_uint(cursor->type)) {
         uint64_t v;
-        if (!buffer_read_uint(&cursor->buffer, cursor->cursor, cursor->width,
-                &v)) {
+        if (!span_read_uint(&cursor->msg, cursor->cursor, cursor->width, &v)) {
             *val = 0.0;
             return FLEXI_ERR_BADREAD;
         }
@@ -2629,8 +2627,7 @@ flexi_cursor_f64(const flexi_cursor_s *cursor, double *val)
         return FLEXI_OK;
     } else if (type_is_flt(cursor->type) && cursor->width == 4) {
         float v;
-        if (!buffer_read_f32(&cursor->buffer, cursor->cursor, cursor->width,
-                &v)) {
+        if (!span_read_f32(&cursor->msg, cursor->cursor, cursor->width, &v)) {
             *val = 0.0;
             return FLEXI_ERR_BADREAD;
         }
@@ -2639,8 +2636,7 @@ flexi_cursor_f64(const flexi_cursor_s *cursor, double *val)
         return FLEXI_OK;
     } else if (type_is_flt(cursor->type) && cursor->width == 8) {
         double v;
-        if (!buffer_read_f64(&cursor->buffer, cursor->cursor, cursor->width,
-                &v)) {
+        if (!span_read_f64(&cursor->msg, cursor->cursor, cursor->width, &v)) {
             *val = 0.0;
             return FLEXI_ERR_BADREAD;
         }
@@ -2905,8 +2901,7 @@ flexi_cursor_bool(const flexi_cursor_s *cursor, bool *val)
 
     if (type_is_anyint(cursor->type)) {
         uint64_t v;
-        if (!buffer_read_uint(&cursor->buffer, cursor->cursor, cursor->width,
-                &v)) {
+        if (!span_read_uint(&cursor->msg, cursor->cursor, cursor->width, &v)) {
             *val = false;
             return FLEXI_ERR_BADREAD;
         }
@@ -2916,8 +2911,7 @@ flexi_cursor_bool(const flexi_cursor_s *cursor, bool *val)
     } else if (cursor->type == FLEXI_TYPE_FLOAT &&
                cursor->width == sizeof(float)) {
         float v;
-        if (!buffer_read_f32(&cursor->buffer, cursor->cursor, cursor->width,
-                &v)) {
+        if (!span_read_f32(&cursor->msg, cursor->cursor, cursor->width, &v)) {
             *val = false;
             return FLEXI_ERR_BADREAD;
         }
@@ -2927,8 +2921,7 @@ flexi_cursor_bool(const flexi_cursor_s *cursor, bool *val)
     } else if (cursor->type == FLEXI_TYPE_FLOAT &&
                cursor->width == sizeof(double)) {
         double v;
-        if (!buffer_read_f64(&cursor->buffer, cursor->cursor, cursor->width,
-                &v)) {
+        if (!span_read_f64(&cursor->msg, cursor->cursor, cursor->width, &v)) {
             *val = false;
             return FLEXI_ERR_BADREAD;
         }

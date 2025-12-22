@@ -40,10 +40,10 @@
 FORCEINLINE flexi_cursor_s
 flexi_StringToRoot(const std::string &str)
 {
-    flexi_buffer_s view = flexi_make_buffer(str.data(), str.length());
+    flexi_span_s view = flexi_make_span(str.data(), str.length());
 
     flexi_cursor_s cursor;
-    flexi_result_e res = flexi_open_buffer(&view, &cursor);
+    flexi_result_e res = flexi_open_span(&view, &cursor);
     assert(FLEXI_SUCCESS(res));
     return cursor;
 }

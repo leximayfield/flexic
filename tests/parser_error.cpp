@@ -52,10 +52,10 @@ TEST_P(ParseCursorBadReadTest, Check)
 {
     const std::vector<uint8_t> &data = GetParam();
 
-    flexi_buffer_s buffer = flexi_make_buffer(data.data(), data.size());
+    flexi_span_s span = flexi_make_span(data.data(), data.size());
     flexi_cursor_s cursor{};
 
-    flexi_result_e act_result = flexi_open_buffer(&buffer, &cursor);
+    flexi_result_e act_result = flexi_open_span(&span, &cursor);
     if (act_result != FLEXI_OK) {
         ASSERT_EQ(FLEXI_ERR_BADREAD, act_result);
         return;
@@ -142,10 +142,10 @@ TEST_P(ParseCursorParseLimitTest, Check)
 {
     const std::vector<uint8_t> &data = GetParam();
 
-    flexi_buffer_s buffer = flexi_make_buffer(data.data(), data.size());
+    flexi_span_s span = flexi_make_span(data.data(), data.size());
     flexi_cursor_s cursor{};
 
-    flexi_result_e act_result = flexi_open_buffer(&buffer, &cursor);
+    flexi_result_e act_result = flexi_open_span(&span, &cursor);
     ASSERT_EQ(FLEXI_OK, act_result);
 
     act_result = flexi_parse_cursor(&g_parser, &cursor, NULL);

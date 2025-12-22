@@ -27,8 +27,8 @@ GetCursorPiValue32(flexi_cursor_s &cursor)
 {
     static std::array<uint8_t, 6> s_data = {0xdb, 0x0f, 0x49, 0x40, 0x0e, 0x04};
 
-    auto buffer = flexi_make_buffer(s_data.data(), s_data.size());
-    ASSERT_EQ(FLEXI_OK, flexi_open_buffer(&buffer, &cursor));
+    auto span = flexi_make_span(s_data.data(), s_data.size());
+    ASSERT_EQ(FLEXI_OK, flexi_open_span(&span, &cursor));
 }
 
 static void
@@ -36,8 +36,8 @@ GetCursorInf32(flexi_cursor_s &cursor)
 {
     static std::array<uint8_t, 6> s_data = {0x00, 0x00, 0x80, 0x7f, 0x0e, 0x04};
 
-    auto buffer = flexi_make_buffer(s_data.data(), s_data.size());
-    ASSERT_EQ(FLEXI_OK, flexi_open_buffer(&buffer, &cursor));
+    auto span = flexi_make_span(s_data.data(), s_data.size());
+    ASSERT_EQ(FLEXI_OK, flexi_open_span(&span, &cursor));
 }
 
 static void
@@ -46,8 +46,8 @@ GetCursorPiValue64(flexi_cursor_s &cursor)
     static std::array<uint8_t, 10> s_data = {
         0x18, 0x2d, 0x44, 0x54, 0xfb, 0x21, 0x09, 0x40, 0x0f, 0x08};
 
-    auto buffer = flexi_make_buffer(s_data.data(), s_data.size());
-    ASSERT_EQ(FLEXI_OK, flexi_open_buffer(&buffer, &cursor));
+    auto span = flexi_make_span(s_data.data(), s_data.size());
+    ASSERT_EQ(FLEXI_OK, flexi_open_span(&span, &cursor));
 }
 
 TEST(CursorFloat, Types_PiValue32)
