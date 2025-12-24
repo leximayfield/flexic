@@ -1,7 +1,7 @@
-cmake_minimum_required(VERSION 3.31)
+cmake_minimum_required(VERSION 3.26)
 
 set(CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake;${CMAKE_MODULE_PATH}")
-
+set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 set_property(GLOBAL PROPERTY USE_FOLDERS ON)
 
 option(FLEXIC_ENABLE_BENCHES "Enable benchmarks for FlexiC")
