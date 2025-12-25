@@ -1554,10 +1554,8 @@ parser_emit_foreach(const char *key, flexi_cursor_s *value, void *user)
 {
     foreach_ctx_s *ctx = (foreach_ctx_s *)user;
 
-    ctx->limits->depth += 1;
     flexi_result_e res =
         parse_cursor(ctx->parser, key, value, ctx->user, ctx->limits);
-    ctx->limits->depth -= 1;
 
     if (FLEXI_ERROR(res)) {
         ctx->err = res;
@@ -1589,6 +1587,12 @@ parser_emit_map(const flexi_parser_s *parser, const char *key,
     ctx.limits = limits;
     ctx.err = FLEXI_INVALID;
 
+    ctx.limits->depth += 1;
+    if (limits->depth >= FLEXI_CONFIG_MAX_DEPTH) {
+        // Prevent stack overflows.
+        return FLEXI_ERR_PARSELIMIT;
+    }
+
     parser->map_begin(key, cursor->length, user);
     flexi_result_e res = cursor_foreach_map(cursor, parser_emit_foreach, &ctx);
     if (FLEXI_ERROR(res)) {
@@ -1598,6 +1602,7 @@ parser_emit_map(const flexi_parser_s *parser, const char *key,
     }
 
     parser->map_end(user);
+    ctx.limits->depth -= 1;
     return FLEXI_OK;
 }
 
@@ -1623,6 +1628,12 @@ parser_emit_vector(const flexi_parser_s *parser, const char *key,
     ctx.limits = limits;
     ctx.err = FLEXI_INVALID;
 
+    ctx.limits->depth += 1;
+    if (limits->depth >= FLEXI_CONFIG_MAX_DEPTH) {
+        // Prevent stack overflows.
+        return FLEXI_ERR_PARSELIMIT;
+    }
+
     parser->vector_begin(key, cursor->length, user);
     flexi_result_e res =
         cursor_foreach_untyped_vector(cursor, parser_emit_foreach, &ctx);
@@ -1633,6 +1644,7 @@ parser_emit_vector(const flexi_parser_s *parser, const char *key,
     }
 
     parser->vector_end(user);
+    ctx.limits->depth -= 1;
     return FLEXI_OK;
 }
 
@@ -1686,11 +1698,6 @@ static flexi_result_e
 parse_cursor(const flexi_parser_s *parser, const char *key,
     const flexi_cursor_s *cursor, void *user, parse_limits_s *limits)
 {
-    if (limits->depth >= FLEXI_CONFIG_MAX_DEPTH) {
-        // Prevent stack overflows.
-        return FLEXI_ERR_PARSELIMIT;
-    }
-
     switch (cursor->type) {
     case FLEXI_TYPE_NULL: parser->null(key, user); return FLEXI_OK;
     case FLEXI_TYPE_SINT:
