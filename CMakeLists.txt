@@ -10,6 +10,7 @@ option(FLEXIC_ENABLE_TESTS "Enable tests for FlexiC")
 option(FLEXIC_ENABLE_TEST_COVERAGE "Enable code coverage on test suite")
 option(FLEXIC_ENABLE_FUZZER "Enable fuzzing via libFuzzer")
 option(FLEXIC_COMPILE_AS_CXX "Compile library as C++")
+option(FLEXIC_FEATURE_JSON "Enable JSON writer feature" YES)
 
 set(FLEXIC_OVERRIDE_MAX_DEPTH "" CACHE STRING "Override default iteration depth")
 set(FLEXIC_OVERRIDE_MAX_ITERABLES "" CACHE STRING "Override default iteration limit")
@@ -26,6 +27,9 @@ add_library(flexic STATIC)
 target_sources(flexic PRIVATE ${FLEXIC_SOURCES})
 target_include_directories(flexic PUBLIC
     "${CMAKE_CURRENT_SOURCE_DIR}/include")
+if(NOT FLEXIC_FEATURE_JSON)
+    target_compile_definitions(flexic PRIVATE FLEXI_FEATURE_JSON=0)
+endif()
 if(FLEXIC_OVERRIDE_MAX_DEPTH)
     target_compile_definitions(flexic PRIVATE
         FLEXI_CONFIG_MAX_DEPTH=${FLEXIC_OVERRIDE_MAX_DEPTH})

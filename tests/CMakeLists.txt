@@ -35,8 +35,8 @@ target_sources(flexic_test PRIVATE
     "${CMAKE_CURRENT_SOURCE_DIR}/cursor_int.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/cursor_map.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/cursor_string.cpp"
-    "${CMAKE_CURRENT_SOURCE_DIR}/cursor_to_json.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/cursor_typed_vector.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/json.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/parser.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/parser_error.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/write_error.cpp"
@@ -78,14 +78,14 @@ if(FLEXIC_ENABLE_TEST_COVERAGE)
     endif()
 endif()
 
-add_custom_command(
+file(GLOB FLEXIC_TEST_FILES
+    RELATIVE "${CMAKE_CURRENT_SOURCE_DIR}"
+    "${CMAKE_CURRENT_SOURCE_DIR}/*.flexbuf")
+foreach(FLEXIC_TEST_FILE ${FLEXIC_TEST_FILES})
+    add_custom_command(
         TARGET flexic_test POST_BUILD
         COMMAND "${CMAKE_COMMAND}" -E copy
-                "${CMAKE_CURRENT_SOURCE_DIR}/large_doc1.flexbuf"
-                "${CMAKE_CURRENT_BINARY_DIR}/large_doc1.flexbuf")
-
-add_custom_command(
-        TARGET flexic_test POST_BUILD
-        COMMAND "${CMAKE_COMMAND}" -E copy
-                "${CMAKE_CURRENT_SOURCE_DIR}/large_strings.flexbuf"
-                "${CMAKE_CURRENT_BINARY_DIR}/large_strings.flexbuf")
+                "${CMAKE_CURRENT_SOURCE_DIR}/${FLEXIC_TEST_FILE}"
+                "${CMAKE_CURRENT_BINARY_DIR}/${FLEXIC_TEST_FILE}"
+        VERBATIM)
+endforeach()

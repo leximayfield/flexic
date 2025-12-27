@@ -94,6 +94,11 @@
 #define COUNTOF(arr) (sizeof(arr) / sizeof((arr)[0]))
 #define STATIC_ASSERT(ex, msg) typedef char static_assert_##msg[(ex) ? 1 : -1]
 
+#define BIT(n) (1u << (n))
+#define BIT_SET(v, n) ((v) |= BIT(n))
+#define BIT_CLEAR(v, n) ((v) &= ~BIT(n))
+#define BIT_CHECK(v, n) (((v) & BIT(n)) != 0)
+
 #define SINT_WIDTH(v)                                                          \
     ((v) <= INT8_MAX && (v) >= INT8_MIN         ? 1                            \
         : (v) <= INT16_MAX && (v) >= INT16_MIN  ? 2                            \
@@ -4056,6 +4061,8 @@ flexi_writer_debug_stack_count(flexi_writer_s *writer)
     return stack_count(&writer->stack);
 }
 
+/******************************************************************************/
+
 #if FLEXI_FEATURE_JSON
 
 #include <stdarg.h>
@@ -4070,6 +4077,9 @@ typedef struct json_state_s {
 } json_state_s;
 
 STATIC_ASSERT(FLEXI_CONFIG_MAX_DEPTH <= 32, json_state_limited_to_uint32);
+
+static const char g_base64[66] =
+    "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/=";
 
 static bool
 json_state_write(json_state_s *state, const char *str, size_t len)
@@ -4128,24 +4138,6 @@ json_state_write_key(json_state_s *state, const char *str)
     err |= !json_state_write(state, "\"", 1);
     return !err;
 }
-
-static bool
-json_state_write_str(json_state_s *state, const char *str, flexi_ssize_t len)
-{
-    bool err = !json_state_write(state, "\"", 1);
-
-    for (flexi_ssize_t i = 0; i < len; i++) {
-        err |= !to_json_write_char(state, str[i]);
-    }
-
-    err |= !json_state_write(state, "\"", 1);
-    return !err;
-}
-
-#define BIT(n) (1u << (n))
-#define BIT_SET(v, n) ((v) |= BIT(n))
-#define BIT_CLEAR(v, n) ((v) &= ~BIT(n))
-#define BIT_CHECK(v, n) (((v) & BIT(n)) != 0)
 
 static void
 json_state_handle_comma(json_state_s *state)
@@ -4207,9 +4199,9 @@ to_json_f32(const char *key, float value, void *user)
 
     if (key) {
         json_state_write_key(state, key);
-        json_state_printf(state, ":%g", value);
+        json_state_printf(state, ":%.9g", value);
     } else {
-        json_state_printf(state, "%g", value);
+        json_state_printf(state, "%.9g", value);
     }
 }
 
@@ -4221,9 +4213,9 @@ to_json_f64(const char *key, double value, void *user)
 
     if (key) {
         json_state_write_key(state, key);
-        json_state_printf(state, ":%g", value);
+        json_state_printf(state, ":%.17g", value);
     } else {
-        json_state_printf(state, "%g", value);
+        json_state_printf(state, "%.17g", value);
     }
 }
 
@@ -4240,6 +4232,9 @@ to_json_key(const char *key, const char *str, void *user)
     json_state_write_key(state, str);
 }
 
+/**
+ * @brief Handle FlexBuffer start-of-map.
+ */
 static void
 to_json_string(const char *key, const char *str, flexi_ssize_t len, void *user)
 {
@@ -4250,9 +4245,22 @@ to_json_string(const char *key, const char *str, flexi_ssize_t len, void *user)
         json_state_write_key(state, key);
         json_state_write(state, ":", 1);
     }
-    json_state_write_str(state, str, len);
+
+    {
+        bool err = !json_state_write(state, "\"", 1);
+
+        for (flexi_ssize_t i = 0; i < len; i++) {
+            err |= !to_json_write_char(state, str[i]);
+        }
+
+        err |= !json_state_write(state, "\"", 1);
+        // return !err;
+    }
 }
 
+/**
+ * @brief Handle FlexBuffer start-of-map.
+ */
 static void
 to_json_map_begin(const char *key, flexi_ssize_t len, void *user)
 {
@@ -4271,6 +4279,9 @@ to_json_map_begin(const char *key, flexi_ssize_t len, void *user)
     BIT_SET(state->skip_comma, state->depth);
 }
 
+/**
+ * @brief Handle FlexBuffer end-of-map.
+ */
 static void
 to_json_map_end(void *user)
 {
@@ -4281,6 +4292,9 @@ to_json_map_end(void *user)
     json_state_write(state, "}", 1);
 }
 
+/**
+ * @brief Handle FlexBuffer start-of-vector.
+ */
 static void
 to_json_vector_begin(const char *key, flexi_ssize_t len, void *user)
 {
@@ -4299,6 +4313,9 @@ to_json_vector_begin(const char *key, flexi_ssize_t len, void *user)
     BIT_SET(state->skip_comma, state->depth);
 }
 
+/**
+ * @brief Handle FlexBuffer end-of-vector.
+ */
 static void
 to_json_vector_end(void *user)
 {
@@ -4309,6 +4326,9 @@ to_json_vector_end(void *user)
     json_state_write(state, "]", 1);
 }
 
+/**
+ * @brief Convert FlexBuffer typed vectors to JSON arrays.
+ */
 static void
 to_json_typed_vector(const char *key, const void *ptr, flexi_type_e type,
     int width, flexi_ssize_t count, void *user)
@@ -4317,12 +4337,12 @@ to_json_typed_vector(const char *key, const void *ptr, flexi_type_e type,
     json_state_handle_comma(state);
 }
 
+/**
+ * @brief Convert FlexBuffer blob to base64-encoded JSON string.
+ */
 static void
 to_json_blob(const char *key, const void *ptr, flexi_ssize_t len, void *user)
 {
-    static const char s_base64[65] =
-        "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
-
     json_state_s *state = (json_state_s *)user;
     json_state_handle_comma(state);
 
@@ -4331,20 +4351,50 @@ to_json_blob(const char *key, const void *ptr, flexi_ssize_t len, void *user)
         json_state_write(state, ":", 1);
     }
 
-    char out[4];
-    uint32_t mut;
+    // Blobs are encoded as base64.
+    json_state_write(state, "\"", 1);
+
     const uint8_t *in = (const uint8_t *)ptr;
-    for (flexi_ssize_t i = 0; i < len; i += 3) {
+    uint32_t mut;
+    char out[4];
+
+    // Write all three-byte chunks.
+    flexi_ssize_t i = 0;
+    for (; len - i >= 3; i += 3) {
         mut = in[0] << 16;
         mut |= in[1] << 8;
         mut |= in[2];
-        out[0] = (mut & 0xfc0000);
-        out[1] = mut & 0x3f000;
-        out[2] = mut & 0xfc0;
-        out[3] = mut & 0x3f;
+        out[0] = g_base64[(mut >> 18) & 0x3F];
+        out[1] = g_base64[(mut >> 12) & 0x3F];
+        out[2] = g_base64[(mut >> 6) & 0x3F];
+        out[3] = g_base64[mut & 0x3F];
+        json_state_write(state, out, sizeof(out));
     }
+
+    // Write out the remaining bytes, with padding.
+    if (len - i == 2) {
+        mut = in[0] << 16;
+        mut |= in[1] << 8;
+        out[0] = g_base64[(mut >> 18) & 0x3F];
+        out[1] = g_base64[(mut >> 12) & 0x3F];
+        out[2] = g_base64[(mut >> 6) & 0x3F];
+        out[3] = '=';
+        json_state_write(state, out, sizeof(out));
+    } else if (len - i == 1) {
+        mut = in[0] << 16;
+        out[0] = g_base64[(mut >> 18) & 0x3F];
+        out[1] = g_base64[(mut >> 12) & 0x3F];
+        out[2] = '=';
+        out[3] = '=';
+        json_state_write(state, out, sizeof(out));
+    }
+
+    json_state_write(state, "\"", 1);
 }
 
+/**
+ * @brief Convert FlexBuffer boolean to JSON boolean.
+ */
 static void
 to_json_boolean(const char *key, bool val, void *user)
 {
@@ -4359,9 +4409,11 @@ to_json_boolean(const char *key, bool val, void *user)
     }
 }
 
+/******************************************************************************/
+
 flexi_result_e
-flexi_cursor_to_json(const flexi_cursor_s *cursor, flexi_write_string_fn writer,
-    void *user)
+flexi_json_from_cursor(const flexi_cursor_s *cursor,
+    flexi_write_string_fn writer, void *user)
 {
     flexi_parser_s parser;
     parser.null = to_json_null;
@@ -4387,7 +4439,107 @@ flexi_cursor_to_json(const flexi_cursor_s *cursor, flexi_write_string_fn writer,
     state.depth = 0;
 
     parse_limits_s limits = {0};
-    parse_cursor(&parser, NULL, cursor, &state, &limits);
+    return parse_cursor(&parser, NULL, cursor, &state, &limits);
+}
+
+/******************************************************************************/
+
+flexi_result_e
+flexi_json_decode_blob(const char *src, flexi_ssize_t src_len, void *dst,
+    flexi_ssize_t *dst_len)
+{
+    if (src_len % 4 != 0) {
+        // This function is only designed to read the base64 blobs we output.
+        return FLEXI_ERR_PARAM;
+    }
+
+    if (*dst_len < (src_len / 4) * 3) {
+        // Not enough room in the dest buffer.
+        return FLEXI_ERR_PARAM;
+    }
+
+    char in[4];
+    uint32_t mut;
+    uint8_t *out = (uint8_t *)dst;
+
+    // Read in four-byte chunks.
+    flexi_ssize_t i = 0;
+    flexi_ssize_t o = 0;
+    for (; i < src_len; i += 4, o += 3) {
+        memcpy(in, &src[i], sizeof(in));
+        if (src[i + 2] == '=') {
+            // Mux 2 6-bit codes into 1 byte.
+            if (src[i + 3] != '=') {
+                return FLEXI_ERR_PARAM;
+            }
+
+            for (int j = 0; j < 2; j++) {
+                const char *code = strchr(g_base64, in[j]);
+                in[j] = (char)(code - &g_base64[0]);
+            }
+
+            mut = in[0] << 18;
+            mut |= in[1] << 12;
+            out[o] = (mut >> 16) & 0xFF;
+
+            *dst_len = o + 1;
+            return FLEXI_OK;
+        } else if (src[i + 3] == '=') {
+            // Mux 3 6-bit codes into 2 bytes.
+            for (int j = 0; j < 3; j++) {
+                const char *code = strchr(g_base64, in[j]);
+                in[j] = (char)(code - &g_base64[0]);
+            }
+
+            mut = in[0] << 18;
+            mut |= in[1] << 12;
+            mut |= in[2] << 6;
+            out[o] = (mut >> 16) & 0xFF;
+            out[o + 1] = (mut >> 8) & 0xFF;
+
+            *dst_len = o + 2;
+            return FLEXI_OK;
+        } else {
+            // Mux 4 6-bit codes into 3 bytes.
+            for (int j = 0; j < 4; j++) {
+                const char *code = strchr(g_base64, in[j]);
+                in[j] = (char)(code - &g_base64[0]);
+            }
+
+            mut = in[0] << 18;
+            mut |= in[1] << 12;
+            mut |= in[2] << 6;
+            mut |= in[3];
+            out[o] = (mut >> 16) & 0xFF;
+            out[o + 1] = (mut >> 8) & 0xFF;
+            out[o + 2] = mut & 0xFF;
+        }
+    }
+
+    *dst_len = o;
+    return FLEXI_OK;
+}
+
+/******************************************************************************/
+
+flexi_result_e
+flexi_json_decode_blob_length(const char *src, flexi_ssize_t src_len,
+    flexi_ssize_t *dst_len)
+{
+    if (src_len % 4 != 0) {
+        // This function is only designed to read the base64 blobs we output.
+        return FLEXI_ERR_PARAM;
+    }
+
+    *dst_len = (src_len / 4) * 3;
+
+    if (src_len > 0) {
+        if (src[src_len - 2] == '=' && src[src_len - 1] == '=') {
+            *dst_len -= 2;
+        } else if (src[src_len - 1] == '=') {
+            *dst_len -= 1;
+        }
+    }
 
     return FLEXI_OK;
 }

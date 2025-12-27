@@ -169,5 +169,11 @@ protected:
     }
 };
 
+/**
+ * @brief Read a file into a string as binary.
+ *
+ * @param filename Filename to read.
+ * @return String containing binary data.
+ */
 std::string
 ReadFileToString(const char *filename);

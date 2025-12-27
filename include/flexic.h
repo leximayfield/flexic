@@ -1245,11 +1245,52 @@ flexi_writer_debug_stack_count(flexi_writer_s *writer);
 
 #if FLEXI_FEATURE_JSON
 
+/**
+ * @brief Function which, when called, indicates that there is character data
+ *        to append to a string.
+ */
 typedef bool (*flexi_write_string_fn)(const char *str, size_t len, void *user);
 
+/**
+ * @brief Starting from the given cursor, output a JSON string using a callback.
+ *
+ * @param cursor Cursor to turn into JSON.
+ * @param writer Writer function to use to stringify.
+ * @param user User pointer to pass to writer function.
+ * @return FLEXI_OK || FLEXI_ERR_BADREAD || FLEXI_ERR_PARSELIMIT.
+ */
 flexi_result_e
-flexi_cursor_to_json(const flexi_cursor_s *cursor, flexi_write_string_fn writer,
-    void *user);
+flexi_json_from_cursor(const flexi_cursor_s *cursor,
+    flexi_write_string_fn writer, void *user);
+
+/**
+ * @brief Decode a blob contained in JSON serialized from a FlexBuffer.
+ *
+ * @note This is just an opinionated base64 decoder.
+ *
+ * @param[in] src Source string to decode.
+ * @param[in] src_len Length of source string to decode.
+ * @param[out] dst Buffer to write binary data to.
+ * @param[in,out] dst_len Length of buffer containing binary data.  On success,
+ *                        mutated to contain number of bytes written.
+ * @return FLEXI_OK || FLEXI_ERR_PARAM.
+ */
+flexi_result_e
+flexi_json_decode_blob(const char *src, flexi_ssize_t src_len, void *dst,
+    flexi_ssize_t *dst_len);
+
+/**
+ * @brief Calculate the length of the encoded blob in decoded bytes.
+ *
+ * @param src[in] Source string to measure.
+ * @param src_len[in] Length of source string to measure.
+ * @param dst_len[out] Minimum length of byte buffer that can contain decoded
+ *                     source string.
+ * @return FLEXI_OK || FLEXI_ERR_PARAM.
+ */
+flexi_result_e
+flexi_json_decode_blob_length(const char *src, flexi_ssize_t src_len,
+    flexi_ssize_t *dst_len);
 
 #endif // #if FLEXI_FEATURE_JSON
 
@@ -1355,10 +1396,10 @@ flexi_write_typed_vector<double>(flexi_writer_s *writer, const char *key,
 #include <string>
 
 inline flexi_result_e
-flexi_cursor_to_json(const flexi_cursor_s *cursor, std::string &str)
+flexi_json_string_from_cursor(const flexi_cursor_s *cursor, std::string &str)
 {
     void *user = &str;
-    return flexi_cursor_to_json(
+    return flexi_json_from_cursor(
         cursor,
         [](const char *str, size_t len, void *user) -> bool {
             std::string *mut = (std::string *)user;
