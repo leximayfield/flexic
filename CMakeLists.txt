@@ -35,11 +35,22 @@ if(FLEXIC_OVERRIDE_MAX_ITERABLES)
         FLEXI_CONFIG_MAX_ITERABLES=${FLEXIC_OVERRIDE_MAX_ITERABLES})
 endif()
 
+if(FLEXIC_COMPILE_AS_CXX)
+    set_source_files_properties(${FLEXIC_SOURCES} PROPERTIES LANGUAGE CXX )
+endif()
+
 include(FindSanitizers)
 add_sanitizers(flexic)
 
-if(FLEXIC_COMPILE_AS_CXX)
-    set_source_files_properties(${FLEXIC_SOURCES} PROPERTIES LANGUAGE CXX )
+# nlohmann_json is needed by test suite and benchmarks
+
+if(FLEXIC_ENABLE_TESTS OR FLEXIC_ENABLE_BENCHES)
+    include(FetchContent)
+    FetchContent_Declare(
+        nlohmann_json
+        GIT_REPOSITORY https://github.com/nlohmann/json
+        GIT_TAG v3.12.0)
+    FetchContent_MakeAvailable(nlohmann_json)
 endif()
 
 if(FLEXIC_ENABLE_DOCS)

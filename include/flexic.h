@@ -26,6 +26,10 @@
  * @file flexic.h
  */
 
+#ifndef FLEXI_FEATURE_JSON
+#define FLEXI_FEATURE_JSON 1
+#endif
+
 #if defined(__cplusplus)
 #if defined(_MSVC_LANG)
 #define FLEXI_IMPL_CPLUSPLUS _MSVC_LANG
@@ -1237,6 +1241,18 @@ flexi_writer_debug_stack_at(const flexi_writer_s *writer, flexi_ssize_t offset,
 flexi_ssize_t
 flexi_writer_debug_stack_count(flexi_writer_s *writer);
 
+/******************************************************************************/
+
+#if FLEXI_FEATURE_JSON
+
+typedef bool (*flexi_write_string_fn)(const char *str, size_t len, void *user);
+
+flexi_result_e
+flexi_cursor_to_json(const flexi_cursor_s *cursor, flexi_write_string_fn writer,
+    void *user);
+
+#endif // #if FLEXI_FEATURE_JSON
+
 #if FLEXI_IMPL_CPLUSPLUS
 }
 #endif
@@ -1331,3 +1347,27 @@ flexi_write_typed_vector<double>(flexi_writer_s *writer, const char *key,
 }
 
 #endif // #if FLEXI_IMPL_CPLUSPLUS
+
+#if FLEXI_FEATURE_JSON
+
+#if FLEXI_IMPL_CPLUSPLUS
+
+#include <string>
+
+inline flexi_result_e
+flexi_cursor_to_json(const flexi_cursor_s *cursor, std::string &str)
+{
+    void *user = &str;
+    return flexi_cursor_to_json(
+        cursor,
+        [](const char *str, size_t len, void *user) -> bool {
+            std::string *mut = (std::string *)user;
+            mut->append(str, len);
+            return true;
+        },
+        user);
+}
+
+#endif // #if FLEXI_IMPL_CPLUSPLUS
+
+#endif // #if FLEXI_FEATURE_JSON

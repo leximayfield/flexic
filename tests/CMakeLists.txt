@@ -35,6 +35,7 @@ target_sources(flexic_test PRIVATE
     "${CMAKE_CURRENT_SOURCE_DIR}/cursor_int.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/cursor_map.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/cursor_string.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/cursor_to_json.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/cursor_typed_vector.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/parser.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/parser_error.cpp"
@@ -44,7 +45,8 @@ target_sources(flexic_test PRIVATE
     "${CMAKE_CURRENT_SOURCE_DIR}/write_map.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/write_other.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/write_vector.cpp")
-target_link_libraries(flexic_test PRIVATE flexic GTest::gtest_main)
+target_link_libraries(flexic_test PRIVATE
+    flexic GTest::gtest_main nlohmann_json)
 
 add_sanitizers(flexic_test)
 add_sanitizers(gtest)

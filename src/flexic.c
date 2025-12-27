@@ -92,6 +92,7 @@
 #define MIN(a, b) ((b) < (a) ? (b) : (a))
 #define MAX(a, b) ((a) < (b) ? (b) : (a))
 #define COUNTOF(arr) (sizeof(arr) / sizeof((arr)[0]))
+#define STATIC_ASSERT(ex, msg) typedef char static_assert_##msg[(ex) ? 1 : -1]
 
 #define SINT_WIDTH(v)                                                          \
     ((v) <= INT8_MAX && (v) >= INT8_MIN         ? 1                            \
@@ -4054,3 +4055,341 @@ flexi_writer_debug_stack_count(flexi_writer_s *writer)
 {
     return stack_count(&writer->stack);
 }
+
+#if FLEXI_FEATURE_JSON
+
+#include <stdarg.h>
+#include <stdio.h>
+
+typedef struct json_state_s {
+    char buffer[24];
+    flexi_write_string_fn write_string;
+    void *user;
+    uint32_t skip_comma;
+    uint8_t depth;
+} json_state_s;
+
+STATIC_ASSERT(FLEXI_CONFIG_MAX_DEPTH <= 32, json_state_limited_to_uint32);
+
+static bool
+json_state_write(json_state_s *state, const char *str, size_t len)
+{
+    return state->write_string(str, len, state->user);
+}
+
+static bool
+json_state_printf(json_state_s *state, const char *fmt, ...)
+{
+    va_list ap;
+    va_start(ap, fmt);
+    int len = vsnprintf(state->buffer, sizeof(state->buffer), fmt, ap);
+    va_end(ap);
+
+    if (len < 0) {
+        return false;
+    }
+
+    return state->write_string(state->buffer, len, state->user);
+}
+
+static bool
+to_json_write_char(json_state_s *state, const char ch)
+{
+    if (ch == '\b') {
+        return json_state_write(state, "\\b", 2);
+    } else if (ch == '\f') {
+        return json_state_write(state, "\\f", 2);
+    } else if (ch == '\n') {
+        return json_state_write(state, "\\n", 2);
+    } else if (ch == '\r') {
+        return json_state_write(state, "\\r", 2);
+    } else if (ch == '\t') {
+        return json_state_write(state, "\\t", 2);
+    } else if (ch == '\\') {
+        return json_state_write(state, "\\\\", 2);
+    } else if (ch == '\"') {
+        return json_state_write(state, "\\\"", 2);
+    } else if ((ch >= '\0' && ch <= '\x1f') || ch == '\x7f') {
+        return json_state_printf(state, "\\u%04x", ch);
+    } else {
+        return json_state_write(state, &ch, 1);
+    }
+}
+
+static bool
+json_state_write_key(json_state_s *state, const char *str)
+{
+    bool err = !json_state_write(state, "\"", 1);
+
+    for (const char *ch = str; *ch != '\0'; ch++) {
+        err |= !to_json_write_char(state, *ch);
+    }
+
+    err |= !json_state_write(state, "\"", 1);
+    return !err;
+}
+
+static bool
+json_state_write_str(json_state_s *state, const char *str, flexi_ssize_t len)
+{
+    bool err = !json_state_write(state, "\"", 1);
+
+    for (flexi_ssize_t i = 0; i < len; i++) {
+        err |= !to_json_write_char(state, str[i]);
+    }
+
+    err |= !json_state_write(state, "\"", 1);
+    return !err;
+}
+
+#define BIT(n) (1u << (n))
+#define BIT_SET(v, n) ((v) |= BIT(n))
+#define BIT_CLEAR(v, n) ((v) &= ~BIT(n))
+#define BIT_CHECK(v, n) (((v) & BIT(n)) != 0)
+
+static void
+json_state_handle_comma(json_state_s *state)
+{
+    if (BIT_CHECK(state->skip_comma, state->depth)) {
+        BIT_CLEAR(state->skip_comma, state->depth);
+    } else {
+        json_state_write(state, ",", 1);
+    }
+}
+
+static void
+to_json_null(const char *key, void *user)
+{
+    json_state_s *state = (json_state_s *)user;
+    json_state_handle_comma(state);
+
+    if (key) {
+        json_state_write_key(state, key);
+        json_state_write(state, ":null", 5);
+    } else {
+        json_state_write(state, "null", 4);
+    }
+}
+
+static void
+to_json_sint(const char *key, int64_t value, void *user)
+{
+    json_state_s *state = (json_state_s *)user;
+    json_state_handle_comma(state);
+
+    if (key) {
+        json_state_write_key(state, key);
+        json_state_printf(state, ":%lld", (long long)value);
+    } else {
+        json_state_printf(state, "%lld", (long long)value);
+    }
+}
+
+static void
+to_json_uint(const char *key, uint64_t value, void *user)
+{
+    json_state_s *state = (json_state_s *)user;
+    json_state_handle_comma(state);
+
+    if (key) {
+        json_state_write_key(state, key);
+        json_state_printf(state, ":%llu", (unsigned long long)value);
+    } else {
+        json_state_printf(state, "%llu", (unsigned long long)value);
+    }
+}
+
+static void
+to_json_f32(const char *key, float value, void *user)
+{
+    json_state_s *state = (json_state_s *)user;
+    json_state_handle_comma(state);
+
+    if (key) {
+        json_state_write_key(state, key);
+        json_state_printf(state, ":%g", value);
+    } else {
+        json_state_printf(state, "%g", value);
+    }
+}
+
+static void
+to_json_f64(const char *key, double value, void *user)
+{
+    json_state_s *state = (json_state_s *)user;
+    json_state_handle_comma(state);
+
+    if (key) {
+        json_state_write_key(state, key);
+        json_state_printf(state, ":%g", value);
+    } else {
+        json_state_printf(state, "%g", value);
+    }
+}
+
+static void
+to_json_key(const char *key, const char *str, void *user)
+{
+    json_state_s *state = (json_state_s *)user;
+    json_state_handle_comma(state);
+
+    if (key) {
+        json_state_write_key(state, key);
+        json_state_write(state, ":", 1);
+    }
+    json_state_write_key(state, str);
+}
+
+static void
+to_json_string(const char *key, const char *str, flexi_ssize_t len, void *user)
+{
+    json_state_s *state = (json_state_s *)user;
+    json_state_handle_comma(state);
+
+    if (key) {
+        json_state_write_key(state, key);
+        json_state_write(state, ":", 1);
+    }
+    json_state_write_str(state, str, len);
+}
+
+static void
+to_json_map_begin(const char *key, flexi_ssize_t len, void *user)
+{
+    (void)len;
+    json_state_s *state = (json_state_s *)user;
+    json_state_handle_comma(state);
+
+    if (key) {
+        json_state_write_key(state, key);
+        json_state_write(state, ":{", 2);
+    } else {
+        json_state_write(state, "{", 1);
+    }
+
+    state->depth += 1;
+    BIT_SET(state->skip_comma, state->depth);
+}
+
+static void
+to_json_map_end(void *user)
+{
+    json_state_s *state = (json_state_s *)user;
+
+    state->depth -= 1; // No need to clear bit.
+
+    json_state_write(state, "}", 1);
+}
+
+static void
+to_json_vector_begin(const char *key, flexi_ssize_t len, void *user)
+{
+    (void)len;
+    json_state_s *state = (json_state_s *)user;
+    json_state_handle_comma(state);
+
+    if (key) {
+        json_state_write_key(state, key);
+        json_state_write(state, ":[", 2);
+    } else {
+        json_state_write(state, "[", 1);
+    }
+
+    state->depth += 1;
+    BIT_SET(state->skip_comma, state->depth);
+}
+
+static void
+to_json_vector_end(void *user)
+{
+    json_state_s *state = (json_state_s *)user;
+
+    state->depth -= 1; // No need to clear bit.
+
+    json_state_write(state, "]", 1);
+}
+
+static void
+to_json_typed_vector(const char *key, const void *ptr, flexi_type_e type,
+    int width, flexi_ssize_t count, void *user)
+{
+    json_state_s *state = (json_state_s *)user;
+    json_state_handle_comma(state);
+}
+
+static void
+to_json_blob(const char *key, const void *ptr, flexi_ssize_t len, void *user)
+{
+    static const char s_base64[65] =
+        "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
+
+    json_state_s *state = (json_state_s *)user;
+    json_state_handle_comma(state);
+
+    if (key) {
+        json_state_write_key(state, key);
+        json_state_write(state, ":", 1);
+    }
+
+    char out[4];
+    uint32_t mut;
+    const uint8_t *in = (const uint8_t *)ptr;
+    for (flexi_ssize_t i = 0; i < len; i += 3) {
+        mut = in[0] << 16;
+        mut |= in[1] << 8;
+        mut |= in[2];
+        out[0] = (mut & 0xfc0000);
+        out[1] = mut & 0x3f000;
+        out[2] = mut & 0xfc0;
+        out[3] = mut & 0x3f;
+    }
+}
+
+static void
+to_json_boolean(const char *key, bool val, void *user)
+{
+    json_state_s *state = (json_state_s *)user;
+    json_state_handle_comma(state);
+
+    if (key) {
+        json_state_write_key(state, key);
+        json_state_printf(state, ":%s", val ? "true" : "false");
+    } else {
+        json_state_printf(state, "%s", val ? "true" : "false");
+    }
+}
+
+flexi_result_e
+flexi_cursor_to_json(const flexi_cursor_s *cursor, flexi_write_string_fn writer,
+    void *user)
+{
+    flexi_parser_s parser;
+    parser.null = to_json_null;
+    parser.sint = to_json_sint;
+    parser.uint = to_json_uint;
+    parser.f32 = to_json_f32;
+    parser.f64 = to_json_f64;
+    parser.key = to_json_key;
+    parser.string = to_json_string;
+    parser.map_begin = to_json_map_begin;
+    parser.map_end = to_json_map_end;
+    parser.vector_begin = to_json_vector_begin;
+    parser.vector_end = to_json_vector_end;
+    parser.typed_vector = to_json_typed_vector;
+    parser.blob = to_json_blob;
+    parser.boolean = to_json_boolean;
+
+    json_state_s state;
+    state.buffer[0] = '\0';
+    state.write_string = writer;
+    state.user = user;
+    state.skip_comma = 1;
+    state.depth = 0;
+
+    parse_limits_s limits = {0};
+    parse_cursor(&parser, NULL, cursor, &state, &limits);
+
+    return FLEXI_OK;
+}
+
+#endif // #if FLEXI_FEATURE_JSON
