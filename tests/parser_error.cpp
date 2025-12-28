@@ -22,25 +22,32 @@
 
 #include "tests.hpp"
 
+#if FLEXI_FEATURE_PARSER
+
 /******************************************************************************/
 
 using value_t = std::vector<uint8_t>;
 
 static flexi_parser_s g_parser{
-    [](const char *, void *) {},
-    [](const char *, int64_t, void *) {},
-    [](const char *, uint64_t, void *) {},
-    [](const char *, float, void *) {},
-    [](const char *, double, void *) {},
-    [](const char *, const char *, void *) {},
-    [](const char *, const char *, flexi_ssize_t, void *) {},
-    [](const char *, flexi_ssize_t, void *) {},
-    [](void *) {},
-    [](const char *, flexi_ssize_t, void *) {},
-    [](void *) {},
-    [](const char *, const void *, flexi_type_e, int, flexi_ssize_t, void *) {},
-    [](const char *, const void *, flexi_ssize_t, void *) {},
-    [](const char *, bool, void *) {},
+    [](const char *, void *) -> bool { return true; },
+    [](const char *, int64_t, void *) -> bool { return true; },
+    [](const char *, uint64_t, void *) -> bool { return true; },
+    [](const char *, float, void *) -> bool { return true; },
+    [](const char *, double, void *) -> bool { return true; },
+    [](const char *, const char *, void *) -> bool { return true; },
+    [](const char *, const char *, flexi_ssize_t, void *) -> bool {
+        return true;
+    },
+    [](const char *, flexi_ssize_t, void *) -> bool { return true; },
+    [](void *) -> bool { return true; },
+    [](const char *, flexi_ssize_t, void *) -> bool { return true; },
+    [](void *) -> bool { return true; },
+    [](const char *, const void *, flexi_type_e, int, flexi_ssize_t,
+        void *) -> bool { return true; },
+    [](const char *, const void *, flexi_ssize_t, void *) -> bool {
+        return true;
+    },
+    [](const char *, bool, void *) -> bool { return true; },
 };
 
 /******************************************************************************/
@@ -171,3 +178,5 @@ INSTANTIATE_TEST_SUITE_P(ParserError, ParseCursorParseLimitTest,
             0x28, 0x28, 0x28, 0x28, 0x28, 0x28, 0x28, 0x28, 0x28, 0x28, 0x28,
             0x28, 0x28, 0x28, 0x28, 0x28, 0x28, 0x28, 0x28, 0x28, 0x28, 0x0B,
             0x0B, 0x0B, 0x0B, 0x0B, 0x68, 0x28, 0x01}));
+
+#endif // #if FLEXI_FEATURE_PARSER

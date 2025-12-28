@@ -22,6 +22,8 @@
 
 #include "tests.hpp"
 
+#if FLEXI_FEATURE_PARSER
+
 #include <variant>
 
 struct null_s {
@@ -103,59 +105,73 @@ static constexpr flexi_parser_s g_parser{
     [](const char *key, void *user) {
         auto results = static_cast<Results *>(user);
         results->push_back(null_s{key});
+        return true;
     },
     [](const char *key, int64_t value, void *user) {
         auto results = static_cast<Results *>(user);
         results->push_back(sint_s{key, value});
+        return true;
     },
     [](const char *key, uint64_t value, void *user) {
         auto results = static_cast<Results *>(user);
         results->push_back(uint_s{key, value});
+        return true;
     },
     [](const char *key, float value, void *user) {
         auto results = static_cast<Results *>(user);
         results->push_back(f32_s{key, value});
+        return true;
     },
     [](const char *key, double value, void *user) {
         auto results = static_cast<Results *>(user);
         results->push_back(f64_s{key, value});
+        return true;
     },
     [](const char *key, const char *str, void *user) {
         auto results = static_cast<Results *>(user);
         results->push_back(key_s{key, str});
+        return true;
     },
     [](const char *key, const char *str, flexi_ssize_t len, void *user) {
         auto results = static_cast<Results *>(user);
         results->push_back(str_s{key, str, len});
+        return true;
     },
     [](const char *key, flexi_ssize_t len, void *user) {
         auto results = static_cast<Results *>(user);
         results->push_back(mapbegin_s{key, len});
+        return true;
     },
     [](void *user) {
         auto results = static_cast<Results *>(user);
         results->push_back(mapend_s{});
+        return true;
     },
     [](const char *key, flexi_ssize_t len, void *user) {
         auto results = static_cast<Results *>(user);
         results->push_back(vecbegin_s{key, len});
+        return true;
     },
     [](void *user) {
         auto results = static_cast<Results *>(user);
         results->push_back(vecend_s{});
+        return true;
     },
     [](const char *key, const void *ptr, flexi_type_e type, int width,
         flexi_ssize_t count, void *user) {
         auto results = static_cast<Results *>(user);
         results->push_back(typedvec_s{key, ptr, type, width, count, user});
+        return true;
     },
     [](const char *key, const void *ptr, flexi_ssize_t len, void *user) {
         auto results = static_cast<Results *>(user);
         results->push_back(blob_s{key, ptr, len});
+        return true;
     },
     [](const char *key, bool value, void *user) {
         auto results = static_cast<Results *>(user);
         results->push_back(bool_s{key, value});
+        return true;
     },
 };
 
@@ -577,3 +593,5 @@ TEST(Parser, ParseTypedVectors)
         }
     }
 }
+
+#endif // #if FLEXI_FEATURE_PARSER

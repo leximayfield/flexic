@@ -94,11 +94,6 @@
 #define COUNTOF(arr) (sizeof(arr) / sizeof((arr)[0]))
 #define STATIC_ASSERT(ex, msg) typedef char static_assert_##msg[(ex) ? 1 : -1]
 
-#define BIT(n) (1u << (n))
-#define BIT_SET(v, n) ((v) |= BIT(n))
-#define BIT_CLEAR(v, n) ((v) &= ~BIT(n))
-#define BIT_CHECK(v, n) (((v) & BIT(n)) != 0)
-
 #define SINT_WIDTH(v)                                                          \
     ((v) <= INT8_MAX && (v) >= INT8_MIN         ? 1                            \
         : (v) <= INT16_MAX && (v) >= INT16_MIN  ? 2                            \
@@ -123,12 +118,6 @@ typedef struct parse_limits_s {
     int depth;
     int iterables;
 } parse_limits_s;
-
-/******************************************************************************/
-
-static flexi_result_e
-parse_cursor(const flexi_parser_s *parser, const char *key,
-    const flexi_cursor_s *cursor, void *user, parse_limits_s *limits);
 
 /******************************************************************************/
 
@@ -1511,287 +1500,6 @@ cursor_foreach_untyped_vector(const flexi_cursor_s *cursor,
 }
 
 /**
- * @brief Call the float callback.
- *
- * @param[in] parser Parser to operate on.
- * @param[in] key Key of value.
- * @param[in] cursor Location of cursor to read with.
- * @param[in] user User pointer.
- * @return FLEXI_OK || FLEXI_ERR_BADREAD.
- */
-static flexi_result_e
-parser_emit_flt(const flexi_parser_s *parser, const char *key,
-    const flexi_cursor_s *cursor, void *user)
-{
-    switch (cursor->width) {
-    case 4: {
-        float v;
-        if (!span_read_f32(&cursor->msg, cursor->cursor, cursor->width, &v)) {
-            return FLEXI_ERR_BADREAD;
-        }
-
-        parser->f32(key, v, user);
-        return FLEXI_OK;
-    }
-    case 8: {
-        double v;
-        if (!span_read_f64(&cursor->msg, cursor->cursor, cursor->width, &v)) {
-            return FLEXI_ERR_BADREAD;
-        }
-
-        parser->f64(key, v, user);
-        return FLEXI_OK;
-    }
-    }
-    return FLEXI_ERR_INTERNAL;
-}
-
-/******************************************************************************/
-
-typedef struct foreach_ctx_s {
-    const flexi_parser_s *parser;
-    void *user;
-    parse_limits_s *limits;
-    flexi_result_e err;
-} foreach_ctx_s;
-
-static bool
-parser_emit_foreach(const char *key, flexi_cursor_s *value, void *user)
-{
-    foreach_ctx_s *ctx = (foreach_ctx_s *)user;
-
-    flexi_result_e res =
-        parse_cursor(ctx->parser, key, value, ctx->user, ctx->limits);
-
-    if (FLEXI_ERROR(res)) {
-        ctx->err = res;
-        return false;
-    }
-
-    return true;
-}
-
-/**
- * @brief Call the map callbacks and iterate map values.
- *
- * @param[in] parser Parser to operate on.
- * @param[in] key Key of value.
- * @param[in] cursor Location of cursor to read with.
- * @param[in] user User pointer.
- * @param[in] limits Parse limit tracking.
- * @return FLEXI_OK || FLEXI_ERR_BADREAD.
- */
-static flexi_result_e
-parser_emit_map(const flexi_parser_s *parser, const char *key,
-    const flexi_cursor_s *cursor, void *user, parse_limits_s *limits)
-{
-    ASSERT(cursor->type == FLEXI_TYPE_MAP);
-
-    foreach_ctx_s ctx;
-    ctx.parser = parser;
-    ctx.user = user;
-    ctx.limits = limits;
-    ctx.err = FLEXI_INVALID;
-
-    ctx.limits->depth += 1;
-    if (limits->depth >= FLEXI_CONFIG_MAX_DEPTH) {
-        // Prevent stack overflows.
-        return FLEXI_ERR_PARSELIMIT;
-    }
-
-    parser->map_begin(key, cursor->length, user);
-    flexi_result_e res = cursor_foreach_map(cursor, parser_emit_foreach, &ctx);
-    if (FLEXI_ERROR(res)) {
-        return res;
-    } else if (FLEXI_ERROR(ctx.err)) {
-        return ctx.err;
-    }
-
-    parser->map_end(user);
-    ctx.limits->depth -= 1;
-    return FLEXI_OK;
-}
-
-/**
- * @brief Call the vector callbacks and iterate map values.
- *
- * @param[in] parser Parser to operate on.
- * @param[in] key Key of value.
- * @param[in] cursor Location of cursor to read with.
- * @param[in] user User pointer.
- * @param[in] limits Parse limit tracking.
- * @return FLEXI_OK || FLEXI_ERR_BADREAD.
- */
-static flexi_result_e
-parser_emit_vector(const flexi_parser_s *parser, const char *key,
-    const flexi_cursor_s *cursor, void *user, parse_limits_s *limits)
-{
-    ASSERT(cursor->type == FLEXI_TYPE_VECTOR);
-
-    foreach_ctx_s ctx;
-    ctx.parser = parser;
-    ctx.user = user;
-    ctx.limits = limits;
-    ctx.err = FLEXI_INVALID;
-
-    ctx.limits->depth += 1;
-    if (limits->depth >= FLEXI_CONFIG_MAX_DEPTH) {
-        // Prevent stack overflows.
-        return FLEXI_ERR_PARSELIMIT;
-    }
-
-    parser->vector_begin(key, cursor->length, user);
-    flexi_result_e res =
-        cursor_foreach_untyped_vector(cursor, parser_emit_foreach, &ctx);
-    if (FLEXI_ERROR(res)) {
-        return res;
-    } else if (FLEXI_ERROR(ctx.err)) {
-        return ctx.err;
-    }
-
-    parser->vector_end(user);
-    ctx.limits->depth -= 1;
-    return FLEXI_OK;
-}
-
-/**
- * @brief Call the vector callbacks and iterate keys in vector.
- *
- * @param[in] parser Parser to operate on.
- * @param[in] key Key of value.
- * @param[in] cursor Location of cursor to read with.
- * @param[in] user User pointer.
- * @return FLEXI_OK || FLEXI_ERR_BADREAD.
- */
-static flexi_result_e
-parser_emit_vector_keys(const flexi_parser_s *parser, const char *key,
-    const flexi_cursor_s *cursor, void *user)
-{
-    ASSERT(cursor->type == FLEXI_TYPE_VECTOR_KEY);
-
-    parser->vector_begin(key, cursor->length, user);
-    for (flexi_ssize_t i = 0; i < cursor->length; i++) {
-        // Access the offset by hand.
-        flexi_ssize_t offset = 0;
-        const char *offset_ptr = cursor->cursor + (i * cursor->width);
-        if (!read_size_unsafe(offset_ptr, cursor->width, &offset)) {
-            return FLEXI_ERR_BADREAD;
-        }
-
-        const char *dest = NULL;
-        if (!span_seek_back(&cursor->msg, offset_ptr, offset, &dest)) {
-            return FLEXI_ERR_BADREAD;
-        }
-
-        parser->key(NULL, dest, user);
-    }
-
-    parser->vector_end(user);
-    return FLEXI_OK;
-}
-
-/**
- * @brief Call the appropriate parser callbacks at the given cursor.
- *
- * @param[in] parser Parser to operate on.
- * @param[in] key Key of cursor.
- * @param[in] cursor Location of cursor to read with.
- * @param[in] user User pointer.
- * @param[in] limits Parse limit tracking.
- * @return FLEXI_OK || FLEXI_ERR_BADREAD || FLEXI_ERR_PARSELIMIT.
- */
-static flexi_result_e
-parse_cursor(const flexi_parser_s *parser, const char *key,
-    const flexi_cursor_s *cursor, void *user, parse_limits_s *limits)
-{
-    switch (cursor->type) {
-    case FLEXI_TYPE_NULL: parser->null(key, user); return FLEXI_OK;
-    case FLEXI_TYPE_SINT:
-    case FLEXI_TYPE_INDIRECT_SINT: {
-        int64_t v;
-        if (!span_read_sint(&cursor->msg, cursor->cursor, cursor->width, &v)) {
-            return FLEXI_ERR_BADREAD;
-        }
-
-        parser->sint(key, v, user);
-        return FLEXI_OK;
-    }
-    case FLEXI_TYPE_UINT:
-    case FLEXI_TYPE_INDIRECT_UINT: {
-        uint64_t v;
-        if (!span_read_uint(&cursor->msg, cursor->cursor, cursor->width, &v)) {
-            return FLEXI_ERR_BADREAD;
-        }
-
-        parser->uint(key, v, user);
-        return FLEXI_OK;
-    }
-    case FLEXI_TYPE_FLOAT:
-    case FLEXI_TYPE_INDIRECT_FLOAT:
-        return parser_emit_flt(parser, key, cursor, user);
-    case FLEXI_TYPE_KEY:
-        parser->key(key, cursor->cursor, user);
-        return FLEXI_OK;
-    case FLEXI_TYPE_STRING: {
-        parser->string(key, cursor->cursor, cursor->length, user);
-        return FLEXI_OK;
-    }
-    case FLEXI_TYPE_MAP:
-        limits->iterables += 1;
-        if (limits->iterables >= FLEXI_CONFIG_MAX_ITERABLES) {
-            // Defuse FlexBuffer "bomb" inputs.
-            return FLEXI_ERR_PARSELIMIT;
-        }
-        return parser_emit_map(parser, key, cursor, user, limits);
-    case FLEXI_TYPE_VECTOR: {
-        limits->iterables += 1;
-        if (limits->iterables >= FLEXI_CONFIG_MAX_ITERABLES) {
-            // Defuse FlexBuffer "bomb" inputs.
-            return FLEXI_ERR_PARSELIMIT;
-        }
-        return parser_emit_vector(parser, key, cursor, user, limits);
-    }
-    case FLEXI_TYPE_VECTOR_SINT:
-    case FLEXI_TYPE_VECTOR_UINT:
-    case FLEXI_TYPE_VECTOR_FLOAT:
-    case FLEXI_TYPE_VECTOR_BOOL: {
-        parser->typed_vector(key, cursor->cursor, cursor->type, cursor->width,
-            cursor->length, user);
-        return FLEXI_OK;
-    }
-    case FLEXI_TYPE_VECTOR_KEY:
-        return parser_emit_vector_keys(parser, key, cursor, user);
-    case FLEXI_TYPE_VECTOR_SINT2:
-    case FLEXI_TYPE_VECTOR_UINT2:
-    case FLEXI_TYPE_VECTOR_FLOAT2:
-        parser->typed_vector(key, cursor->cursor, cursor->type, cursor->width,
-            2, user);
-        return FLEXI_OK;
-    case FLEXI_TYPE_VECTOR_SINT3:
-    case FLEXI_TYPE_VECTOR_UINT3:
-    case FLEXI_TYPE_VECTOR_FLOAT3:
-        parser->typed_vector(key, cursor->cursor, cursor->type, cursor->width,
-            3, user);
-        return FLEXI_OK;
-    case FLEXI_TYPE_VECTOR_SINT4:
-    case FLEXI_TYPE_VECTOR_UINT4:
-    case FLEXI_TYPE_VECTOR_FLOAT4:
-        parser->typed_vector(key, cursor->cursor, cursor->type, cursor->width,
-            4, user);
-        return FLEXI_OK;
-    case FLEXI_TYPE_BLOB: {
-        parser->blob(key, cursor->cursor, cursor->length, user);
-        return FLEXI_OK;
-    }
-    case FLEXI_TYPE_BOOL:
-        parser->boolean(key, *(const bool *)(cursor->cursor), user);
-        return FLEXI_OK;
-    }
-
-    return FLEXI_ERR_INTERNAL;
-}
-
-/**
  * @brief Peek at the n-th value from the current tail of the stack.  0 is
  *        the tail of the stack and returns a value if the stack contains
  *        any values.
@@ -2952,16 +2660,6 @@ flexi_cursor_bool(const flexi_cursor_s *cursor, bool *val)
 
 /******************************************************************************/
 
-flexi_result_e
-flexi_parse_cursor(const flexi_parser_s *parser, const flexi_cursor_s *cursor,
-    void *user)
-{
-    parse_limits_s limits = {0};
-    return parse_cursor(parser, NULL, cursor, user, &limits);
-}
-
-/******************************************************************************/
-
 flexi_stack_s
 flexi_make_stack(flexi_stack_at_fn at, flexi_stack_count_fn count,
     flexi_stack_push_fn push, flexi_stack_pop_fn pop, void *user)
@@ -4063,10 +3761,334 @@ flexi_writer_debug_stack_count(flexi_writer_s *writer)
 
 /******************************************************************************/
 
+#if FLEXI_FEATURE_PARSER
+
+typedef struct foreach_ctx_s {
+    const flexi_parser_s *parser;
+    void *user;
+    parse_limits_s *limits;
+    flexi_result_e err;
+} foreach_ctx_s;
+
+static flexi_result_e
+parse_cursor(const flexi_parser_s *parser, const char *key,
+    const flexi_cursor_s *cursor, void *user, parse_limits_s *limits);
+
+/**
+ * @brief For each value, parse the cursor.
+ */
+static bool
+parser_emit_foreach(const char *key, flexi_cursor_s *value, void *user)
+{
+    foreach_ctx_s *ctx = (foreach_ctx_s *)user;
+
+    flexi_result_e res =
+        parse_cursor(ctx->parser, key, value, ctx->user, ctx->limits);
+
+    if (FLEXI_ERROR(res)) {
+        ctx->err = res;
+        return false;
+    }
+
+    return true;
+}
+
+/**
+ * @brief Call the float callback.
+ *
+ * @param[in] parser Parser to operate on.
+ * @param[in] key Key of value.
+ * @param[in] cursor Location of cursor to read with.
+ * @param[in] user User pointer.
+ * @return FLEXI_OK || FLEXI_ERR_CALLBACK || FLEXI_ERR_BADREAD.
+ */
+static flexi_result_e
+parser_emit_flt(const flexi_parser_s *parser, const char *key,
+    const flexi_cursor_s *cursor, void *user)
+{
+    switch (cursor->width) {
+    case 4: {
+        float v;
+        if (!span_read_f32(&cursor->msg, cursor->cursor, cursor->width, &v)) {
+            return FLEXI_ERR_BADREAD;
+        }
+
+        return parser->f32(key, v, user) ? FLEXI_OK : FLEXI_ERR_CALLBACK;
+    }
+    case 8: {
+        double v;
+        if (!span_read_f64(&cursor->msg, cursor->cursor, cursor->width, &v)) {
+            return FLEXI_ERR_BADREAD;
+        }
+
+        return parser->f64(key, v, user) ? FLEXI_OK : FLEXI_ERR_CALLBACK;
+    }
+    }
+    return FLEXI_ERR_INTERNAL;
+}
+
+/**
+ * @brief Call the map callbacks and iterate map values.
+ *
+ * @param[in] parser Parser to operate on.
+ * @param[in] key Key of value.
+ * @param[in] cursor Location of cursor to read with.
+ * @param[in] user User pointer.
+ * @param[in] limits Parse limit tracking.
+ * @return FLEXI_OK || FLEXI_ERR_CALLBACK || FLEXI_ERR_BADREAD.
+ */
+static flexi_result_e
+parser_emit_map(const flexi_parser_s *parser, const char *key,
+    const flexi_cursor_s *cursor, void *user, parse_limits_s *limits)
+{
+    ASSERT(cursor->type == FLEXI_TYPE_MAP);
+
+    foreach_ctx_s ctx;
+    ctx.parser = parser;
+    ctx.user = user;
+    ctx.limits = limits;
+    ctx.err = FLEXI_INVALID;
+
+    ctx.limits->depth += 1;
+    if (limits->depth >= FLEXI_CONFIG_MAX_DEPTH) {
+        // Prevent stack overflows.
+        return FLEXI_ERR_PARSELIMIT;
+    }
+
+    if (!parser->map_begin(key, cursor->length, user)) {
+        return FLEXI_ERR_CALLBACK;
+    }
+
+    flexi_result_e res = cursor_foreach_map(cursor, parser_emit_foreach, &ctx);
+    if (FLEXI_ERROR(res)) {
+        return res;
+    } else if (FLEXI_ERROR(ctx.err)) {
+        return ctx.err;
+    }
+
+    if (!parser->map_end(user)) {
+        return FLEXI_ERR_CALLBACK;
+    }
+
+    ctx.limits->depth -= 1;
+    return FLEXI_OK;
+}
+
+/**
+ * @brief Call the vector callbacks and iterate map values.
+ *
+ * @param[in] parser Parser to operate on.
+ * @param[in] key Key of value.
+ * @param[in] cursor Location of cursor to read with.
+ * @param[in] user User pointer.
+ * @param[in] limits Parse limit tracking.
+ * @return FLEXI_OK || FLEXI_ERR_CALLBACK || FLEXI_ERR_BADREAD.
+ */
+static flexi_result_e
+parser_emit_vector(const flexi_parser_s *parser, const char *key,
+    const flexi_cursor_s *cursor, void *user, parse_limits_s *limits)
+{
+    ASSERT(cursor->type == FLEXI_TYPE_VECTOR);
+
+    foreach_ctx_s ctx;
+    ctx.parser = parser;
+    ctx.user = user;
+    ctx.limits = limits;
+    ctx.err = FLEXI_INVALID;
+
+    ctx.limits->depth += 1;
+    if (limits->depth >= FLEXI_CONFIG_MAX_DEPTH) {
+        // Prevent stack overflows.
+        return FLEXI_ERR_PARSELIMIT;
+    }
+
+    if (!parser->vector_begin(key, cursor->length, user)) {
+        return FLEXI_ERR_CALLBACK;
+    }
+
+    flexi_result_e res =
+        cursor_foreach_untyped_vector(cursor, parser_emit_foreach, &ctx);
+    if (FLEXI_ERROR(res)) {
+        return res;
+    } else if (FLEXI_ERROR(ctx.err)) {
+        return ctx.err;
+    }
+
+    if (!parser->vector_end(user)) {
+        return FLEXI_ERR_CALLBACK;
+    }
+
+    ctx.limits->depth -= 1;
+    return FLEXI_OK;
+}
+
+/**
+ * @brief Call the vector callbacks and iterate keys in vector.
+ *
+ * @param[in] parser Parser to operate on.
+ * @param[in] key Key of value.
+ * @param[in] cursor Location of cursor to read with.
+ * @param[in] user User pointer.
+ * @return FLEXI_OK || FLEXI_ERR_BADREAD.
+ */
+static flexi_result_e
+parser_emit_vector_keys(const flexi_parser_s *parser, const char *key,
+    const flexi_cursor_s *cursor, void *user)
+{
+    ASSERT(cursor->type == FLEXI_TYPE_VECTOR_KEY);
+
+    parser->vector_begin(key, cursor->length, user);
+    for (flexi_ssize_t i = 0; i < cursor->length; i++) {
+        // Access the offset by hand.
+        flexi_ssize_t offset = 0;
+        const char *offset_ptr = cursor->cursor + (i * cursor->width);
+        if (!read_size_unsafe(offset_ptr, cursor->width, &offset)) {
+            return FLEXI_ERR_BADREAD;
+        }
+
+        const char *dest = NULL;
+        if (!span_seek_back(&cursor->msg, offset_ptr, offset, &dest)) {
+            return FLEXI_ERR_BADREAD;
+        }
+
+        parser->key(NULL, dest, user);
+    }
+
+    parser->vector_end(user);
+    return FLEXI_OK;
+}
+
+/**
+ * @brief Call the appropriate parser callbacks at the given cursor.
+ *
+ * @param[in] parser Parser to operate on.
+ * @param[in] key Key of cursor.
+ * @param[in] cursor Location of cursor to read with.
+ * @param[in] user User pointer.
+ * @param[in] limits Parse limit tracking.
+ * @return FLEXI_OK || FLEXI_ERR_BADREAD || FLEXI_ERR_PARSELIMIT.
+ */
+static flexi_result_e
+parse_cursor(const flexi_parser_s *parser, const char *key,
+    const flexi_cursor_s *cursor, void *user, parse_limits_s *limits)
+{
+    switch (cursor->type) {
+    case FLEXI_TYPE_NULL:
+        return parser->null(key, user) ? FLEXI_OK : FLEXI_ERR_CALLBACK;
+    case FLEXI_TYPE_SINT:
+    case FLEXI_TYPE_INDIRECT_SINT: {
+        int64_t v;
+        if (!span_read_sint(&cursor->msg, cursor->cursor, cursor->width, &v)) {
+            return FLEXI_ERR_BADREAD;
+        }
+
+        return parser->sint(key, v, user) ? FLEXI_OK : FLEXI_ERR_CALLBACK;
+    }
+    case FLEXI_TYPE_UINT:
+    case FLEXI_TYPE_INDIRECT_UINT: {
+        uint64_t v;
+        if (!span_read_uint(&cursor->msg, cursor->cursor, cursor->width, &v)) {
+            return FLEXI_ERR_BADREAD;
+        }
+
+        return parser->uint(key, v, user) ? FLEXI_OK : FLEXI_ERR_CALLBACK;
+    }
+    case FLEXI_TYPE_FLOAT:
+    case FLEXI_TYPE_INDIRECT_FLOAT:
+        return parser_emit_flt(parser, key, cursor, user);
+    case FLEXI_TYPE_KEY:
+        return parser->key(key, cursor->cursor, user) ? FLEXI_OK
+                                                      : FLEXI_ERR_CALLBACK;
+    case FLEXI_TYPE_STRING: {
+        return parser->string(key, cursor->cursor, cursor->length, user)
+                   ? FLEXI_OK
+                   : FLEXI_ERR_CALLBACK;
+    }
+    case FLEXI_TYPE_MAP:
+        limits->iterables += 1;
+        if (limits->iterables >= FLEXI_CONFIG_MAX_ITERABLES) {
+            // Defuse FlexBuffer "bomb" inputs.
+            return FLEXI_ERR_PARSELIMIT;
+        }
+        return parser_emit_map(parser, key, cursor, user, limits);
+    case FLEXI_TYPE_VECTOR: {
+        limits->iterables += 1;
+        if (limits->iterables >= FLEXI_CONFIG_MAX_ITERABLES) {
+            // Defuse FlexBuffer "bomb" inputs.
+            return FLEXI_ERR_PARSELIMIT;
+        }
+        return parser_emit_vector(parser, key, cursor, user, limits);
+    }
+    case FLEXI_TYPE_VECTOR_SINT:
+    case FLEXI_TYPE_VECTOR_UINT:
+    case FLEXI_TYPE_VECTOR_FLOAT:
+    case FLEXI_TYPE_VECTOR_BOOL: {
+        return parser->typed_vector(key, cursor->cursor, cursor->type,
+                   cursor->width, cursor->length, user)
+                   ? FLEXI_OK
+                   : FLEXI_ERR_CALLBACK;
+    }
+    case FLEXI_TYPE_VECTOR_KEY:
+        return parser_emit_vector_keys(parser, key, cursor, user);
+    case FLEXI_TYPE_VECTOR_SINT2:
+    case FLEXI_TYPE_VECTOR_UINT2:
+    case FLEXI_TYPE_VECTOR_FLOAT2:
+        return parser->typed_vector(key, cursor->cursor, cursor->type,
+                   cursor->width, 2, user)
+                   ? FLEXI_OK
+                   : FLEXI_ERR_CALLBACK;
+    case FLEXI_TYPE_VECTOR_SINT3:
+    case FLEXI_TYPE_VECTOR_UINT3:
+    case FLEXI_TYPE_VECTOR_FLOAT3:
+        return parser->typed_vector(key, cursor->cursor, cursor->type,
+                   cursor->width, 3, user)
+                   ? FLEXI_OK
+                   : FLEXI_ERR_CALLBACK;
+    case FLEXI_TYPE_VECTOR_SINT4:
+    case FLEXI_TYPE_VECTOR_UINT4:
+    case FLEXI_TYPE_VECTOR_FLOAT4:
+        return parser->typed_vector(key, cursor->cursor, cursor->type,
+                   cursor->width, 4, user)
+                   ? FLEXI_OK
+                   : FLEXI_ERR_CALLBACK;
+    case FLEXI_TYPE_BLOB: {
+        return parser->blob(key, cursor->cursor, cursor->length, user)
+                   ? FLEXI_OK
+                   : FLEXI_ERR_CALLBACK;
+    }
+    case FLEXI_TYPE_BOOL:
+        return parser->boolean(key, *(const bool *)(cursor->cursor), user)
+                   ? FLEXI_OK
+                   : FLEXI_ERR_CALLBACK;
+    }
+
+    return FLEXI_ERR_INTERNAL;
+}
+
+/******************************************************************************/
+
+flexi_result_e
+flexi_parse_cursor(const flexi_parser_s *parser, const flexi_cursor_s *cursor,
+    void *user)
+{
+    parse_limits_s limits = {0};
+    return parse_cursor(parser, NULL, cursor, user, &limits);
+}
+
+#endif // #if FLEXI_FEATURE_PARSER
+
+/******************************************************************************/
+
 #if FLEXI_FEATURE_JSON
 
 #include <stdarg.h>
 #include <stdio.h>
+
+#define BIT(n) (1u << (n))
+#define BIT_SET(v, n) ((v) |= BIT(n))
+#define BIT_CLEAR(v, n) ((v) &= ~BIT(n))
+#define BIT_CHECK(v, n) (((v) & BIT(n)) != 0)
+#define JSON_BOOL(v) ((v) ? "true" : "false")
 
 typedef struct json_state_s {
     char buffer[24];
@@ -4139,208 +4161,237 @@ json_state_write_key(json_state_s *state, const char *str)
     return !err;
 }
 
-static void
+static bool
 json_state_handle_comma(json_state_s *state)
 {
     if (BIT_CHECK(state->skip_comma, state->depth)) {
         BIT_CLEAR(state->skip_comma, state->depth);
+        return true;
     } else {
-        json_state_write(state, ",", 1);
+        return json_state_write(state, ",", 1);
     }
 }
 
-static void
+/**
+ * @brief Convert FlexBuffer null to JSON null.
+ */
+static bool
 to_json_null(const char *key, void *user)
 {
     json_state_s *state = (json_state_s *)user;
-    json_state_handle_comma(state);
+    bool err = !json_state_handle_comma(state);
 
     if (key) {
-        json_state_write_key(state, key);
-        json_state_write(state, ":null", 5);
+        err |= !json_state_write_key(state, key);
+        err |= !json_state_write(state, ":null", 5);
     } else {
-        json_state_write(state, "null", 4);
+        err |= !json_state_write(state, "null", 4);
     }
+
+    return !err;
 }
 
-static void
+/**
+ * @brief Convert FlexBuffer signed int to JSON number.
+ */
+static bool
 to_json_sint(const char *key, int64_t value, void *user)
 {
     json_state_s *state = (json_state_s *)user;
-    json_state_handle_comma(state);
+    bool err = !json_state_handle_comma(state);
 
     if (key) {
-        json_state_write_key(state, key);
-        json_state_printf(state, ":%lld", (long long)value);
+        err |= !json_state_write_key(state, key);
+        err |= !json_state_printf(state, ":%lld", (long long)value);
     } else {
-        json_state_printf(state, "%lld", (long long)value);
+        err |= !json_state_printf(state, "%lld", (long long)value);
     }
+
+    return !err;
 }
 
-static void
+/**
+ * @brief Convert FlexBuffer unsigned int to JSON number.
+ */
+static bool
 to_json_uint(const char *key, uint64_t value, void *user)
 {
     json_state_s *state = (json_state_s *)user;
-    json_state_handle_comma(state);
+    bool err = !json_state_handle_comma(state);
 
     if (key) {
-        json_state_write_key(state, key);
-        json_state_printf(state, ":%llu", (unsigned long long)value);
+        err |= !json_state_write_key(state, key);
+        err |= !json_state_printf(state, ":%llu", (unsigned long long)value);
     } else {
-        json_state_printf(state, "%llu", (unsigned long long)value);
+        err |= !json_state_printf(state, "%llu", (unsigned long long)value);
     }
+
+    return !err;
 }
 
-static void
+/**
+ * @brief Convert FlexBuffer 32-bit float to JSON float.
+ */
+static bool
 to_json_f32(const char *key, float value, void *user)
 {
     json_state_s *state = (json_state_s *)user;
-    json_state_handle_comma(state);
+    bool err = !json_state_handle_comma(state);
 
     if (key) {
-        json_state_write_key(state, key);
-        json_state_printf(state, ":%.9g", value);
+        err |= !json_state_write_key(state, key);
+        err |= !json_state_printf(state, ":%.9g", value);
     } else {
-        json_state_printf(state, "%.9g", value);
+        err |= !json_state_printf(state, "%.9g", value);
     }
+
+    return !err;
 }
 
-static void
+/**
+ * @brief Convert FlexBuffer 64-bit float to JSON float.
+ */
+static bool
 to_json_f64(const char *key, double value, void *user)
 {
     json_state_s *state = (json_state_s *)user;
-    json_state_handle_comma(state);
+    bool err = !json_state_handle_comma(state);
 
     if (key) {
-        json_state_write_key(state, key);
-        json_state_printf(state, ":%.17g", value);
+        err |= !json_state_write_key(state, key);
+        err |= !json_state_printf(state, ":%.17g", value);
     } else {
-        json_state_printf(state, "%.17g", value);
+        err |= !json_state_printf(state, "%.17g", value);
     }
+
+    return !err;
 }
 
-static void
+/**
+ * @brief Convert FlexBuffer key to JSON string.
+ */
+static bool
 to_json_key(const char *key, const char *str, void *user)
 {
     json_state_s *state = (json_state_s *)user;
-    json_state_handle_comma(state);
+    bool err = !json_state_handle_comma(state);
 
     if (key) {
-        json_state_write_key(state, key);
-        json_state_write(state, ":", 1);
+        err |= !json_state_write_key(state, key);
+        err |= !json_state_write(state, ":", 1);
     }
-    json_state_write_key(state, str);
+    err |= !json_state_write_key(state, str);
+
+    return !err;
 }
 
 /**
  * @brief Handle FlexBuffer start-of-map.
  */
-static void
+static bool
 to_json_string(const char *key, const char *str, flexi_ssize_t len, void *user)
 {
     json_state_s *state = (json_state_s *)user;
-    json_state_handle_comma(state);
+    bool err = !json_state_handle_comma(state);
 
     if (key) {
-        json_state_write_key(state, key);
-        json_state_write(state, ":", 1);
+        err |= !json_state_write_key(state, key);
+        err |= !json_state_write(state, ":", 1);
     }
 
-    {
-        bool err = !json_state_write(state, "\"", 1);
-
-        for (flexi_ssize_t i = 0; i < len; i++) {
-            err |= !to_json_write_char(state, str[i]);
-        }
-
-        err |= !json_state_write(state, "\"", 1);
-        // return !err;
+    err |= !json_state_write(state, "\"", 1);
+    for (flexi_ssize_t i = 0; i < len; i++) {
+        err |= !to_json_write_char(state, str[i]);
     }
+    err |= !json_state_write(state, "\"", 1);
+    return !err;
 }
 
 /**
  * @brief Handle FlexBuffer start-of-map.
  */
-static void
+static bool
 to_json_map_begin(const char *key, flexi_ssize_t len, void *user)
 {
     (void)len;
     json_state_s *state = (json_state_s *)user;
-    json_state_handle_comma(state);
+    bool err = !json_state_handle_comma(state);
 
     if (key) {
-        json_state_write_key(state, key);
-        json_state_write(state, ":{", 2);
+        err |= !json_state_write_key(state, key);
+        err |= !json_state_write(state, ":{", 2);
     } else {
-        json_state_write(state, "{", 1);
+        err |= !json_state_write(state, "{", 1);
     }
 
     state->depth += 1;
     BIT_SET(state->skip_comma, state->depth);
+    return !err;
 }
 
 /**
  * @brief Handle FlexBuffer end-of-map.
  */
-static void
+static bool
 to_json_map_end(void *user)
 {
     json_state_s *state = (json_state_s *)user;
 
     state->depth -= 1; // No need to clear bit.
 
-    json_state_write(state, "}", 1);
+    return json_state_write(state, "}", 1);
 }
 
 /**
  * @brief Handle FlexBuffer start-of-vector.
  */
-static void
+static bool
 to_json_vector_begin(const char *key, flexi_ssize_t len, void *user)
 {
     (void)len;
     json_state_s *state = (json_state_s *)user;
-    json_state_handle_comma(state);
+    bool err = !json_state_handle_comma(state);
 
     if (key) {
-        json_state_write_key(state, key);
-        json_state_write(state, ":[", 2);
+        err |= !json_state_write_key(state, key);
+        err |= !json_state_write(state, ":[", 2);
     } else {
-        json_state_write(state, "[", 1);
+        err |= !json_state_write(state, "[", 1);
     }
 
     state->depth += 1;
     BIT_SET(state->skip_comma, state->depth);
+    return !err;
 }
 
 /**
  * @brief Handle FlexBuffer end-of-vector.
  */
-static void
+static bool
 to_json_vector_end(void *user)
 {
     json_state_s *state = (json_state_s *)user;
 
     state->depth -= 1; // No need to clear bit.
 
-    json_state_write(state, "]", 1);
+    return json_state_write(state, "]", 1);
 }
 
 /**
  * @brief Convert FlexBuffer typed vectors to JSON arrays.
  */
-static void
+static bool
 to_json_typed_vector(const char *key, const void *ptr, flexi_type_e type,
     int width, flexi_ssize_t count, void *user)
 {
     json_state_s *state = (json_state_s *)user;
-    json_state_handle_comma(state);
+    bool err = !json_state_handle_comma(state);
 
     if (key) {
-        json_state_write_key(state, key);
-        json_state_write(state, ":[", 2);
+        err |= !json_state_write_key(state, key);
+        err |= !json_state_write(state, ":[", 2);
     } else {
-        json_state_write(state, "[", 1);
+        err |= !json_state_write(state, "[", 1);
     }
 
     switch (type) {
@@ -4353,9 +4404,9 @@ to_json_typed_vector(const char *key, const void *ptr, flexi_type_e type,
             const int8_t *data = (const int8_t *)ptr;
             for (flexi_ssize_t i = 0; i < count; i++) {
                 if (i != 0) {
-                    json_state_printf(state, ",%hhd", data[i]);
+                    err |= !json_state_printf(state, ",%hhd", data[i]);
                 } else {
-                    json_state_printf(state, "%hhd", data[i]);
+                    err |= !json_state_printf(state, "%hhd", data[i]);
                 }
             }
             break;
@@ -4364,9 +4415,9 @@ to_json_typed_vector(const char *key, const void *ptr, flexi_type_e type,
             const int16_t *data = (const int16_t *)ptr;
             for (flexi_ssize_t i = 0; i < count; i++) {
                 if (i != 0) {
-                    json_state_printf(state, ",%hd", data[i]);
+                    err |= !json_state_printf(state, ",%hd", data[i]);
                 } else {
-                    json_state_printf(state, "%hd", data[i]);
+                    err |= !json_state_printf(state, "%hd", data[i]);
                 }
             }
             break;
@@ -4375,9 +4426,9 @@ to_json_typed_vector(const char *key, const void *ptr, flexi_type_e type,
             const int32_t *data = (const int32_t *)ptr;
             for (flexi_ssize_t i = 0; i < count; i++) {
                 if (i != 0) {
-                    json_state_printf(state, ",%d", data[i]);
+                    err |= !json_state_printf(state, ",%d", data[i]);
                 } else {
-                    json_state_printf(state, "%d", data[i]);
+                    err |= !json_state_printf(state, "%d", data[i]);
                 }
             }
             break;
@@ -4386,9 +4437,11 @@ to_json_typed_vector(const char *key, const void *ptr, flexi_type_e type,
             const int64_t *data = (const int64_t *)ptr;
             for (flexi_ssize_t i = 0; i < count; i++) {
                 if (i != 0) {
-                    json_state_printf(state, ",%lld", (long long)data[i]);
+                    err |=
+                        !json_state_printf(state, ",%lld", (long long)data[i]);
                 } else {
-                    json_state_printf(state, "%lld", (long long)data[i]);
+                    err |=
+                        !json_state_printf(state, "%lld", (long long)data[i]);
                 }
             }
             break;
@@ -4404,9 +4457,9 @@ to_json_typed_vector(const char *key, const void *ptr, flexi_type_e type,
             const uint8_t *data = (const uint8_t *)ptr;
             for (flexi_ssize_t i = 0; i < count; i++) {
                 if (i != 0) {
-                    json_state_printf(state, ",%hhu", data[i]);
+                    err |= !json_state_printf(state, ",%hhu", data[i]);
                 } else {
-                    json_state_printf(state, "%hhu", data[i]);
+                    err |= !json_state_printf(state, "%hhu", data[i]);
                 }
             }
             break;
@@ -4415,9 +4468,9 @@ to_json_typed_vector(const char *key, const void *ptr, flexi_type_e type,
             const uint16_t *data = (const uint16_t *)ptr;
             for (flexi_ssize_t i = 0; i < count; i++) {
                 if (i != 0) {
-                    json_state_printf(state, ",%hu", data[i]);
+                    err |= !json_state_printf(state, ",%hu", data[i]);
                 } else {
-                    json_state_printf(state, "%hu", data[i]);
+                    err |= !json_state_printf(state, "%hu", data[i]);
                 }
             }
             break;
@@ -4426,9 +4479,9 @@ to_json_typed_vector(const char *key, const void *ptr, flexi_type_e type,
             const uint32_t *data = (const uint32_t *)ptr;
             for (flexi_ssize_t i = 0; i < count; i++) {
                 if (i != 0) {
-                    json_state_printf(state, ",%u", data[i]);
+                    err |= !json_state_printf(state, ",%u", data[i]);
                 } else {
-                    json_state_printf(state, "%u", data[i]);
+                    err |= !json_state_printf(state, "%u", data[i]);
                 }
             }
             break;
@@ -4437,10 +4490,10 @@ to_json_typed_vector(const char *key, const void *ptr, flexi_type_e type,
             const uint64_t *data = (const uint64_t *)ptr;
             for (flexi_ssize_t i = 0; i < count; i++) {
                 if (i != 0) {
-                    json_state_printf(state, ",%llu",
+                    err |= !json_state_printf(state, ",%llu",
                         (unsigned long long)data[i]);
                 } else {
-                    json_state_printf(state, "%llu",
+                    err |= !json_state_printf(state, "%llu",
                         (unsigned long long)data[i]);
                 }
             }
@@ -4457,9 +4510,9 @@ to_json_typed_vector(const char *key, const void *ptr, flexi_type_e type,
             const float *data = (const float *)ptr;
             for (flexi_ssize_t i = 0; i < count; i++) {
                 if (i != 0) {
-                    json_state_printf(state, ",%.9g", data[i]);
+                    err |= !json_state_printf(state, ",%.9g", data[i]);
                 } else {
-                    json_state_printf(state, "%.9g", data[i]);
+                    err |= !json_state_printf(state, "%.9g", data[i]);
                 }
             }
             break;
@@ -4468,9 +4521,9 @@ to_json_typed_vector(const char *key, const void *ptr, flexi_type_e type,
             const double *data = (const double *)ptr;
             for (flexi_ssize_t i = 0; i < count; i++) {
                 if (i != 0) {
-                    json_state_printf(state, ",%.17g", data[i]);
+                    err |= !json_state_printf(state, ",%.17g", data[i]);
                 } else {
-                    json_state_printf(state, "%.17g", data[i]);
+                    err |= !json_state_printf(state, "%.17g", data[i]);
                 }
             }
             break;
@@ -4481,34 +4534,36 @@ to_json_typed_vector(const char *key, const void *ptr, flexi_type_e type,
         const bool *data = (const bool *)ptr;
         for (flexi_ssize_t i = 0; i < count; i++) {
             if (i != 0) {
-                json_state_printf(state, ",%s", data[i] ? "true" : "false");
+                err |= !json_state_printf(state, ",%s", JSON_BOOL(data[i]));
             } else {
-                json_state_printf(state, "%s", data[i] ? "true" : "false");
+                err |= !json_state_printf(state, "%s", JSON_BOOL(data[i]));
             }
         }
         break;
     }
+    default: ASSERT(false); return false;
     }
 
-    json_state_write(state, "]", 1);
+    err |= !json_state_write(state, "]", 1);
+    return !err;
 }
 
 /**
  * @brief Convert FlexBuffer blob to base64-encoded JSON string.
  */
-static void
+static bool
 to_json_blob(const char *key, const void *ptr, flexi_ssize_t len, void *user)
 {
     json_state_s *state = (json_state_s *)user;
-    json_state_handle_comma(state);
+    bool err = !json_state_handle_comma(state);
 
     if (key) {
-        json_state_write_key(state, key);
-        json_state_write(state, ":", 1);
+        err |= !json_state_write_key(state, key);
+        err |= !json_state_write(state, ":", 1);
     }
 
     // Blobs are encoded as base64.
-    json_state_write(state, "\"", 1);
+    err |= !json_state_write(state, "\"", 1);
 
     const uint8_t *in = (const uint8_t *)ptr;
     uint32_t mut;
@@ -4524,7 +4579,7 @@ to_json_blob(const char *key, const void *ptr, flexi_ssize_t len, void *user)
         out[1] = g_base64[(mut >> 12) & 0x3F];
         out[2] = g_base64[(mut >> 6) & 0x3F];
         out[3] = g_base64[mut & 0x3F];
-        json_state_write(state, out, sizeof(out));
+        err |= !json_state_write(state, out, sizeof(out));
     }
 
     // Write out the remaining bytes, with padding.
@@ -4535,34 +4590,37 @@ to_json_blob(const char *key, const void *ptr, flexi_ssize_t len, void *user)
         out[1] = g_base64[(mut >> 12) & 0x3F];
         out[2] = g_base64[(mut >> 6) & 0x3F];
         out[3] = '=';
-        json_state_write(state, out, sizeof(out));
+        err |= !json_state_write(state, out, sizeof(out));
     } else if (len - i == 1) {
         mut = in[0] << 16;
         out[0] = g_base64[(mut >> 18) & 0x3F];
         out[1] = g_base64[(mut >> 12) & 0x3F];
         out[2] = '=';
         out[3] = '=';
-        json_state_write(state, out, sizeof(out));
+        err |= !json_state_write(state, out, sizeof(out));
     }
 
-    json_state_write(state, "\"", 1);
+    err |= !json_state_write(state, "\"", 1);
+    return !err;
 }
 
 /**
  * @brief Convert FlexBuffer boolean to JSON boolean.
  */
-static void
+static bool
 to_json_boolean(const char *key, bool val, void *user)
 {
     json_state_s *state = (json_state_s *)user;
-    json_state_handle_comma(state);
+    bool err = !json_state_handle_comma(state);
 
     if (key) {
-        json_state_write_key(state, key);
-        json_state_printf(state, ":%s", val ? "true" : "false");
+        err |= !json_state_write_key(state, key);
+        err |= !json_state_printf(state, ":%s", JSON_BOOL(val));
     } else {
-        json_state_printf(state, "%s", val ? "true" : "false");
+        err |= !json_state_printf(state, "%s", JSON_BOOL(val));
     }
+
+    return !err;
 }
 
 /******************************************************************************/

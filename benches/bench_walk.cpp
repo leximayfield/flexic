@@ -24,24 +24,27 @@
 
 /******************************************************************************/
 
-static void
+static bool
 flexic_EmitString(const char *key, const char *str, flexi_ssize_t len, void *)
 {
     volatile const char *k = key;
     volatile const char *s = str;
     volatile flexi_ssize_t l = len;
+    return true;
 }
 
-static void
+static bool
 flexic_EmitBeginMap(const char *key, flexi_ssize_t len, void *)
 {
     volatile const char *k = key;
     volatile size_t l = len;
+    return true;
 }
 
-static void
+static bool
 flexic_EmitEndMap(void *)
 {
+    return true;
 }
 
 static flexi_parser_s

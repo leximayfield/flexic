@@ -26,8 +26,17 @@
  * @file flexic.h
  */
 
+#ifndef FLEXI_FEATURE_PARSER
+#define FLEXI_FEATURE_PARSER 1
+#endif
+
 #ifndef FLEXI_FEATURE_JSON
 #define FLEXI_FEATURE_JSON 1
+#endif
+
+#if (FLEXI_FEATURE_JSON && !FLEXI_FEATURE_PARSER)
+#undef FLEXI_FEATURE_JSON
+#define FLEXI_FEATURE_JSON 0
 #endif
 
 #if defined(__cplusplus)
@@ -93,22 +102,27 @@ typedef enum flexi_result_e {
     FLEXI_ERR_PARAM = -1,
 
     /**
+     * @brief One of the callbacks supplied by the user returned a failure.
+     */
+    FLEXI_ERR_CALLBACK = -2,
+
+    /**
      * @brief The value at the cursor was out of range for the specified type.
      *        The output value has been populated with the closest value
      *        to the underlying value.
      */
-    FLEXI_ERR_RANGE = -2,
+    FLEXI_ERR_RANGE = -3,
 
     /**
      * @brief Key or index was not found in map or vector.
      */
-    FLEXI_ERR_NOTFOUND = -3,
+    FLEXI_ERR_NOTFOUND = -4,
 
     /**
      * @brief Cursor is not pointing at a valid type for the function that
      *        was called.
      */
-    FLEXI_ERR_BADTYPE = -4,
+    FLEXI_ERR_BADTYPE = -5,
 
     /**
      * @brief Attempting to read the cursor value or parse the FlexBuffer
@@ -118,7 +132,7 @@ typedef enum flexi_result_e {
      * @details This is usually indicitive of a corrupt or maliciously-
      *          constructed FlexBuffer.
      */
-    FLEXI_ERR_BADREAD = -5,
+    FLEXI_ERR_BADREAD = -6,
 
     /**
      * @brief Attempting to parse data resulted in hitting one of the
@@ -128,7 +142,7 @@ typedef enum flexi_result_e {
      *          constructed FlexBuffer, though it could also happen if you
      *          cram one too many vectors or maps in a single FlexBuffer.
      */
-    FLEXI_ERR_PARSELIMIT = -6,
+    FLEXI_ERR_PARSELIMIT = -7,
 
     /**
      * @brief For cursor operations, the cursor you attmpted to pass isn't
@@ -136,29 +150,29 @@ typedef enum flexi_result_e {
      *        write operations, the writer you attempted to pass is in an
      *        invalid state due to an unrecoverable write error.
      */
-    FLEXI_ERR_FAILSAFE = -7,
+    FLEXI_ERR_FAILSAFE = -8,
 
     /**
      * @brief An invalid writing stack operation was attempted.
      */
-    FLEXI_ERR_BADSTACK = -8,
+    FLEXI_ERR_BADSTACK = -9,
 
     /**
      * @brief An operation done on the output stream, usually a write, failed.
      */
-    FLEXI_ERR_BADWRITE = -9,
+    FLEXI_ERR_BADWRITE = -10,
 
     /**
      * @brief When creating a map, one of the values in the key array wasn't
      *        actually a key.
      */
-    FLEXI_ERR_NOTKEYS = -10,
+    FLEXI_ERR_NOTKEYS = -11,
 
     /**
      * @brief An internal precondition failed.  End users should never see
      *        this error - if you do, please file a bug.
      */
-    FLEXI_ERR_INTERNAL = -11,
+    FLEXI_ERR_INTERNAL = -12,
 } flexi_result_e;
 
 /**
@@ -652,46 +666,6 @@ flexi_cursor_blob(const flexi_cursor_s *cursor, const uint8_t **blob,
  */
 flexi_result_e
 flexi_cursor_bool(const flexi_cursor_s *cursor, bool *val);
-
-/******************************************************************************/
-
-/**
- * @brief A collection of callbacks which will be called when a parse function
- *        is called.
- */
-typedef struct flexi_parser_s {
-    void (*null)(const char *key, void *user);
-    void (*sint)(const char *key, int64_t value, void *user);
-    void (*uint)(const char *key, uint64_t value, void *user);
-    void (*f32)(const char *key, float value, void *user);
-    void (*f64)(const char *key, double value, void *user);
-    void (*key)(const char *key, const char *str, void *user);
-    void (*string)(const char *key, const char *str, flexi_ssize_t len,
-        void *user);
-    void (*map_begin)(const char *key, flexi_ssize_t len, void *user);
-    void (*map_end)(void *user);
-    void (*vector_begin)(const char *key, flexi_ssize_t len, void *user);
-    void (*vector_end)(void *user);
-    void (*typed_vector)(const char *key, const void *ptr, flexi_type_e type,
-        int width, flexi_ssize_t count, void *user);
-    void (*blob)(const char *key, const void *ptr, flexi_ssize_t len,
-        void *user);
-    void (*boolean)(const char *key, bool val, void *user);
-} flexi_parser_s;
-
-/**
- * @brief Starting from the value at the cursor, parse the FlexBuffer while
- *        calling the appropriate callbacks.
- *
- * @param[in] parser Parser to operate on.
- * @param[in] cursor Cursor to start parse at.
- * @param[in] user User pointer - passed to all callbacks.
- * @return FLEXI_OK Successful parse.
- * @return FLEXI_ERR_BADREAD If read went out of range.
- */
-flexi_result_e
-flexi_parse_cursor(const flexi_parser_s *parser, const flexi_cursor_s *cursor,
-    void *user);
 
 /******************************************************************************/
 
@@ -1240,6 +1214,49 @@ flexi_writer_debug_stack_at(const flexi_writer_s *writer, flexi_ssize_t offset,
  */
 flexi_ssize_t
 flexi_writer_debug_stack_count(flexi_writer_s *writer);
+
+/******************************************************************************/
+
+#if FLEXI_FEATURE_PARSER
+
+/**
+ * @brief A collection of callbacks which will be called when a parse function
+ *        is called.
+ */
+typedef struct flexi_parser_s {
+    bool (*null)(const char *key, void *user);
+    bool (*sint)(const char *key, int64_t value, void *user);
+    bool (*uint)(const char *key, uint64_t value, void *user);
+    bool (*f32)(const char *key, float value, void *user);
+    bool (*f64)(const char *key, double value, void *user);
+    bool (*key)(const char *key, const char *str, void *user);
+    bool (*string)(const char *key, const char *str, flexi_ssize_t len,
+        void *user);
+    bool (*map_begin)(const char *key, flexi_ssize_t len, void *user);
+    bool (*map_end)(void *user);
+    bool (*vector_begin)(const char *key, flexi_ssize_t len, void *user);
+    bool (*vector_end)(void *user);
+    bool (*typed_vector)(const char *key, const void *ptr, flexi_type_e type,
+        int width, flexi_ssize_t count, void *user);
+    bool (*blob)(const char *key, const void *ptr, flexi_ssize_t len,
+        void *user);
+    bool (*boolean)(const char *key, bool val, void *user);
+} flexi_parser_s;
+
+/**
+ * @brief Starting from the value at the cursor, parse the FlexBuffer while
+ *        calling the appropriate callbacks.
+ *
+ * @param[in] parser Parser to operate on.
+ * @param[in] cursor Cursor to start parse at.
+ * @param[in] user User pointer - passed to all callbacks.
+ * @return FLEXI_OK || FLEXI_ERR_CALLBACK || FLEXI_ERR_BADREAD.
+ */
+flexi_result_e
+flexi_parse_cursor(const flexi_parser_s *parser, const flexi_cursor_s *cursor,
+    void *user);
+
+#endif // #if FLEXI_FEATURE_PARSER
 
 /******************************************************************************/
 
