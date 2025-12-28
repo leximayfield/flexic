@@ -86,31 +86,31 @@ can be found in the `flexic_bench` target.
 
 |               ns/op |                op/s |    err% |     total | Seek value of root[map-50][key-50]
 |--------------------:|--------------------:|--------:|----------:|:-----------------------------------
-|               95.36 |       10,486,974.59 |    0.5% |      1.19 | `leximayfield/flexic`
-|              240.62 |        4,155,948.41 |    0.4% |      1.21 | `google/flatbuffers`
-|               87.16 |       11,473,496.29 |    0.6% |      1.18 | `nlohmann/json`
-|              104.84 |        9,538,684.48 |    0.5% |      1.22 | `ibireme/yyjson.h`
+|               90.01 |       11,110,411.58 |    0.7% |      1.20 | `leximayfield/flexic`
+|              247.50 |        4,040,332.27 |    0.2% |      1.21 | `google/flatbuffers`
+|               85.35 |       11,717,125.29 |    0.5% |      1.18 | `nlohmann/json`
+|              104.70 |        9,551,470.54 |    0.1% |      1.21 | `ibireme/yyjson.h`
 
 |               ns/op |                op/s |    err% |     total | Parse and Seek value of root[map-50][key-50]
 |--------------------:|--------------------:|--------:|----------:|:---------------------------------------------
-|              106.19 |        9,416,648.82 |    0.8% |      1.20 | `leximayfield/flexic`
-|              207.91 |        4,809,768.31 |    0.9% |      1.21 | `google/flatbuffers`
-|        2,868,808.33 |              348.58 |    0.5% |      1.21 | `nlohmann/json`
-|           95,952.19 |           10,421.86 |    0.4% |      1.19 | `ibireme/yyjson.h`
+|               99.08 |       10,092,450.76 |    0.5% |      1.19 | `leximayfield/flexic`
+|              205.64 |        4,862,818.42 |    0.6% |      1.21 | `google/flatbuffers`
+|        2,889,516.22 |              346.08 |    0.8% |      1.21 | `nlohmann/json`
+|           97,537.09 |           10,252.51 |    0.7% |      1.19 | `ibireme/yyjson.h`
 
 |               ns/op |                op/s |    err% |     total | Walk entire document
 |--------------------:|--------------------:|--------:|----------:|:---------------------
-|          137,861.31 |            7,253.67 |    0.5% |      1.21 | `leximayfield/flexic`
-|          771,697.33 |            1,295.84 |    0.4% |      1.17 | `google/flatbuffers`
-|          236,661.43 |            4,225.45 |    0.3% |      1.21 | `nlohmann/json (manual)`
-|           13,615.63 |           73,444.98 |    0.5% |      1.20 | `ibireme/yyjson.h`
+|          128,234.38 |            7,798.22 |    0.7% |      1.21 | `leximayfield/flexic`
+|          767,220.00 |            1,303.41 |    0.5% |      1.17 | `google/flatbuffers`
+|          230,910.04 |            4,330.69 |    0.6% |      1.21 | `nlohmann/json (manual)`
+|           13,615.23 |           73,447.15 |    0.5% |      1.21 | `ibireme/yyjson.h`
 
 |               ns/op |                op/s |    err% |     total | Parse and Walk entire document
 |--------------------:|--------------------:|--------:|----------:|:-------------------------------
-|          136,826.60 |            7,308.52 |    0.4% |      1.22 | `leximayfield/flexic`
-|          781,197.10 |            1,280.09 |    0.6% |      1.17 | `google/flatbuffers`
-|          683,088.76 |            1,463.94 |    0.9% |      1.17 | `nlohmann/json (sax_parse)`
-|          109,756.31 |            9,111.09 |    0.2% |      1.21 | `ibireme/yyjson.h`
+|          127,260.47 |            7,857.90 |    0.6% |      1.22 | `leximayfield/flexic`
+|          774,352.70 |            1,291.40 |    0.5% |      1.17 | `google/flatbuffers`
+|          698,647.59 |            1,431.34 |    0.7% |      1.16 | `nlohmann/json (sax_parse)`
+|          111,539.57 |            8,965.43 |    0.4% |      1.21 | `ibireme/yyjson.h`
 
 Compared to `google/flatbuffers`, FlexiC seems to be quicker across the board.
 Comparisons against JSON libraries is tricky, as `nlohmann/json` often runs
