@@ -360,13 +360,13 @@ TEST(Parser, ParseTypedVectors)
     Results results;
     ASSERT_EQ(FLEXI_OK, flexi_parse_cursor(&g_parser, &cursor, &results));
 
-    ASSERT_EQ(15, results.size());
+    ASSERT_EQ(19, results.size());
 
     size_t i = 0;
     {
         auto value = std::get_if<mapbegin_s>(&results[i++]);
         ASSERT_NE(nullptr, value);
-        ASSERT_EQ(10, value->len);
+        ASSERT_EQ(14, value->len);
     }
 
     {
@@ -382,23 +382,81 @@ TEST(Parser, ParseTypedVectors)
         ASSERT_EQ(true, ptr[1]);
     }
 
+    {
+        auto value = std::get_if<typedvec_s>(&results[i++]);
+        ASSERT_NE(nullptr, value);
+        ASSERT_STREQ("float_vec", value->key);
+        ASSERT_EQ(5, value->count);
+        ASSERT_EQ(FLEXI_TYPE_VECTOR_FLOAT, value->type);
+        ASSERT_EQ(4, value->width);
+
+        const float *ptr = static_cast<const float *>(value->ptr);
+        for (flexi_ssize_t i = 0; i < value->count; i++) {
+            ASSERT_FLOAT_EQ((PI_VALUE / 2) * (i + 1.0), ptr[i]);
+        }
+    }
+
+    {
+        auto value = std::get_if<typedvec_s>(&results[i++]);
+        ASSERT_NE(nullptr, value);
+        ASSERT_STREQ("float_vec2", value->key);
+        ASSERT_EQ(2, value->count);
+        ASSERT_EQ(FLEXI_TYPE_VECTOR_FLOAT2, value->type);
+        ASSERT_EQ(8, value->width);
+
+        const double *ptr = static_cast<const double *>(value->ptr);
+        for (flexi_ssize_t i = 0; i < value->count; i++) {
+            ASSERT_FLOAT_EQ((PI_VALUE / 2) * (i + 1.0), ptr[i]);
+        }
+    }
+
+    {
+        auto value = std::get_if<typedvec_s>(&results[i++]);
+        ASSERT_NE(nullptr, value);
+        ASSERT_STREQ("float_vec3", value->key);
+        ASSERT_EQ(3, value->count);
+        ASSERT_EQ(FLEXI_TYPE_VECTOR_FLOAT3, value->type);
+        ASSERT_EQ(4, value->width);
+
+        const float *ptr = static_cast<const float *>(value->ptr);
+        for (flexi_ssize_t i = 0; i < value->count; i++) {
+            ASSERT_FLOAT_EQ((PI_VALUE / 2) * (i + 1.0), ptr[i]);
+        }
+    }
+
+    {
+        auto value = std::get_if<typedvec_s>(&results[i++]);
+        ASSERT_NE(nullptr, value);
+        ASSERT_STREQ("float_vec4", value->key);
+        ASSERT_EQ(4, value->count);
+        ASSERT_EQ(FLEXI_TYPE_VECTOR_FLOAT4, value->type);
+        ASSERT_EQ(4, value->width);
+
+        const float *ptr = static_cast<const float *>(value->ptr);
+        for (flexi_ssize_t i = 0; i < value->count; i++) {
+            ASSERT_FLOAT_EQ((PI_VALUE / 2) * (i + 1.0), ptr[i]);
+        }
+    }
+
     // A typed vector of keys gets emitted as a standard vector of keys.
 
     {
         auto value = std::get_if<vecbegin_s>(&results[i++]);
+        ASSERT_NE(nullptr, value);
         ASSERT_STREQ("keys_vec", value->key);
         ASSERT_EQ(2, value->len);
     }
 
     {
         auto value = std::get_if<key_s>(&results[i++]);
-        ASSERT_STREQ("keys_vec", value->key);
+        ASSERT_NE(nullptr, value);
+        ASSERT_EQ(nullptr, value->key);
         ASSERT_STREQ("foo", value->str);
     }
 
     {
         auto value = std::get_if<key_s>(&results[i++]);
-        ASSERT_STREQ("keys_vec", value->key);
+        ASSERT_EQ(nullptr, value->key);
         ASSERT_STREQ("bar", value->str);
     }
 

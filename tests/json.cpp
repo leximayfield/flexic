@@ -182,4 +182,189 @@ TEST(CursorToJSON, NestedTypes)
     }
 }
 
+TEST(CursorToJSON, TypedVectors)
+{
+    std::string data = ReadFileToString("typed_vectors.flexbuf");
+    flexi_span_s span = flexi_make_span(data.data(), data.size());
+
+    flexi_cursor_s cursor{};
+    ASSERT_EQ(FLEXI_OK, flexi_open_span(&span, &cursor));
+
+    std::string json_str;
+    ASSERT_EQ(FLEXI_OK, flexi_json_string_from_cursor(&cursor, json_str));
+
+    nlohmann::json json;
+    ASSERT_NO_THROW(json = nlohmann::json::parse(json_str));
+
+    {
+        nlohmann::json array = json["bool_vec"];
+        ASSERT_TRUE(array.is_array());
+        ASSERT_EQ(2, array.size());
+
+        size_t i = 0;
+        {
+            nlohmann::json value = array[i++];
+            ASSERT_TRUE(value.is_boolean());
+            ASSERT_EQ(false, value);
+        }
+
+        {
+            nlohmann::json value = array[i++];
+            ASSERT_TRUE(value.is_boolean());
+            ASSERT_EQ(true, value);
+        }
+    }
+
+    {
+        nlohmann::json array = json["float_vec2"];
+        ASSERT_TRUE(array.is_array());
+        ASSERT_EQ(2, array.size());
+
+        for (size_t i = 0; i < array.size(); i++) {
+            ASSERT_TRUE(array[i].is_number_float());
+            ASSERT_FLOAT_EQ((PI_VALUE / 2) * (i + 1.0), array[i]);
+        }
+    }
+
+    {
+        nlohmann::json array = json["float_vec3"];
+        ASSERT_TRUE(array.is_array());
+        ASSERT_EQ(3, array.size());
+
+        for (size_t i = 0; i < array.size(); i++) {
+            ASSERT_TRUE(array[i].is_number_float());
+            ASSERT_FLOAT_EQ((PI_VALUE / 2) * (i + 1.0), array[i]);
+        }
+    }
+
+    {
+        nlohmann::json array = json["float_vec4"];
+        ASSERT_TRUE(array.is_array());
+        ASSERT_EQ(4, array.size());
+
+        for (size_t i = 0; i < array.size(); i++) {
+            ASSERT_TRUE(array[i].is_number_float());
+            ASSERT_FLOAT_EQ((PI_VALUE / 2) * (i + 1.0), array[i]);
+        }
+    }
+
+    {
+        nlohmann::json array = json["float_vec"];
+        ASSERT_TRUE(array.is_array());
+        ASSERT_EQ(5, array.size());
+
+        for (size_t i = 0; i < array.size(); i++) {
+            ASSERT_TRUE(array[i].is_number_float());
+            ASSERT_FLOAT_EQ((PI_VALUE / 2) * (i + 1.0), array[i]);
+        }
+    }
+
+    {
+        nlohmann::json array = json["keys_vec"];
+        ASSERT_TRUE(array.is_array());
+        ASSERT_EQ(2, array.size());
+
+        size_t i = 0;
+        {
+            nlohmann::json value = array[i++];
+            ASSERT_TRUE(value.is_string());
+            ASSERT_EQ("foo", value);
+        }
+
+        {
+            nlohmann::json value = array[i++];
+            ASSERT_TRUE(value.is_string());
+            ASSERT_EQ("bar", value);
+        }
+    }
+
+    {
+        nlohmann::json array = json["sint_vec2"];
+        ASSERT_TRUE(array.is_array());
+        ASSERT_EQ(2, array.size());
+
+        for (size_t i = 0; i < array.size(); i++) {
+            ASSERT_TRUE(array[i].is_number_integer());
+            ASSERT_EQ(i + 1, array[i]);
+        }
+    }
+
+    {
+        nlohmann::json array = json["sint_vec3"];
+        ASSERT_TRUE(array.is_array());
+        ASSERT_EQ(3, array.size());
+
+        for (size_t i = 0; i < array.size(); i++) {
+            ASSERT_TRUE(array[i].is_number_integer());
+            ASSERT_EQ(i + 1, array[i]);
+        }
+    }
+
+    {
+        nlohmann::json array = json["sint_vec4"];
+        ASSERT_TRUE(array.is_array());
+        ASSERT_EQ(4, array.size());
+
+        for (size_t i = 0; i < array.size(); i++) {
+            ASSERT_TRUE(array[i].is_number_integer());
+            ASSERT_EQ(i + 1, array[i]);
+        }
+    }
+
+    {
+        nlohmann::json array = json["sint_vec"];
+        ASSERT_TRUE(array.is_array());
+        ASSERT_EQ(5, array.size());
+
+        for (size_t i = 0; i < array.size(); i++) {
+            ASSERT_TRUE(array[i].is_number_integer());
+            ASSERT_EQ(i + 1, array[i]);
+        }
+    }
+
+    {
+        nlohmann::json array = json["uint_vec2"];
+        ASSERT_TRUE(array.is_array());
+        ASSERT_EQ(2, array.size());
+
+        for (size_t i = 0; i < array.size(); i++) {
+            ASSERT_TRUE(array[i].is_number_integer());
+            ASSERT_EQ(i + 1, array[i]);
+        }
+    }
+
+    {
+        nlohmann::json array = json["uint_vec3"];
+        ASSERT_TRUE(array.is_array());
+        ASSERT_EQ(3, array.size());
+
+        for (size_t i = 0; i < array.size(); i++) {
+            ASSERT_TRUE(array[i].is_number_integer());
+            ASSERT_EQ(i + 1, array[i]);
+        }
+    }
+
+    {
+        nlohmann::json array = json["uint_vec4"];
+        ASSERT_TRUE(array.is_array());
+        ASSERT_EQ(4, array.size());
+
+        for (size_t i = 0; i < array.size(); i++) {
+            ASSERT_TRUE(array[i].is_number_integer());
+            ASSERT_EQ(i + 1, array[i]);
+        }
+    }
+
+    {
+        nlohmann::json array = json["uint_vec"];
+        ASSERT_TRUE(array.is_array());
+        ASSERT_EQ(5, array.size());
+
+        for (size_t i = 0; i < array.size(); i++) {
+            ASSERT_TRUE(array[i].is_number_integer());
+            ASSERT_EQ(i + 1, array[i]);
+        }
+    }
+}
+
 #endif // #if FLEXI_FEATURE_JSON

@@ -1683,7 +1683,7 @@ parser_emit_vector_keys(const flexi_parser_s *parser, const char *key,
             return FLEXI_ERR_BADREAD;
         }
 
-        parser->key(key, dest, user);
+        parser->key(NULL, dest, user);
     }
 
     parser->vector_end(user);
@@ -4335,6 +4335,162 @@ to_json_typed_vector(const char *key, const void *ptr, flexi_type_e type,
 {
     json_state_s *state = (json_state_s *)user;
     json_state_handle_comma(state);
+
+    if (key) {
+        json_state_write_key(state, key);
+        json_state_write(state, ":[", 2);
+    } else {
+        json_state_write(state, "[", 1);
+    }
+
+    switch (type) {
+    case FLEXI_TYPE_VECTOR_SINT:
+    case FLEXI_TYPE_VECTOR_SINT2:
+    case FLEXI_TYPE_VECTOR_SINT3:
+    case FLEXI_TYPE_VECTOR_SINT4:
+        switch (width) {
+        case 1: {
+            const int8_t *data = (const int8_t *)ptr;
+            for (flexi_ssize_t i = 0; i < count; i++) {
+                if (i != 0) {
+                    json_state_printf(state, ",%hhd", data[i]);
+                } else {
+                    json_state_printf(state, "%hhd", data[i]);
+                }
+            }
+            break;
+        }
+        case 2: {
+            const int16_t *data = (const int16_t *)ptr;
+            for (flexi_ssize_t i = 0; i < count; i++) {
+                if (i != 0) {
+                    json_state_printf(state, ",%hd", data[i]);
+                } else {
+                    json_state_printf(state, "%hd", data[i]);
+                }
+            }
+            break;
+        }
+        case 4: {
+            const int32_t *data = (const int32_t *)ptr;
+            for (flexi_ssize_t i = 0; i < count; i++) {
+                if (i != 0) {
+                    json_state_printf(state, ",%d", data[i]);
+                } else {
+                    json_state_printf(state, "%d", data[i]);
+                }
+            }
+            break;
+        }
+        case 8: {
+            const int64_t *data = (const int64_t *)ptr;
+            for (flexi_ssize_t i = 0; i < count; i++) {
+                if (i != 0) {
+                    json_state_printf(state, ",%lld", (long long)data[i]);
+                } else {
+                    json_state_printf(state, "%lld", (long long)data[i]);
+                }
+            }
+            break;
+        }
+        }
+        break;
+    case FLEXI_TYPE_VECTOR_UINT:
+    case FLEXI_TYPE_VECTOR_UINT2:
+    case FLEXI_TYPE_VECTOR_UINT3:
+    case FLEXI_TYPE_VECTOR_UINT4:
+        switch (width) {
+        case 1: {
+            const uint8_t *data = (const uint8_t *)ptr;
+            for (flexi_ssize_t i = 0; i < count; i++) {
+                if (i != 0) {
+                    json_state_printf(state, ",%hhu", data[i]);
+                } else {
+                    json_state_printf(state, "%hhu", data[i]);
+                }
+            }
+            break;
+        }
+        case 2: {
+            const uint16_t *data = (const uint16_t *)ptr;
+            for (flexi_ssize_t i = 0; i < count; i++) {
+                if (i != 0) {
+                    json_state_printf(state, ",%hu", data[i]);
+                } else {
+                    json_state_printf(state, "%hu", data[i]);
+                }
+            }
+            break;
+        }
+        case 4: {
+            const uint32_t *data = (const uint32_t *)ptr;
+            for (flexi_ssize_t i = 0; i < count; i++) {
+                if (i != 0) {
+                    json_state_printf(state, ",%u", data[i]);
+                } else {
+                    json_state_printf(state, "%u", data[i]);
+                }
+            }
+            break;
+        }
+        case 8: {
+            const uint64_t *data = (const uint64_t *)ptr;
+            for (flexi_ssize_t i = 0; i < count; i++) {
+                if (i != 0) {
+                    json_state_printf(state, ",%llu",
+                        (unsigned long long)data[i]);
+                } else {
+                    json_state_printf(state, "%llu",
+                        (unsigned long long)data[i]);
+                }
+            }
+            break;
+        }
+        }
+        break;
+    case FLEXI_TYPE_VECTOR_FLOAT:
+    case FLEXI_TYPE_VECTOR_FLOAT2:
+    case FLEXI_TYPE_VECTOR_FLOAT3:
+    case FLEXI_TYPE_VECTOR_FLOAT4:
+        switch (width) {
+        case 4: {
+            const float *data = (const float *)ptr;
+            for (flexi_ssize_t i = 0; i < count; i++) {
+                if (i != 0) {
+                    json_state_printf(state, ",%.9g", data[i]);
+                } else {
+                    json_state_printf(state, "%.9g", data[i]);
+                }
+            }
+            break;
+        }
+        case 8: {
+            const double *data = (const double *)ptr;
+            for (flexi_ssize_t i = 0; i < count; i++) {
+                if (i != 0) {
+                    json_state_printf(state, ",%.17g", data[i]);
+                } else {
+                    json_state_printf(state, "%.17g", data[i]);
+                }
+            }
+            break;
+        }
+        }
+        break;
+    case FLEXI_TYPE_VECTOR_BOOL: {
+        const bool *data = (const bool *)ptr;
+        for (flexi_ssize_t i = 0; i < count; i++) {
+            if (i != 0) {
+                json_state_printf(state, ",%s", data[i] ? "true" : "false");
+            } else {
+                json_state_printf(state, "%s", data[i] ? "true" : "false");
+            }
+        }
+        break;
+    }
+    }
+
+    json_state_write(state, "]", 1);
 }
 
 /**
