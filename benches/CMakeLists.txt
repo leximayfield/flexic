@@ -35,3 +35,9 @@ add_custom_command(
         COMMAND "${CMAKE_COMMAND}" -E copy
                 "${CMAKE_CURRENT_SOURCE_DIR}/large_doc1.json"
                 "${CMAKE_CURRENT_BINARY_DIR}/large_doc1.json")
+
+add_custom_target(flexic_perf
+                   COMMAND flexic_bench
+                   DEPENDS flexic_bench
+                   WORKING_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}"
+                   VERBATIM)

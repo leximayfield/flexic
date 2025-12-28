@@ -1,21 +1,85 @@
 {
-  "version": 1,
+  "version": 6,
   "configurePresets": [
     {
       "name": "ninja",
       "generator": "Ninja",
-      "binaryDir": "${sourceDir}/build_${presetName}",
+      "binaryDir": "${sourceDir}/build-${presetName}",
       "cacheVariables": {
-        "FLEXIC_ENABLE_TESTS": true,
-        "FLEXIC_ENABLE_BENCHES": true
+        "CMAKE_BUILD_TYPE": "Debug",
+        "FLEXIC_ENABLE_TESTS": true
       }
     },
     {
-      "name": "ninja_cxx",
+      "name": "ninja-cxx",
       "inherits": "ninja",
       "cacheVariables": {
         "FLEXIC_COMPILE_AS_CXX": true
       }
+    },
+    {
+      "name": "llvm-cov",
+      "inherits": "ninja-cxx",
+      "environment": {
+        "CC": "clang",
+        "CXX": "clang++"
+      },
+      "cacheVariables": {
+        "FLEXIC_ENABLE_TEST_COVERAGE": true
+      }
+    },
+    {
+      "name": "perf",
+      "inherits": "ninja-cxx",
+      "environment": {
+        "CC": "clang",
+        "CXX": "clang++"
+      },
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Release",
+        "FLEXIC_ENABLE_TESTS": false,
+        "FLEXIC_ENABLE_BENCHES": true
+      }
+    }
+  ],
+  "buildPresets": [
+    {
+      "name": "llvm-cov",
+      "configurePreset": "llvm-cov",
+      "targets": "flexic_test_cov"
+    },
+    {
+      "name": "perf",
+      "configurePreset": "perf",
+      "targets": "flexic_perf"
+    }
+  ],
+  "workflowPresets": [
+    {
+      "name": "llvm-cov",
+      "steps": [
+        {
+          "type": "configure",
+          "name": "llvm-cov"
+        },
+        {
+          "type": "build",
+          "name": "llvm-cov"
+        }
+      ]
+    },
+    {
+      "name": "perf",
+      "steps": [
+        {
+          "type": "configure",
+          "name": "perf"
+        },
+        {
+          "type": "build",
+          "name": "perf"
+        }
+      ]
     }
   ]
 }

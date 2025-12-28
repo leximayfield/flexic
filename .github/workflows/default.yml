@@ -9,7 +9,7 @@ jobs:
       matrix:
         # FIXME: Cleanly support x64_arm64 someday...
         arch: [x64, x64_x86]
-        config: [ninja, ninja_cxx]
+        config: [ninja, ninja-cxx]
     runs-on: windows-2022
     steps:
       - uses: actions/checkout@v4
@@ -24,15 +24,15 @@ jobs:
           cmake --preset ${{ matrix.config }}
       - name: Build
         run: |
-          cmake --build ./build_${{ matrix.config }}
+          cmake --build ./build-${{ matrix.config }}
       - name: Run Tests
         run: |
-          ctest --test-dir ./build_${{ matrix.config }}/tests/
+          ctest --test-dir ./build-${{ matrix.config }}/tests/
   linux:
     name: linux-${{ matrix.config }}
     strategy:
       matrix:
-        config: [ninja, ninja_cxx]
+        config: [ninja, ninja-cxx]
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
@@ -47,7 +47,7 @@ jobs:
           cmake --preset ${{ matrix.config }}
       - name: Build
         run: |
-          cmake --build ./build_${{ matrix.config }}
+          cmake --build ./build-${{ matrix.config }}
       - name: Run Tests
         run: |
-          ctest --test-dir ./build_${{ matrix.config }}/tests/
+          ctest --test-dir ./build-${{ matrix.config }}/tests/
