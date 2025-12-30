@@ -9,9 +9,6 @@ elseif(CMAKE_CXX_COMPILER_ID STREQUAL "MSVC")
 else()
     target_compile_options(flexic PRIVATE -Wall -Wextra)
 endif()
-set_target_properties(flexic PROPERTIES
-    C_CLANG_TIDY "clang-tidy;-checks=*"
-    EXPORT_COMPILE_COMMANDS YES)
 
 include(FetchContent)
 FetchContent_Declare(
@@ -78,14 +75,7 @@ if(FLEXIC_ENABLE_TEST_COVERAGE)
     endif()
 endif()
 
-file(GLOB FLEXIC_TEST_FILES
-    RELATIVE "${CMAKE_CURRENT_SOURCE_DIR}"
-    "${CMAKE_CURRENT_SOURCE_DIR}/*.flexbuf")
-foreach(FLEXIC_TEST_FILE ${FLEXIC_TEST_FILES})
-    add_custom_command(
-        TARGET flexic_test POST_BUILD
-        COMMAND "${CMAKE_COMMAND}" -E copy
-                "${CMAKE_CURRENT_SOURCE_DIR}/${FLEXIC_TEST_FILE}"
-                "${CMAKE_CURRENT_BINARY_DIR}/${FLEXIC_TEST_FILE}"
-        VERBATIM)
-endforeach()
+include(CopyTarget)
+copy_to_target(
+    TARGET flexic_test
+    GLOB "*.flexbuf")

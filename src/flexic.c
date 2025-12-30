@@ -114,7 +114,7 @@
 #define WIDTH_IS_VALID(w) ((w) == 1 || (w) == 2 || (w) == 4 || (w) == 8)
 #define WIDTH_IS_VALID_FLOAT(w) ((w) == 4 || (w) == 8)
 
-#define OPT_STRDUP(w, k) ((w)->opt_strdup ? (w)->opt_strdup(k) : k)
+#define OPT_STRDUP(w, k) ((w)->opt_strdup && k != NULL ? (w)->opt_strdup(k) : k)
 
 typedef struct parse_limits_s {
     int depth;
