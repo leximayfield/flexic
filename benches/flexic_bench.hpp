@@ -90,13 +90,14 @@ std::string
 bench_ReadFileToString(const char *filename);
 
 void
-bench_BenchSeekKey();
+bench_BenchSeekKey(const char *flexbuf, const char *json, const char *title);
 
 void
-bench_BenchParseSeekKey();
+bench_BenchParseSeekKey(const char *flexbuf, const char *json,
+    const char *title);
 
 void
-bench_BenchWalk();
+bench_BenchWalk(const char *flexbuf, const char *json, const char *title);
 
 void
-bench_BenchParseWalk();
+bench_BenchParseWalk(const char *flexbuf, const char *json, const char *title);

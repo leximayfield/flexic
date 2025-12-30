@@ -18,6 +18,14 @@
       }
     },
     {
+      "name": "msvc2022",
+      "generator": "Visual Studio 17 2022",
+      "binaryDir": "${sourceDir}/build-${presetName}",
+      "cacheVariables": {
+        "FLEXIC_ENABLE_TESTS": true
+      }
+    },
+    {
       "name": "llvm-cov",
       "inherits": "ninja-cxx",
       "environment": {
@@ -39,6 +47,17 @@
         "CMAKE_BUILD_TYPE": "Release",
         "FLEXIC_ENABLE_TESTS": false,
         "FLEXIC_ENABLE_BENCHES": true
+      }
+    },
+    {
+      "name": "arm-none-eabi",
+      "generator": "Ninja",
+      "binaryDir": "${sourceDir}/build-${presetName}",
+      "toolchainFile": "cmake/arm-none-eabi.cmake",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "MinSizeRel",
+        "FLEXIC_FEATURE_PARSER": false,
+        "FLEXIC_FEATURE_JSON": false
       }
     }
   ],

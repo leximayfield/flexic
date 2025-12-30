@@ -261,3 +261,70 @@ TEST_F(WriteFixture, MapFloats)
     ASSERT_EQ(FLEXI_OK, flexi_cursor_f64(&vcursor, &f64));
     ASSERT_DOUBLE_EQ(f64, PI_VALUE);
 }
+
+TEST_F(WriteFixtureStrdup, LargeDoc2)
+{
+    static std::array<float, 3> s_data = {
+        (PI_VALUE / 2), PI_VALUE, (PI_VALUE / 2) * 3};
+    char keybuf[16];
+    char mapbuf[16];
+
+    {
+        for (int i = 0; i < 100; i++) {
+            snprintf(keybuf, 16, "key-%d", i);
+            ASSERT_EQ(FLEXI_OK, flexi_write_key(&m_writer, keybuf));
+        }
+
+        flexi_stack_idx_t keys_idx;
+        ASSERT_EQ(FLEXI_OK,
+            flexi_write_map_keys(&m_writer, 100, FLEXI_WIDTH_4B, &keys_idx));
+
+        for (int i = 0; i < 100; i++) {
+            for (int j = 0; j < 100; j++) {
+                snprintf(keybuf, 16, "key-%d", j);
+                ASSERT_EQ(FLEXI_OK,
+                    flexi_write_typed_vector_flt(&m_writer, keybuf,
+                        s_data.data(), FLEXI_WIDTH_4B, s_data.size()));
+            }
+
+            snprintf(mapbuf, 16, "map-%d", i);
+            ASSERT_EQ(FLEXI_OK, flexi_write_map_values(&m_writer, mapbuf,
+                                    keys_idx, 100, FLEXI_WIDTH_1B));
+        }
+
+        ASSERT_EQ(FLEXI_OK,
+            flexi_write_map(&m_writer, NULL, 100, FLEXI_WIDTH_1B));
+        ASSERT_EQ(FLEXI_OK, flexi_write_finalize(&m_writer));
+    }
+
+    {
+        flexi_cursor_s cursor;
+        GetCursor(&cursor);
+
+        for (int i = 0; i < 100; i++) {
+            flexi_cursor_s map;
+            snprintf(mapbuf, 16, "map-%d", i);
+            ASSERT_EQ(FLEXI_OK,
+                flexi_cursor_seek_map_key(&cursor, mapbuf, &map));
+
+            for (int j = 0; j < 100; j++) {
+                flexi_cursor_s value;
+                snprintf(keybuf, 16, "key-%d", i);
+                ASSERT_EQ(FLEXI_OK,
+                    flexi_cursor_seek_map_key(&map, keybuf, &value));
+
+                ASSERT_EQ(FLEXI_TYPE_VECTOR_FLOAT3, flexi_cursor_type(&value));
+                ASSERT_EQ(3, flexi_cursor_length(&value));
+                ASSERT_EQ(4, flexi_cursor_width(&value));
+
+                const void *data = nullptr;
+                ASSERT_EQ(FLEXI_OK, flexi_cursor_typed_vector_data(&value,
+                                        &data, NULL, NULL, NULL));
+                auto vec3 = static_cast<const float *>(data);
+                ASSERT_FLOAT_EQ(s_data[0], vec3[0]);
+                ASSERT_FLOAT_EQ(s_data[1], vec3[1]);
+                ASSERT_FLOAT_EQ(s_data[2], vec3[2]);
+            }
+        }
+    }
+}

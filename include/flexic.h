@@ -621,9 +621,12 @@ flexi_cursor_seek_vector_index(const flexi_cursor_s *cursor,
  * @param[in] cursor Cursor pointing to typed vector.
  * @param[out] data Pointer to start of data, or pointer a single uint64_t
  *                  on failure.
- * @param[in] type Type of vector, or FLEXI_TYPE_INVALID on error.
- * @param[in] stride Stride of vector values, or 0 on error.
- * @param[in] count Number of items in the vector, or 0 on error.
+ * @param[out] type Set to type of vector, or FLEXI_TYPE_INVALID on error.
+ *                  Can be set to NULL.
+ * @param[out] stride Set to stride of vector values, or 0 on error.  Can
+ *                    be set to NULL.
+ * @param[out] count Set to number of items in the vector, or 0 on error.
+ *                   Can be set to NULL.
  * @return FLEXI_OK || FLEXI_FAILSAFE || FLEXI_BADTYPE.
  */
 flexi_result_e
@@ -773,12 +776,17 @@ typedef struct flexi_ostream_s {
     void *user;
 } flexi_ostream_s;
 
+typedef char *(*flexi_strdup_fn)(const char *str);
+typedef void (*flexi_free_fn)(void *ptr);
+
 /**
  * @brief A writing interface for writing a FlexBuffer.
  */
 typedef struct flexi_writer_s {
     flexi_stack_s stack;
     flexi_ostream_s ostream;
+    flexi_strdup_fn opt_strdup;
+    flexi_free_fn opt_free;
     flexi_result_e err;
 } flexi_writer_s;
 
@@ -798,9 +806,28 @@ flexi_make_ostream(flexi_ostream_write_fn write,
 
 /**
  * @brief Create a writer struct from its constituent pieces.
+ *
+ * @param[in] stack Interface to manage abstract stack.
+ * @param[in] ostream Interface to manage output stream.
+ * @param[in] opt_strdup Function used to store key parameters for a map until
+ *                       the map is written.  Can be NULL, in which case all
+ *                       keys must be kept in scope until the map is written.
+ * @param[in] opt_free Function used to free stored key parameters for a map.
+ *                 Can be NULL, in which case no free function is called.
+ * @return Writer struct.
  */
 flexi_writer_s
-flexi_make_writer(const flexi_stack_s *stack, const flexi_ostream_s *ostream);
+flexi_make_writer(const flexi_stack_s *stack, const flexi_ostream_s *ostream,
+    flexi_strdup_fn opt_strdup, flexi_free_fn opt_free);
+
+/**
+ * @brief Destroy the writer by popping all values from the stack.
+ *
+ * @param[in,out] writer Writer to destroy.
+ * @return FLEXI_OK || FLEXI_ERR_BADSTACK.
+ */
+flexi_result_e
+flexi_destroy_writer(flexi_writer_s *writer);
 
 /**
  * @brief Push a null value to the stack.

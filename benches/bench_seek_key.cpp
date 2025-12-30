@@ -82,14 +82,14 @@ yyjson_SeekMap50(yyjson_val *rootVal)
 /******************************************************************************/
 
 void
-bench_BenchSeekKey()
+bench_BenchSeekKey(const char *flexbuf, const char *json, const char *title)
 {
-    std::string flexbuf_doc = bench_ReadFileToString("large_doc1.flexbuf");
-    std::string json_doc = bench_ReadFileToString("large_doc1.json");
+    std::string flexbuf_doc = bench_ReadFileToString(flexbuf);
+    std::string json_doc = bench_ReadFileToString(json);
 
     auto bench = ankerl::nanobench::Bench()
                      .minEpochTime(std::chrono::milliseconds{100})
-                     .title("Seek value of root[map-50][key-50]");
+                     .title(title);
 
     {
         flexi_cursor_s cursor = flexi_StringToRoot(flexbuf_doc);
@@ -129,14 +129,15 @@ bench_BenchSeekKey()
 /******************************************************************************/
 
 void
-bench_BenchParseSeekKey()
+bench_BenchParseSeekKey(const char *flexbuf, const char *json,
+    const char *title)
 {
-    std::string flexbuf_doc = bench_ReadFileToString("large_doc1.flexbuf");
-    std::string json_doc = bench_ReadFileToString("large_doc1.json");
+    std::string flexbuf_doc = bench_ReadFileToString(flexbuf);
+    std::string json_doc = bench_ReadFileToString(json);
 
     auto bench = ankerl::nanobench::Bench()
                      .minEpochTime(std::chrono::milliseconds{100})
-                     .title("Parse and Seek value of root[map-50][key-50]");
+                     .title(title);
 
     {
         bench.run("leximayfield/flexic", [&] {

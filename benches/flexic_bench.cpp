@@ -41,9 +41,17 @@ bench_ReadFileToString(const char *filename)
 int
 main(const int, const char *[])
 {
-    bench_BenchSeekKey();
-    bench_BenchParseSeekKey();
-    bench_BenchWalk();
-    bench_BenchParseWalk();
+    bench_BenchSeekKey("large_doc1.flexbuf", "large_doc1.json",
+        "Seek value of root[map-50][key-50]");
+    bench_BenchParseSeekKey("large_doc1.flexbuf", "large_doc1.json",
+        "Parse and Seek value of root[map-50][key-50]");
+    bench_BenchWalk("large_doc1.flexbuf", "large_doc1.json",
+        "Walk entire document (strings)");
+    bench_BenchParseWalk("large_doc1.flexbuf", "large_doc1.json",
+        "Parse and Walk entire document (strings)");
+    bench_BenchWalk("large_doc2.flexbuf", "large_doc2.json",
+        "Walk entire document (vec3)");
+    bench_BenchParseWalk("large_doc2.flexbuf", "large_doc2.json",
+        "Parse and Walk entire document (vec3)");
     return 0;
 }

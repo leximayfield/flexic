@@ -126,6 +126,9 @@ public:
     }
 };
 
+/**
+ * @brief A fixture for writing and checking written data.
+ */
 class WriteFixture : public testing::Test {
 protected:
     TestStream m_actual;
@@ -139,8 +142,10 @@ protected:
                 TestStack::PushFunc, TestStack::PopFunc, &m_stack);
         flexi_ostream_s ostream = flexi_make_ostream(TestStream::WriteFunc,
             TestStream::DataAtFunc, TestStream::TellFunc, &m_actual);
-        m_writer = flexi_make_writer(&stack, &ostream);
+        m_writer = flexi_make_writer(&stack, &ostream, NULL, NULL);
     }
+
+    void TearDown() override { flexi_destroy_writer(&m_writer); }
 
     void AssertData(const std::vector<uint8_t> &expected)
     {
@@ -166,6 +171,22 @@ protected:
 
         auto span = flexi_make_span(m_actual.DataAt(0), offset);
         ASSERT_EQ(FLEXI_OK, flexi_open_span(&span, cursor));
+    }
+};
+
+/**
+ * @brief A fixture for writing and checking written data - with strdup.
+ */
+class WriteFixtureStrdup : public WriteFixture {
+protected:
+    void SetUp() override
+    {
+        flexi_stack_s stack =
+            flexi_make_stack(TestStack::AtFunc, TestStack::CountFunc,
+                TestStack::PushFunc, TestStack::PopFunc, &m_stack);
+        flexi_ostream_s ostream = flexi_make_ostream(TestStream::WriteFunc,
+            TestStream::DataAtFunc, TestStream::TellFunc, &m_actual);
+        m_writer = flexi_make_writer(&stack, &ostream, strdup, free);
     }
 };
 
