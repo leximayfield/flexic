@@ -55,6 +55,12 @@
 #define FLEXI_IMPL_CPP11_EQ_DELETE
 #endif
 
+#ifdef _WIN32
+#define FLEXI_API __declspec(dllexport)
+#else
+#define FLEXI_API
+#endif
+
 #include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
@@ -390,7 +396,7 @@ typedef uint8_t flexi_packed_t;
 /**
  * @brief Error type sentinal value, used by flexi_cursor_s.
  */
-extern const flexi_type_e FLEXI_TYPE_INVALID;
+#define FLEXI_TYPE_INVALID ((flexi_type_e) - 1)
 
 /**
  * @brief A non-owning contiguous span of memory.
@@ -429,7 +435,7 @@ typedef bool (*flexi_foreach_fn)(const char *key, flexi_cursor_s *value,
 /**
  * @brief Create a span from a void pointer/len.
  */
-flexi_span_s
+FLEXI_API flexi_span_s
 flexi_make_span(const void *data, flexi_ssize_t len);
 
 /**
@@ -439,7 +445,7 @@ flexi_make_span(const void *data, flexi_ssize_t len);
  * @param[out] cursor Cursor pointing to root object.
  * @return FLEXI_OK || FLEXI_ERR_BADREAD.
  */
-flexi_result_e
+FLEXI_API flexi_result_e
 flexi_open_span(const flexi_span_s *msg, flexi_cursor_s *cursor);
 
 /**
@@ -448,7 +454,7 @@ flexi_open_span(const flexi_span_s *msg, flexi_cursor_s *cursor);
  * @param[in] cursor Cursor to examine.
  * @return Enumerated type of cursor, or FLEXI_TYPE_INVALID on error.
  */
-flexi_type_e
+FLEXI_API flexi_type_e
 flexi_cursor_type(const flexi_cursor_s *cursor);
 
 /**
@@ -457,7 +463,7 @@ flexi_cursor_type(const flexi_cursor_s *cursor);
  * @param[in] cursor Cursor to examine.
  * @return Width of cursor in bytes, or 0 on error.
  */
-int
+FLEXI_API int
 flexi_cursor_width(const flexi_cursor_s *cursor);
 
 /**
@@ -467,7 +473,7 @@ flexi_cursor_width(const flexi_cursor_s *cursor);
  * @param[in] cursor Cursor pointing to value to examine.
  * @return Length of value at cursor.  Returns 0 on invalid type.
  */
-flexi_ssize_t
+FLEXI_API flexi_ssize_t
 flexi_cursor_length(const flexi_cursor_s *cursor);
 
 /**
@@ -479,7 +485,7 @@ flexi_cursor_length(const flexi_cursor_s *cursor);
  * @return FLEXI_OK || FLEXI_ERR_RANGE || FLEXI_ERR_BADTYPE ||
  *         FLEXI_ERR_BADREAD.
  */
-flexi_result_e
+FLEXI_API flexi_result_e
 flexi_cursor_sint(const flexi_cursor_s *cursor, int64_t *val);
 
 /**
@@ -491,7 +497,7 @@ flexi_cursor_sint(const flexi_cursor_s *cursor, int64_t *val);
  * @return FLEXI_OK || FLEXI_ERR_RANGE || FLEXI_ERR_BADTYPE ||
  *         FLEXI_ERR_BADREAD.
  */
-flexi_result_e
+FLEXI_API flexi_result_e
 flexi_cursor_uint(const flexi_cursor_s *cursor, uint64_t *val);
 
 /**
@@ -502,7 +508,7 @@ flexi_cursor_uint(const flexi_cursor_s *cursor, uint64_t *val);
  * @param[out] val Obtained value.  Set to 0.0f on error.
  * @return FLEXI_OK || FLEXI_ERR_BADTYPE || FLEXI_ERR_BADREAD.
  */
-flexi_result_e
+FLEXI_API flexi_result_e
 flexi_cursor_f32(const flexi_cursor_s *cursor, float *val);
 
 /**
@@ -513,7 +519,7 @@ flexi_cursor_f32(const flexi_cursor_s *cursor, float *val);
  * @param[out] val Obtained value.  Set to 0.0 on error.
  * @return FLEXI_OK || FLEXI_ERR_BADTYPE || FLEXI_ERR_BADREAD.
  */
-flexi_result_e
+FLEXI_API flexi_result_e
 flexi_cursor_f64(const flexi_cursor_s *cursor, double *val);
 
 /**
@@ -523,7 +529,7 @@ flexi_cursor_f64(const flexi_cursor_s *cursor, double *val);
  * @param[out] str Obtained string.  Set to "" on error.
  * @return FLEXI_OK || FLEXI_ERR_BADTYPE || FLEXI_ERR_BADREAD.
  */
-flexi_result_e
+FLEXI_API flexi_result_e
 flexi_cursor_key(const flexi_cursor_s *cursor, const char **str);
 
 /**
@@ -534,7 +540,7 @@ flexi_cursor_key(const flexi_cursor_s *cursor, const char **str);
  * @param[out] len Length of string.  Set to 0 on error.
  * @return FLEXI_OK || FLEXI_ERR_BADTYPE || FLEXI_ERR_BADREAD.
  */
-flexi_result_e
+FLEXI_API flexi_result_e
 flexi_cursor_string(const flexi_cursor_s *cursor, const char **str,
     flexi_ssize_t *len);
 
@@ -550,7 +556,7 @@ flexi_cursor_string(const flexi_cursor_s *cursor, const char **str,
  * @param[out] str Key string located at the given index.
  * @return FLEXI_OK || FLEXI_ERR_BADTYPE.
  */
-flexi_result_e
+FLEXI_API flexi_result_e
 flexi_cursor_map_key_at_index(const flexi_cursor_s *cursor, flexi_ssize_t index,
     const char **str);
 
@@ -568,7 +574,7 @@ flexi_cursor_map_key_at_index(const flexi_cursor_s *cursor, flexi_ssize_t index,
  *                  to failsafe cursor.
  * @return FLEXI_OK || FLEXI_NOTFOUND || FLEXI_BADTYPE || FLEXI_BADREAD
  */
-flexi_result_e
+FLEXI_API flexi_result_e
 flexi_cursor_seek_map_key(const flexi_cursor_s *cursor, const char *key,
     flexi_cursor_s *dest);
 
@@ -583,7 +589,7 @@ flexi_cursor_seek_map_key(const flexi_cursor_s *cursor, const char *key,
  *             value of FLEXI_TYPE_NULL.
  * @return FLEXI_OK || FLEXI_ERR_FAILSAFE || FLEXI_ERR_BADTYPE.
  */
-flexi_result_e
+FLEXI_API flexi_result_e
 flexi_cursor_vector_types(const flexi_cursor_s *cursor,
     const flexi_packed_t **packed);
 
@@ -601,7 +607,7 @@ flexi_cursor_vector_types(const flexi_cursor_s *cursor,
  *                  to failsafe cursor on error.
  * @return FLEXI_OK || FLEXI_ERR_BADTYPE || FLEXI_ERR_FAILSAFE.
  */
-flexi_result_e
+FLEXI_API flexi_result_e
 flexi_cursor_seek_vector_index(const flexi_cursor_s *cursor,
     flexi_ssize_t index, flexi_cursor_s *dest);
 
@@ -629,7 +635,7 @@ flexi_cursor_seek_vector_index(const flexi_cursor_s *cursor,
  *                   Can be set to NULL.
  * @return FLEXI_OK || FLEXI_FAILSAFE || FLEXI_BADTYPE.
  */
-flexi_result_e
+FLEXI_API flexi_result_e
 flexi_cursor_typed_vector_data(const flexi_cursor_s *cursor, const void **data,
     flexi_type_e *type, int *stride, flexi_ssize_t *count);
 
@@ -641,7 +647,7 @@ flexi_cursor_typed_vector_data(const flexi_cursor_s *cursor, const void **data,
  * @param[in] user User pointer which will be passed to foreach function.
  * @return FLEXI_OK || FLEXI_BADREAD.
  */
-flexi_result_e
+FLEXI_API flexi_result_e
 flexi_cursor_foreach(flexi_cursor_s *cursor, flexi_foreach_fn foreach,
     void *user);
 
@@ -653,7 +659,7 @@ flexi_cursor_foreach(flexi_cursor_s *cursor, flexi_foreach_fn foreach,
  * @param[out] len Length of obtained byte blob.  Set to 0 on error.
  * @return FLEXI_OK || FLEXI_ERR_BADTYPE || FLEXI_ERR_BADREAD.
  */
-flexi_result_e
+FLEXI_API flexi_result_e
 flexi_cursor_blob(const flexi_cursor_s *cursor, const uint8_t **blob,
     flexi_ssize_t *len);
 
@@ -667,7 +673,7 @@ flexi_cursor_blob(const flexi_cursor_s *cursor, const uint8_t **blob,
  * @return FLEXI_ERR_BADREAD if read went out of bounds.
  * @return FLEXI_ERR_BADTYPE if type is not convertable to bool.
  */
-flexi_result_e
+FLEXI_API flexi_result_e
 flexi_cursor_bool(const flexi_cursor_s *cursor, bool *val);
 
 /******************************************************************************/
@@ -793,14 +799,14 @@ typedef struct flexi_writer_s {
 /**
  * @brief Create a stack struct from its constituent pieces.
  */
-flexi_stack_s
+FLEXI_API flexi_stack_s
 flexi_make_stack(flexi_stack_at_fn at, flexi_stack_count_fn count,
     flexi_stack_push_fn push, flexi_stack_pop_fn pop, void *user);
 
 /**
  * @brief Create an ostream struct from its constituent pieces.
  */
-flexi_ostream_s
+FLEXI_API flexi_ostream_s
 flexi_make_ostream(flexi_ostream_write_fn write,
     flexi_ostream_data_at_fn data_at, flexi_ostream_tell_fn tell, void *user);
 
@@ -816,7 +822,7 @@ flexi_make_ostream(flexi_ostream_write_fn write,
  *                 Can be NULL, in which case no free function is called.
  * @return Writer struct.
  */
-flexi_writer_s
+FLEXI_API flexi_writer_s
 flexi_make_writer(const flexi_stack_s *stack, const flexi_ostream_s *ostream,
     flexi_strdup_fn opt_strdup, flexi_free_fn opt_free);
 
@@ -826,7 +832,7 @@ flexi_make_writer(const flexi_stack_s *stack, const flexi_ostream_s *ostream,
  * @param[in,out] writer Writer to destroy.
  * @return FLEXI_OK || FLEXI_ERR_BADSTACK.
  */
-flexi_result_e
+FLEXI_API flexi_result_e
 flexi_destroy_writer(flexi_writer_s *writer);
 
 /**
@@ -837,7 +843,7 @@ flexi_destroy_writer(flexi_writer_s *writer);
  *                NULL if the value will not be used in a map.
  * @return FLEXI_OK || FLEXI_ERR_BADSTACK.
  */
-flexi_result_e
+FLEXI_API flexi_result_e
 flexi_write_null(flexi_writer_s *writer, const char *key);
 
 /**
@@ -852,7 +858,7 @@ flexi_write_null(flexi_writer_s *writer, const char *key);
  * @param[in] val Value to push to the stack.
  * @return FLEXI_OK || FLEXI_BADSTACK.
  */
-flexi_result_e
+FLEXI_API flexi_result_e
 flexi_write_sint(flexi_writer_s *writer, const char *key, int64_t val);
 
 /**
@@ -867,7 +873,7 @@ flexi_write_sint(flexi_writer_s *writer, const char *key, int64_t val);
  * @param[in] value Value to push to the stack.
  * @return FLEXI_OK || FLEXI_BADSTACK.
  */
-flexi_result_e
+FLEXI_API flexi_result_e
 flexi_write_uint(flexi_writer_s *writer, const char *key, uint64_t value);
 
 /**
@@ -882,7 +888,7 @@ flexi_write_uint(flexi_writer_s *writer, const char *key, uint64_t value);
  * @param[in] val Value to push to the stack.
  * @return FLEXI_OK || FLEXI_BADSTACK.
  */
-flexi_result_e
+FLEXI_API flexi_result_e
 flexi_write_f32(flexi_writer_s *writer, const char *key, float val);
 
 /**
@@ -897,7 +903,7 @@ flexi_write_f32(flexi_writer_s *writer, const char *key, float val);
  * @param[in] val Value to push to the stack.
  * @return FLEXI_OK || FLEXI_BADSTACK.
  */
-flexi_result_e
+FLEXI_API flexi_result_e
 flexi_write_f64(flexi_writer_s *writer, const char *key, double val);
 
 /**
@@ -913,7 +919,7 @@ flexi_write_f64(flexi_writer_s *writer, const char *key, double val);
  * @param[in] str Key to write and push to the stack.
  * @return FLEXI_OK || FLEXI_ERR_BADWRITE || FLEXI_BADSTACK.
  */
-flexi_result_e
+FLEXI_API flexi_result_e
 flexi_write_key(flexi_writer_s *writer, const char *str);
 
 /**
@@ -929,7 +935,7 @@ flexi_write_key(flexi_writer_s *writer, const char *str);
  * @param[in] str Key to write and push to the stack.
  * @return FLEXI_OK || FLEXI_ERR_BADWRITE || FLEXI_BADSTACK.
  */
-flexi_result_e
+FLEXI_API flexi_result_e
 flexi_write_keyed_key(flexi_writer_s *writer, const char *key, const char *str);
 
 /**
@@ -947,7 +953,7 @@ flexi_write_keyed_key(flexi_writer_s *writer, const char *key, const char *str);
  * @param[in] len Length of the string to be written to the stack.
  * @return FLEXI_OK || FLEXI_ERR_BADWRITE || FLEXI_BADSTACK.
  */
-flexi_result_e
+FLEXI_API flexi_result_e
 flexi_write_string(flexi_writer_s *writer, const char *key, const char *str,
     size_t len);
 
@@ -964,7 +970,7 @@ flexi_write_string(flexi_writer_s *writer, const char *key, const char *str,
  * @param[in] str String to write and push to the stack.
  * @return FLEXI_OK || FLEXI_ERR_BADWRITE || FLEXI_BADSTACK.
  */
-flexi_result_e
+FLEXI_API flexi_result_e
 flexi_write_strlen(flexi_writer_s *writer, const char *key, const char *str);
 
 /**
@@ -981,7 +987,7 @@ flexi_write_strlen(flexi_writer_s *writer, const char *key, const char *str);
  * @param[in] val Value to write and push to the stack.
  * @return FLEXI_OK || FLEXI_ERR_BADWRITE || FLEXI_BADSTACK.
  */
-flexi_result_e
+FLEXI_API flexi_result_e
 flexi_write_indirect_sint(flexi_writer_s *writer, const char *key, int64_t val);
 
 /**
@@ -998,7 +1004,7 @@ flexi_write_indirect_sint(flexi_writer_s *writer, const char *key, int64_t val);
  * @param[in] val Value to write and push to the stack.
  * @return FLEXI_OK || FLEXI_ERR_BADWRITE || FLEXI_BADSTACK.
  */
-flexi_result_e
+FLEXI_API flexi_result_e
 flexi_write_indirect_uint(flexi_writer_s *writer, const char *key,
     uint64_t val);
 
@@ -1016,7 +1022,7 @@ flexi_write_indirect_uint(flexi_writer_s *writer, const char *key,
  * @param[in] val Value to write and push to the stack.
  * @return FLEXI_OK || FLEXI_ERR_BADWRITE || FLEXI_BADSTACK.
  */
-flexi_result_e
+FLEXI_API flexi_result_e
 flexi_write_indirect_f32(flexi_writer_s *writer, const char *key, float val);
 
 /**
@@ -1033,7 +1039,7 @@ flexi_write_indirect_f32(flexi_writer_s *writer, const char *key, float val);
  * @param[in] val Value to write and push to the stack.
  * @return FLEXI_OK || FLEXI_ERR_BADWRITE || FLEXI_BADSTACK.
  */
-flexi_result_e
+FLEXI_API flexi_result_e
 flexi_write_indirect_f64(flexi_writer_s *writer, const char *key, double val);
 
 /**
@@ -1057,7 +1063,7 @@ flexi_write_indirect_f64(flexi_writer_s *writer, const char *key, double val);
  * @return FLEXI_OK || FLEXI_ERR_BADSTACK || FLEXI_ERR_NOTKEYS ||
  *         FLEXI_ERR_BADWRITE || FLEXI_ERR_BADSTACK.
  */
-flexi_result_e
+FLEXI_API flexi_result_e
 flexi_write_map_keys(flexi_writer_s *writer, flexi_ssize_t len,
     flexi_width_e stride, flexi_stack_idx_t *keyset);
 
@@ -1078,7 +1084,7 @@ flexi_write_map_keys(flexi_writer_s *writer, flexi_ssize_t len,
  *                   to fit one of the values, it will be widened to fit.
  * @return FLEXI_OK || FLEXI_ERR_BADWRITE || FLEXI_ERR_BADSTACK.
  */
-flexi_result_e
+FLEXI_API flexi_result_e
 flexi_write_map_values(flexi_writer_s *writer, const char *key,
     flexi_stack_idx_t keyset, flexi_ssize_t len, flexi_width_e stride);
 
@@ -1098,7 +1104,7 @@ flexi_write_map_values(flexi_writer_s *writer, const char *key,
  *                   to fit one of the values, it will be widened to fit.
  * @return FLEXI_OK || FLEXI_ERR_BADWRITE || FLEXI_ERR_BADSTACK.
  */
-flexi_result_e
+FLEXI_API flexi_result_e
 flexi_write_map(flexi_writer_s *writer, const char *key, flexi_ssize_t len,
     flexi_width_e stride);
 
@@ -1112,7 +1118,7 @@ flexi_write_map(flexi_writer_s *writer, const char *key, flexi_ssize_t len,
  * @param[in] stride Desired width of vector.
  * @return FLEXI_OK || FLEXI_ERR_BADWRITE || FLEXI_ERR_BADSTACK.
  */
-flexi_result_e
+FLEXI_API flexi_result_e
 flexi_write_vector(flexi_writer_s *writer, const char *key, flexi_ssize_t len,
     flexi_width_e stride);
 
@@ -1127,7 +1133,7 @@ flexi_write_vector(flexi_writer_s *writer, const char *key, flexi_ssize_t len,
  * @param[in] len Number of elements in the array.
  * @return FLEXI_OK || FLEXI_ERR_BADWRITE.
  */
-flexi_result_e
+FLEXI_API flexi_result_e
 flexi_write_typed_vector_sint(flexi_writer_s *writer, const char *key,
     const void *ptr, flexi_width_e stride, flexi_ssize_t len);
 
@@ -1142,7 +1148,7 @@ flexi_write_typed_vector_sint(flexi_writer_s *writer, const char *key,
  * @param[in] len Number of elements in the array.
  * @return FLEXI_OK || FLEXI_ERR_BADWRITE.
  */
-flexi_result_e
+FLEXI_API flexi_result_e
 flexi_write_typed_vector_uint(flexi_writer_s *writer, const char *key,
     const void *ptr, flexi_width_e stride, flexi_ssize_t len);
 
@@ -1157,7 +1163,7 @@ flexi_write_typed_vector_uint(flexi_writer_s *writer, const char *key,
  * @param[in] len Number of elements in the array.
  * @return FLEXI_OK || FLEXI_ERR_BADWRITE.
  */
-flexi_result_e
+FLEXI_API flexi_result_e
 flexi_write_typed_vector_flt(flexi_writer_s *writer, const char *key,
     const void *ptr, flexi_width_e stride, flexi_ssize_t len);
 
@@ -1175,7 +1181,7 @@ flexi_write_typed_vector_flt(flexi_writer_s *writer, const char *key,
  * @param[in] align Desired alignment of blob data, in bytes.
  * @return FLEXI_OK || FLEXI_ERR_BADWRITE.
  */
-flexi_result_e
+FLEXI_API flexi_result_e
 flexi_write_blob(flexi_writer_s *writer, const char *key, const void *ptr,
     flexi_ssize_t len, int align);
 
@@ -1188,7 +1194,7 @@ flexi_write_blob(flexi_writer_s *writer, const char *key, const void *ptr,
  * @param[in] val Value to push to the stack.
  * @return FLEXI_OK || FLEXI_BADSTACK.
  */
-flexi_result_e
+FLEXI_API flexi_result_e
 flexi_write_bool(flexi_writer_s *writer, const char *key, bool val);
 
 /**
@@ -1202,7 +1208,7 @@ flexi_write_bool(flexi_writer_s *writer, const char *key, bool val);
  * @param[in] len Number of elements in the array.
  * @return FLEXI_OK || FLEXI_ERR_BADWRITE.
  */
-flexi_result_e
+FLEXI_API flexi_result_e
 flexi_write_typed_vector_bool(flexi_writer_s *writer, const char *key,
     const bool *ptr, flexi_ssize_t len);
 
@@ -1214,7 +1220,7 @@ flexi_write_typed_vector_bool(flexi_writer_s *writer, const char *key,
  * @param[in,out] writer Writer to operate on.
  * @return FLEXI_OK || FLEXI_ERR_BADSTACK || FLEXI_ERR_BADWRITE.
  */
-flexi_result_e
+FLEXI_API flexi_result_e
 flexi_write_finalize(flexi_writer_s *writer);
 
 /**
@@ -1227,7 +1233,7 @@ flexi_write_finalize(flexi_writer_s *writer);
  * @param[out] value Pointer to value on the stack.  Not touched on error.
  * @return FLEXI_OK || FLEXI_ERR_BADSTACK.
  */
-flexi_result_e
+FLEXI_API flexi_result_e
 flexi_writer_debug_stack_at(const flexi_writer_s *writer, flexi_ssize_t offset,
     flexi_value_s **value);
 
@@ -1239,7 +1245,7 @@ flexi_writer_debug_stack_at(const flexi_writer_s *writer, flexi_ssize_t offset,
  * @param[in] writer Writer to operate on.
  * @return Number of items currently in the stack.
  */
-flexi_ssize_t
+FLEXI_API flexi_ssize_t
 flexi_writer_debug_stack_count(flexi_writer_s *writer);
 
 /******************************************************************************/
@@ -1279,7 +1285,7 @@ typedef struct flexi_parser_s {
  * @param[in] user User pointer - passed to all callbacks.
  * @return FLEXI_OK || FLEXI_ERR_CALLBACK || FLEXI_ERR_BADREAD.
  */
-flexi_result_e
+FLEXI_API flexi_result_e
 flexi_parse_cursor(const flexi_parser_s *parser, const flexi_cursor_s *cursor,
     void *user);
 
@@ -1303,7 +1309,7 @@ typedef bool (*flexi_write_string_fn)(const char *str, size_t len, void *user);
  * @param user User pointer to pass to writer function.
  * @return FLEXI_OK || FLEXI_ERR_BADREAD || FLEXI_ERR_PARSELIMIT.
  */
-flexi_result_e
+FLEXI_API flexi_result_e
 flexi_json_from_cursor(const flexi_cursor_s *cursor,
     flexi_write_string_fn writer, void *user);
 
@@ -1319,7 +1325,7 @@ flexi_json_from_cursor(const flexi_cursor_s *cursor,
  *                        mutated to contain number of bytes written.
  * @return FLEXI_OK || FLEXI_ERR_PARAM.
  */
-flexi_result_e
+FLEXI_API flexi_result_e
 flexi_json_decode_blob(const char *src, flexi_ssize_t src_len, void *dst,
     flexi_ssize_t *dst_len);
 
@@ -1332,7 +1338,7 @@ flexi_json_decode_blob(const char *src, flexi_ssize_t src_len, void *dst,
  *                     source string.
  * @return FLEXI_OK || FLEXI_ERR_PARAM.
  */
-flexi_result_e
+FLEXI_API flexi_result_e
 flexi_json_decode_blob_length(const char *src, flexi_ssize_t src_len,
     flexi_ssize_t *dst_len);
 

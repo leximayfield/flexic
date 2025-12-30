@@ -26,6 +26,13 @@
       }
     },
     {
+      "name": "msvc2022-dll",
+      "inherits": "msvc2022",
+      "cacheVariables": {
+        "FLEXIC_BUILD_SHARED_LIB": true
+      }
+    },
+    {
       "name": "llvm-cov",
       "inherits": "ninja-cxx",
       "environment": {

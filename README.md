@@ -93,9 +93,9 @@ FlexiC is remarkably self-contained.  You can either copy `flexic.c` and
 `flexic.h` into your C or C++ project and use them directly, or you can
 statically link to FlexiC as a library using the included `CMakeLists.txt`.
 
-I can't imagine why you would want to turn this library into a shared library,
-but if you have a use case, let me know in an issue.  FWIW, I do not consider
-packaging for a Linux distro to be a compelling use case.
+This library is intended to be used by copying or static linking, but you
+can also create a shared library if you want to FFI into the library from
+a different language.
 
 How Fast Is FlexiC?
 -------------------

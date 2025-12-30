@@ -4,6 +4,7 @@ set(CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake/modules;${CMAKE_MODULE_
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 set_property(GLOBAL PROPERTY USE_FOLDERS ON)
 
+option(FLEXIC_BUILD_SHARED_LIB "Build FlexiC as a shared library")
 option(FLEXIC_ENABLE_BENCHES "Enable benchmarks for FlexiC")
 option(FLEXIC_ENABLE_DOCS "Enable documentation target for FlexiC")
 option(FLEXIC_ENABLE_TESTS "Enable tests for FlexiC")
@@ -24,7 +25,12 @@ set(FLEXIC_SOURCES
     "${CMAKE_CURRENT_SOURCE_DIR}/include/flexic.h"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/flexic.c")
 
-add_library(flexic STATIC)
+if(FLEXIC_BUILD_SHARED_LIB)
+    add_library(flexic SHARED)
+else()
+    add_library(flexic STATIC)
+endif()
+
 target_sources(flexic PRIVATE ${FLEXIC_SOURCES})
 target_include_directories(flexic PUBLIC
     "${CMAKE_CURRENT_SOURCE_DIR}/include")

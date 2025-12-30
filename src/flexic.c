@@ -123,8 +123,6 @@ typedef struct parse_limits_s {
 
 /******************************************************************************/
 
-const flexi_type_e FLEXI_TYPE_INVALID = (flexi_type_e)-1;
-
 static flexi_packed_t g_empty_packed = PACK_TYPE(FLEXI_TYPE_NULL);
 static uint64_t g_empty_typed_vector = 0;
 static uint8_t g_empty_blob = 0;
@@ -1583,7 +1581,7 @@ writer_pop(flexi_writer_s *writer, flexi_ssize_t count)
         for (flexi_ssize_t i = top; i > bottom; i--) {
             flexi_value_s *value = stack_at(&writer->stack, i);
             if (value->key) {
-                writer->opt_free(value->key);
+                writer->opt_free((void *)value->key);
             }
             value->key = NULL;
         }
