@@ -28,37 +28,37 @@ GetCursorLargeStrings(flexi_cursor_s &cursor)
     static std::string s_data = ReadFileToString("large_strings.flexbuf");
 
     auto span = flexi_make_span(s_data.data(), s_data.size());
-    ASSERT_EQ(FLEXI_OK, flexi_open_span(&span, &cursor));
+    REQUIRE(FLEXI_OK == flexi_open_span(&span, &cursor));
 }
 
-TEST(CursorString, String_LargeStrings)
+TEST_CASE("Omnibus Test", "[cursor_string]")
 {
     flexi_cursor_s cursor{}, str_cursor{};
     const char *str = nullptr;
     flexi_ssize_t len = -1;
     GetCursorLargeStrings(cursor);
 
-    ASSERT_EQ(FLEXI_OK,
-        flexi_cursor_seek_vector_index(&cursor, 0, &str_cursor));
-    ASSERT_EQ(255, flexi_cursor_length(&str_cursor));
-    ASSERT_EQ(FLEXI_OK, flexi_cursor_string(&str_cursor, &str, &len));
-    ASSERT_EQ('x', str[254]);
-    ASSERT_EQ('\0', str[255]);
-    ASSERT_EQ(255, len);
+    REQUIRE(FLEXI_OK ==
+            flexi_cursor_seek_vector_index(&cursor, 0, &str_cursor));
+    REQUIRE(255 == flexi_cursor_length(&str_cursor));
+    REQUIRE(FLEXI_OK == flexi_cursor_string(&str_cursor, &str, &len));
+    REQUIRE('x' == str[254]);
+    REQUIRE('\0' == str[255]);
+    REQUIRE(255 == len);
 
-    ASSERT_EQ(FLEXI_OK,
-        flexi_cursor_seek_vector_index(&cursor, 1, &str_cursor));
-    ASSERT_EQ(384, flexi_cursor_length(&str_cursor));
-    ASSERT_EQ(FLEXI_OK, flexi_cursor_string(&str_cursor, &str, &len));
-    ASSERT_EQ('y', str[383]);
-    ASSERT_EQ('\0', str[384]);
-    ASSERT_EQ(384, len);
+    REQUIRE(FLEXI_OK ==
+            flexi_cursor_seek_vector_index(&cursor, 1, &str_cursor));
+    REQUIRE(384 == flexi_cursor_length(&str_cursor));
+    REQUIRE(FLEXI_OK == flexi_cursor_string(&str_cursor, &str, &len));
+    REQUIRE('y' == str[383]);
+    REQUIRE('\0' == str[384]);
+    REQUIRE(384 == len);
 
-    ASSERT_EQ(FLEXI_OK,
-        flexi_cursor_seek_vector_index(&cursor, 2, &str_cursor));
-    ASSERT_EQ(65540, flexi_cursor_length(&str_cursor));
-    ASSERT_EQ(FLEXI_OK, flexi_cursor_string(&str_cursor, &str, &len));
-    ASSERT_EQ('z', str[65539]);
-    ASSERT_EQ('\0', str[65540]);
-    ASSERT_EQ(65540, len);
+    REQUIRE(FLEXI_OK ==
+            flexi_cursor_seek_vector_index(&cursor, 2, &str_cursor));
+    REQUIRE(65540 == flexi_cursor_length(&str_cursor));
+    REQUIRE(FLEXI_OK == flexi_cursor_string(&str_cursor, &str, &len));
+    REQUIRE('z' == str[65539]);
+    REQUIRE('\0' == str[65540]);
+    REQUIRE(65540 == len);
 }

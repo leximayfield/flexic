@@ -22,20 +22,23 @@
 
 #include "tests.hpp"
 
-TEST_F(WriteFixture, Immediate)
+TEST_CASE("Immediate", "[write_map]")
 {
-    ASSERT_EQ(FLEXI_OK, flexi_write_uint(&m_writer, "uint", UINT16_MAX));
-    ASSERT_EQ(FLEXI_OK, flexi_write_sint(&m_writer, "sint", INT16_MAX));
-    ASSERT_EQ(FLEXI_OK, flexi_write_bool(&m_writer, "bool", true));
-    ASSERT_EQ(FLEXI_OK, flexi_write_map(&m_writer, NULL, 3, FLEXI_WIDTH_2B));
-    ASSERT_EQ(FLEXI_OK, flexi_write_finalize(&m_writer));
+    TestWriter writer;
+    flexi_writer_s *fwriter = writer.GetWriter();
+
+    REQUIRE(FLEXI_OK == flexi_write_uint(fwriter, "uint", UINT16_MAX));
+    REQUIRE(FLEXI_OK == flexi_write_sint(fwriter, "sint", INT16_MAX));
+    REQUIRE(FLEXI_OK == flexi_write_bool(fwriter, "bool", true));
+    REQUIRE(FLEXI_OK == flexi_write_map(fwriter, NULL, 3, FLEXI_WIDTH_2B));
+    REQUIRE(FLEXI_OK == flexi_write_finalize(fwriter));
 
     // There should be nothing on the stack, especially not the keys that
     // flexi_write_map used internally.
     flexi_value_s *stack_value;
-    ASSERT_EQ(FLEXI_ERR_BADSTACK,
-        flexi_writer_debug_stack_at(&m_writer, 0, &stack_value));
-    ASSERT_EQ(0, flexi_writer_debug_stack_count(&m_writer));
+    REQUIRE(FLEXI_ERR_BADSTACK ==
+            flexi_writer_debug_stack_at(fwriter, 0, &stack_value));
+    REQUIRE(0 == flexi_writer_debug_stack_count(fwriter));
 
     std::vector<uint8_t> expected = {
         'u', 'i', 'n', 't', '\0', // Key values
@@ -53,56 +56,59 @@ TEST_F(WriteFixture, Immediate)
         0xff, 0x7f,               // Values[1] Int
         0xff, 0xff,               // Values[2] Uint
         0x68, 0x05, 0x09,         // Types
-        0x09, 0x25, 0x01,         // Root
+        0x09, 0x25, 0x01          // Root
     };
-    AssertData(expected);
+    writer.AssertData(expected);
 
     flexi_cursor_s cursor{};
-    GetCursor(&cursor);
+    writer.GetCursor(&cursor);
 
-    ASSERT_EQ(FLEXI_TYPE_MAP, flexi_cursor_type(&cursor));
-    ASSERT_EQ(2, flexi_cursor_width(&cursor));
+    REQUIRE(FLEXI_TYPE_MAP == flexi_cursor_type(&cursor));
+    REQUIRE(2 == flexi_cursor_width(&cursor));
 
     flexi_cursor_s value{};
 
     bool vbool = false;
-    ASSERT_EQ(FLEXI_OK, flexi_cursor_seek_map_key(&cursor, "bool", &value));
-    ASSERT_EQ(FLEXI_OK, flexi_cursor_bool(&value, &vbool));
-    ASSERT_EQ(true, vbool);
+    REQUIRE(FLEXI_OK == flexi_cursor_seek_map_key(&cursor, "bool", &value));
+    REQUIRE(FLEXI_OK == flexi_cursor_bool(&value, &vbool));
+    REQUIRE(true == vbool);
 
     int64_t vsint = 0;
-    ASSERT_EQ(FLEXI_OK, flexi_cursor_seek_map_key(&cursor, "sint", &value));
-    ASSERT_EQ(FLEXI_OK, flexi_cursor_sint(&value, &vsint));
-    ASSERT_EQ(INT16_MAX, vsint);
+    REQUIRE(FLEXI_OK == flexi_cursor_seek_map_key(&cursor, "sint", &value));
+    REQUIRE(FLEXI_OK == flexi_cursor_sint(&value, &vsint));
+    REQUIRE(INT16_MAX == vsint);
 
     uint64_t vuint = 0;
-    ASSERT_EQ(FLEXI_OK, flexi_cursor_seek_map_key(&cursor, "uint", &value));
-    ASSERT_EQ(FLEXI_OK, flexi_cursor_uint(&value, &vuint));
-    ASSERT_EQ(UINT16_MAX, vuint);
+    REQUIRE(FLEXI_OK == flexi_cursor_seek_map_key(&cursor, "uint", &value));
+    REQUIRE(FLEXI_OK == flexi_cursor_uint(&value, &vuint));
+    REQUIRE(UINT16_MAX == vuint);
 }
 
-TEST_F(WriteFixture, MapInts)
+TEST_CASE("Map of Ints", "[write_map]")
 {
-    ASSERT_EQ(FLEXI_OK, flexi_write_key(&m_writer, "bool"));
-    ASSERT_EQ(FLEXI_OK, flexi_write_key(&m_writer, "sint"));
-    ASSERT_EQ(FLEXI_OK, flexi_write_key(&m_writer, "indirect_sint"));
-    ASSERT_EQ(FLEXI_OK, flexi_write_key(&m_writer, "uint"));
-    ASSERT_EQ(FLEXI_OK, flexi_write_key(&m_writer, "indirect_uint"));
-    flexi_stack_idx_t keyset = -1;
-    ASSERT_EQ(FLEXI_OK,
-        flexi_write_map_keys(&m_writer, 5, FLEXI_WIDTH_1B, &keyset));
-    ASSERT_EQ(0, keyset);
+    TestWriter writer;
+    flexi_writer_s *fwriter = writer.GetWriter();
 
-    ASSERT_EQ(FLEXI_OK, flexi_write_bool(&m_writer, "bool", true));
-    ASSERT_EQ(FLEXI_OK, flexi_write_sint(&m_writer, "sint", INT16_MAX));
-    ASSERT_EQ(FLEXI_OK,
-        flexi_write_indirect_sint(&m_writer, "indirect_sint", INT32_MAX));
-    ASSERT_EQ(FLEXI_OK, flexi_write_uint(&m_writer, "uint", UINT16_MAX));
-    ASSERT_EQ(FLEXI_OK,
-        flexi_write_indirect_uint(&m_writer, "indirect_uint", UINT32_MAX));
-    ASSERT_EQ(FLEXI_OK,
-        flexi_write_map_values(&m_writer, NULL, keyset, 5, FLEXI_WIDTH_2B));
-    ASSERT_EQ(FLEXI_OK, flexi_write_finalize(&m_writer));
+    REQUIRE(FLEXI_OK == flexi_write_key(fwriter, "bool"));
+    REQUIRE(FLEXI_OK == flexi_write_key(fwriter, "sint"));
+    REQUIRE(FLEXI_OK == flexi_write_key(fwriter, "indirect_sint"));
+    REQUIRE(FLEXI_OK == flexi_write_key(fwriter, "uint"));
+    REQUIRE(FLEXI_OK == flexi_write_key(fwriter, "indirect_uint"));
+    flexi_stack_idx_t keyset = -1;
+    REQUIRE(FLEXI_OK ==
+            flexi_write_map_keys(fwriter, 5, FLEXI_WIDTH_1B, &keyset));
+    REQUIRE(0 == keyset);
+
+    REQUIRE(FLEXI_OK == flexi_write_bool(fwriter, "bool", true));
+    REQUIRE(FLEXI_OK == flexi_write_sint(fwriter, "sint", INT16_MAX));
+    REQUIRE(FLEXI_OK ==
+            flexi_write_indirect_sint(fwriter, "indirect_sint", INT32_MAX));
+    REQUIRE(FLEXI_OK == flexi_write_uint(fwriter, "uint", UINT16_MAX));
+    REQUIRE(FLEXI_OK ==
+            flexi_write_indirect_uint(fwriter, "indirect_uint", UINT32_MAX));
+    REQUIRE(FLEXI_OK ==
+            flexi_write_map_values(fwriter, NULL, keyset, 5, FLEXI_WIDTH_2B));
+    REQUIRE(FLEXI_OK == flexi_write_finalize(fwriter));
 
     std::vector<uint8_t> expected = {
         'b', 'o', 'o', 'l', '\0', // Key values
@@ -130,63 +136,66 @@ TEST_F(WriteFixture, MapInts)
         0xff, 0x7f,                   // Values[3] Int
         0xff, 0xff,                   // Values[4] Uint
         0x68, 0x1a, 0x1e, 0x05, 0x09, // Types
-        0x0f, 0x25, 0x01,             // Root
+        0x0f, 0x25, 0x01              // Root
     };
 
-    AssertData(expected);
+    writer.AssertData(expected);
 
     flexi_cursor_s cursor{};
-    GetCursor(&cursor);
+    writer.GetCursor(&cursor);
 
-    ASSERT_EQ(FLEXI_TYPE_MAP, flexi_cursor_type(&cursor));
-    ASSERT_EQ(2, flexi_cursor_width(&cursor));
+    REQUIRE(FLEXI_TYPE_MAP == flexi_cursor_type(&cursor));
+    REQUIRE(2 == flexi_cursor_width(&cursor));
 
     flexi_cursor_s value{};
 
     bool vbool = false;
-    ASSERT_EQ(FLEXI_OK, flexi_cursor_seek_map_key(&cursor, "bool", &value));
-    ASSERT_EQ(FLEXI_OK, flexi_cursor_bool(&value, &vbool));
-    ASSERT_EQ(true, vbool);
+    REQUIRE(FLEXI_OK == flexi_cursor_seek_map_key(&cursor, "bool", &value));
+    REQUIRE(FLEXI_OK == flexi_cursor_bool(&value, &vbool));
+    REQUIRE(true == vbool);
 
     int64_t vsint = 0;
-    ASSERT_EQ(FLEXI_OK, flexi_cursor_seek_map_key(&cursor, "sint", &value));
-    ASSERT_EQ(FLEXI_OK, flexi_cursor_sint(&value, &vsint));
-    ASSERT_EQ(INT16_MAX, vsint);
-    ASSERT_EQ(FLEXI_OK,
-        flexi_cursor_seek_map_key(&cursor, "indirect_sint", &value));
-    ASSERT_EQ(FLEXI_OK, flexi_cursor_sint(&value, &vsint));
-    ASSERT_EQ(INT32_MAX, vsint);
+    REQUIRE(FLEXI_OK == flexi_cursor_seek_map_key(&cursor, "sint", &value));
+    REQUIRE(FLEXI_OK == flexi_cursor_sint(&value, &vsint));
+    REQUIRE(INT16_MAX == vsint);
+    REQUIRE(FLEXI_OK ==
+            flexi_cursor_seek_map_key(&cursor, "indirect_sint", &value));
+    REQUIRE(FLEXI_OK == flexi_cursor_sint(&value, &vsint));
+    REQUIRE(INT32_MAX == vsint);
 
     uint64_t vuint = 0;
-    ASSERT_EQ(FLEXI_OK, flexi_cursor_seek_map_key(&cursor, "uint", &value));
-    ASSERT_EQ(FLEXI_OK, flexi_cursor_uint(&value, &vuint));
-    ASSERT_EQ(UINT16_MAX, vuint);
-    ASSERT_EQ(FLEXI_OK,
-        flexi_cursor_seek_map_key(&cursor, "indirect_uint", &value));
-    ASSERT_EQ(FLEXI_OK, flexi_cursor_uint(&value, &vuint));
-    ASSERT_EQ(UINT32_MAX, vuint);
+    REQUIRE(FLEXI_OK == flexi_cursor_seek_map_key(&cursor, "uint", &value));
+    REQUIRE(FLEXI_OK == flexi_cursor_uint(&value, &vuint));
+    REQUIRE(UINT16_MAX == vuint);
+    REQUIRE(FLEXI_OK ==
+            flexi_cursor_seek_map_key(&cursor, "indirect_uint", &value));
+    REQUIRE(FLEXI_OK == flexi_cursor_uint(&value, &vuint));
+    REQUIRE(UINT32_MAX == vuint);
 }
 
-TEST_F(WriteFixture, MapFloats)
+TEST_CASE("Map of Floats", "[write_map]")
 {
-    ASSERT_EQ(FLEXI_OK, flexi_write_key(&m_writer, "f32"));
-    ASSERT_EQ(FLEXI_OK, flexi_write_key(&m_writer, "indirect_f32"));
-    ASSERT_EQ(FLEXI_OK, flexi_write_key(&m_writer, "f64"));
-    ASSERT_EQ(FLEXI_OK, flexi_write_key(&m_writer, "indirect_f64"));
-    flexi_stack_idx_t keyset = -1;
-    ASSERT_EQ(FLEXI_OK,
-        flexi_write_map_keys(&m_writer, 4, FLEXI_WIDTH_1B, &keyset));
-    ASSERT_EQ(0, keyset);
+    TestWriter writer;
+    flexi_writer_s *fwriter = writer.GetWriter();
 
-    ASSERT_EQ(FLEXI_OK, flexi_write_f32(&m_writer, "f32", PI_VALUE));
-    ASSERT_EQ(FLEXI_OK,
-        flexi_write_indirect_f32(&m_writer, "indirect_f32", PI_VALUE));
-    ASSERT_EQ(FLEXI_OK, flexi_write_f64(&m_writer, "f64", PI_VALUE));
-    ASSERT_EQ(FLEXI_OK,
-        flexi_write_indirect_f64(&m_writer, "indirect_f64", PI_VALUE));
-    ASSERT_EQ(FLEXI_OK,
-        flexi_write_map_values(&m_writer, NULL, keyset, 4, FLEXI_WIDTH_8B));
-    ASSERT_EQ(FLEXI_OK, flexi_write_finalize(&m_writer));
+    REQUIRE(FLEXI_OK == flexi_write_key(fwriter, "f32"));
+    REQUIRE(FLEXI_OK == flexi_write_key(fwriter, "indirect_f32"));
+    REQUIRE(FLEXI_OK == flexi_write_key(fwriter, "f64"));
+    REQUIRE(FLEXI_OK == flexi_write_key(fwriter, "indirect_f64"));
+    flexi_stack_idx_t keyset = -1;
+    REQUIRE(FLEXI_OK ==
+            flexi_write_map_keys(fwriter, 4, FLEXI_WIDTH_1B, &keyset));
+    REQUIRE(0 == keyset);
+
+    REQUIRE(FLEXI_OK == flexi_write_f32(fwriter, "f32", PI_VALUE_FLT));
+    REQUIRE(FLEXI_OK ==
+            flexi_write_indirect_f32(fwriter, "indirect_f32", PI_VALUE_FLT));
+    REQUIRE(FLEXI_OK == flexi_write_f64(fwriter, "f64", PI_VALUE_DBL));
+    REQUIRE(FLEXI_OK ==
+            flexi_write_indirect_f64(fwriter, "indirect_f64", PI_VALUE_DBL));
+    REQUIRE(FLEXI_OK ==
+            flexi_write_map_values(fwriter, NULL, keyset, 4, FLEXI_WIDTH_8B));
+    REQUIRE(FLEXI_OK == flexi_write_finalize(fwriter));
 
     std::vector<uint8_t> expected = {'f', '3', '2', '\0',                 //
         'i', 'n', 'd', 'i', 'r', 'e', 'c', 't', '_', 'f', '3', '2', '\0', //
@@ -229,101 +238,107 @@ TEST_F(WriteFixture, MapFloats)
         // Root
         0x24, 0x27, 0x01};
 
-    AssertData(expected);
+    writer.AssertData(expected);
 
     flexi_cursor_s cursor{};
-    GetCursor(&cursor);
+    writer.GetCursor(&cursor);
 
-    ASSERT_EQ(FLEXI_TYPE_MAP, flexi_cursor_type(&cursor));
-    ASSERT_EQ(8, flexi_cursor_width(&cursor));
-    ASSERT_EQ(4, flexi_cursor_length(&cursor));
+    REQUIRE(FLEXI_TYPE_MAP == flexi_cursor_type(&cursor));
+    REQUIRE(8 == flexi_cursor_width(&cursor));
+    REQUIRE(4 == flexi_cursor_length(&cursor));
 
     flexi_cursor_s vcursor{};
     float f32 = 0.0f;
-    ASSERT_EQ(FLEXI_OK, flexi_cursor_seek_map_key(&cursor, "f32", &vcursor));
-    ASSERT_EQ(FLEXI_OK, flexi_cursor_f32(&vcursor, &f32));
-    ASSERT_FLOAT_EQ(f32, PI_VALUE);
+    REQUIRE(FLEXI_OK == flexi_cursor_seek_map_key(&cursor, "f32", &vcursor));
+    REQUIRE(FLEXI_OK == flexi_cursor_f32(&vcursor, &f32));
+    REQUIRE_THAT(f32, WithinRel(PI_VALUE_FLT));
 
     f32 = 0.0f;
-    ASSERT_EQ(FLEXI_OK,
-        flexi_cursor_seek_map_key(&cursor, "indirect_f32", &vcursor));
-    ASSERT_EQ(FLEXI_OK, flexi_cursor_f32(&vcursor, &f32));
-    ASSERT_FLOAT_EQ(f32, PI_VALUE);
+    REQUIRE(FLEXI_OK ==
+            flexi_cursor_seek_map_key(&cursor, "indirect_f32", &vcursor));
+    REQUIRE(FLEXI_OK == flexi_cursor_f32(&vcursor, &f32));
+    REQUIRE_THAT(f32, WithinRel(PI_VALUE_FLT));
 
     double f64 = 0.0;
-    ASSERT_EQ(FLEXI_OK, flexi_cursor_seek_map_key(&cursor, "f64", &vcursor));
-    ASSERT_EQ(FLEXI_OK, flexi_cursor_f64(&vcursor, &f64));
-    ASSERT_DOUBLE_EQ(f64, PI_VALUE);
+    REQUIRE(FLEXI_OK == flexi_cursor_seek_map_key(&cursor, "f64", &vcursor));
+    REQUIRE(FLEXI_OK == flexi_cursor_f64(&vcursor, &f64));
+    REQUIRE_THAT(f64, WithinRel(PI_VALUE_DBL));
 
     f64 = 0.0;
-    ASSERT_EQ(FLEXI_OK,
-        flexi_cursor_seek_map_key(&cursor, "indirect_f64", &vcursor));
-    ASSERT_EQ(FLEXI_OK, flexi_cursor_f64(&vcursor, &f64));
-    ASSERT_DOUBLE_EQ(f64, PI_VALUE);
+    REQUIRE(FLEXI_OK ==
+            flexi_cursor_seek_map_key(&cursor, "indirect_f64", &vcursor));
+    REQUIRE(FLEXI_OK == flexi_cursor_f64(&vcursor, &f64));
+    REQUIRE_THAT(f64, WithinRel(PI_VALUE_DBL));
 }
 
-TEST_F(WriteFixtureStrdup, LargeDoc2)
+TEST_CASE("Create Large Document #2", "[write_map]")
 {
+    TestWriterStrdup writer;
+    flexi_writer_s *fwriter = writer.GetWriter();
+
     static std::array<float, 3> s_data = {
-        (PI_VALUE / 2), PI_VALUE, (PI_VALUE / 2) * 3};
+        (PI_VALUE_FLT / 2), PI_VALUE_FLT, (PI_VALUE_FLT / 2) * 3};
     char keybuf[16];
     char mapbuf[16];
 
     {
         for (int i = 0; i < 100; i++) {
             snprintf(keybuf, 16, "key-%d", i);
-            ASSERT_EQ(FLEXI_OK, flexi_write_key(&m_writer, keybuf));
+            REQUIRE(FLEXI_OK == flexi_write_key(fwriter, keybuf));
         }
 
         flexi_stack_idx_t keys_idx;
-        ASSERT_EQ(FLEXI_OK,
-            flexi_write_map_keys(&m_writer, 100, FLEXI_WIDTH_4B, &keys_idx));
+        REQUIRE(FLEXI_OK ==
+                flexi_write_map_keys(fwriter, 100, FLEXI_WIDTH_4B, &keys_idx));
 
         for (int i = 0; i < 100; i++) {
             for (int j = 0; j < 100; j++) {
                 snprintf(keybuf, 16, "key-%d", j);
-                ASSERT_EQ(FLEXI_OK,
-                    flexi_write_typed_vector_flt(&m_writer, keybuf,
-                        s_data.data(), FLEXI_WIDTH_4B, s_data.size()));
+                REQUIRE(FLEXI_OK == flexi_write_typed_vector_flt(fwriter,
+                                        keybuf, s_data.data(), FLEXI_WIDTH_4B,
+                                        s_data.size()));
             }
 
             snprintf(mapbuf, 16, "map-%d", i);
-            ASSERT_EQ(FLEXI_OK, flexi_write_map_values(&m_writer, mapbuf,
+            REQUIRE(FLEXI_OK == flexi_write_map_values(fwriter, mapbuf,
                                     keys_idx, 100, FLEXI_WIDTH_1B));
         }
 
-        ASSERT_EQ(FLEXI_OK,
-            flexi_write_map(&m_writer, NULL, 100, FLEXI_WIDTH_1B));
-        ASSERT_EQ(FLEXI_OK, flexi_write_finalize(&m_writer));
+        REQUIRE(FLEXI_OK ==
+                flexi_write_map(fwriter, NULL, 100, FLEXI_WIDTH_1B));
+        REQUIRE(FLEXI_OK == flexi_write_finalize(fwriter));
     }
 
     {
         flexi_cursor_s cursor;
-        GetCursor(&cursor);
+        writer.GetCursor(&cursor);
 
         for (int i = 0; i < 100; i++) {
+            CAPTURE(i);
             flexi_cursor_s map;
             snprintf(mapbuf, 16, "map-%d", i);
-            ASSERT_EQ(FLEXI_OK,
-                flexi_cursor_seek_map_key(&cursor, mapbuf, &map));
+
+            CAPTURE(mapbuf);
+            REQUIRE(FLEXI_OK ==
+                    flexi_cursor_seek_map_key(&cursor, mapbuf, &map));
 
             for (int j = 0; j < 100; j++) {
                 flexi_cursor_s value;
                 snprintf(keybuf, 16, "key-%d", i);
-                ASSERT_EQ(FLEXI_OK,
-                    flexi_cursor_seek_map_key(&map, keybuf, &value));
+                REQUIRE(FLEXI_OK ==
+                        flexi_cursor_seek_map_key(&map, keybuf, &value));
 
-                ASSERT_EQ(FLEXI_TYPE_VECTOR_FLOAT3, flexi_cursor_type(&value));
-                ASSERT_EQ(3, flexi_cursor_length(&value));
-                ASSERT_EQ(4, flexi_cursor_width(&value));
+                REQUIRE(FLEXI_TYPE_VECTOR_FLOAT3 == flexi_cursor_type(&value));
+                REQUIRE(3 == flexi_cursor_length(&value));
+                REQUIRE(4 == flexi_cursor_width(&value));
 
                 const void *data = nullptr;
-                ASSERT_EQ(FLEXI_OK, flexi_cursor_typed_vector_data(&value,
+                REQUIRE(FLEXI_OK == flexi_cursor_typed_vector_data(&value,
                                         &data, NULL, NULL, NULL));
                 auto vec3 = static_cast<const float *>(data);
-                ASSERT_FLOAT_EQ(s_data[0], vec3[0]);
-                ASSERT_FLOAT_EQ(s_data[1], vec3[1]);
-                ASSERT_FLOAT_EQ(s_data[2], vec3[2]);
+                REQUIRE_THAT(s_data[0], WithinRel(vec3[0]));
+                REQUIRE_THAT(s_data[1], WithinRel(vec3[1]));
+                REQUIRE_THAT(s_data[2], WithinRel(vec3[2]));
             }
         }
     }

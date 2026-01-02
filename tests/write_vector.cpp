@@ -22,15 +22,18 @@
 
 #include "tests.hpp"
 
-TEST_F(WriteFixture, VectorInts)
+TEST_CASE("Vector of ints", "[write_vector]")
 {
-    ASSERT_EQ(FLEXI_OK, flexi_write_bool(&m_writer, NULL, true));
-    ASSERT_EQ(FLEXI_OK, flexi_write_sint(&m_writer, NULL, INT16_MAX));
-    ASSERT_EQ(FLEXI_OK, flexi_write_indirect_sint(&m_writer, NULL, INT32_MAX));
-    ASSERT_EQ(FLEXI_OK, flexi_write_uint(&m_writer, NULL, UINT16_MAX));
-    ASSERT_EQ(FLEXI_OK, flexi_write_indirect_uint(&m_writer, NULL, UINT32_MAX));
-    ASSERT_EQ(FLEXI_OK, flexi_write_vector(&m_writer, NULL, 5, FLEXI_WIDTH_2B));
-    ASSERT_EQ(FLEXI_OK, flexi_write_finalize(&m_writer));
+    TestWriter writer;
+    flexi_writer_s *fwriter = writer.GetWriter();
+
+    REQUIRE(FLEXI_OK == flexi_write_bool(fwriter, NULL, true));
+    REQUIRE(FLEXI_OK == flexi_write_sint(fwriter, NULL, INT16_MAX));
+    REQUIRE(FLEXI_OK == flexi_write_indirect_sint(fwriter, NULL, INT32_MAX));
+    REQUIRE(FLEXI_OK == flexi_write_uint(fwriter, NULL, UINT16_MAX));
+    REQUIRE(FLEXI_OK == flexi_write_indirect_uint(fwriter, NULL, UINT32_MAX));
+    REQUIRE(FLEXI_OK == flexi_write_vector(fwriter, NULL, 5, FLEXI_WIDTH_2B));
+    REQUIRE(FLEXI_OK == flexi_write_finalize(fwriter));
 
     std::vector<uint8_t> expected = {
         0xff, 0xff, 0xff, 0x7f,       // Indirect int
@@ -42,52 +45,55 @@ TEST_F(WriteFixture, VectorInts)
         0xff, 0xff,                   // [3] Uint
         0x0e, 0x00,                   // [4] Indirect uint
         0x68, 0x05, 0x1a, 0x09, 0x1e, // Vector types
-        0x0f, 0x29, 0x01,             // Root offset
+        0x0f, 0x29, 0x01              // Root offset
     };
 
-    AssertData(expected);
+    writer.AssertData(expected);
 
     flexi_cursor_s cursor{};
-    GetCursor(&cursor);
+    writer.GetCursor(&cursor);
 
-    ASSERT_EQ(FLEXI_TYPE_VECTOR, flexi_cursor_type(&cursor));
-    ASSERT_EQ(2, flexi_cursor_width(&cursor));
-    ASSERT_EQ(5, flexi_cursor_length(&cursor));
+    REQUIRE(FLEXI_TYPE_VECTOR == flexi_cursor_type(&cursor));
+    REQUIRE(2 == flexi_cursor_width(&cursor));
+    REQUIRE(5 == flexi_cursor_length(&cursor));
 
     flexi_cursor_s vcursor{};
     bool b = false;
 
-    ASSERT_EQ(FLEXI_OK, flexi_cursor_seek_vector_index(&cursor, 0, &vcursor));
-    ASSERT_EQ(FLEXI_OK, flexi_cursor_bool(&vcursor, &b));
-    ASSERT_EQ(b, true);
+    REQUIRE(FLEXI_OK == flexi_cursor_seek_vector_index(&cursor, 0, &vcursor));
+    REQUIRE(FLEXI_OK == flexi_cursor_bool(&vcursor, &b));
+    REQUIRE(b == true);
 
     int64_t s64 = 0;
 
-    ASSERT_EQ(FLEXI_OK, flexi_cursor_seek_vector_index(&cursor, 1, &vcursor));
-    ASSERT_EQ(FLEXI_OK, flexi_cursor_sint(&vcursor, &s64));
-    ASSERT_EQ(s64, INT16_MAX);
-    ASSERT_EQ(FLEXI_OK, flexi_cursor_seek_vector_index(&cursor, 2, &vcursor));
-    ASSERT_EQ(FLEXI_OK, flexi_cursor_sint(&vcursor, &s64));
-    ASSERT_EQ(s64, INT32_MAX);
+    REQUIRE(FLEXI_OK == flexi_cursor_seek_vector_index(&cursor, 1, &vcursor));
+    REQUIRE(FLEXI_OK == flexi_cursor_sint(&vcursor, &s64));
+    REQUIRE(s64 == INT16_MAX);
+    REQUIRE(FLEXI_OK == flexi_cursor_seek_vector_index(&cursor, 2, &vcursor));
+    REQUIRE(FLEXI_OK == flexi_cursor_sint(&vcursor, &s64));
+    REQUIRE(s64 == INT32_MAX);
 
     uint64_t u64 = 0;
 
-    ASSERT_EQ(FLEXI_OK, flexi_cursor_seek_vector_index(&cursor, 3, &vcursor));
-    ASSERT_EQ(FLEXI_OK, flexi_cursor_uint(&vcursor, &u64));
-    ASSERT_EQ(u64, UINT16_MAX);
-    ASSERT_EQ(FLEXI_OK, flexi_cursor_seek_vector_index(&cursor, 4, &vcursor));
-    ASSERT_EQ(FLEXI_OK, flexi_cursor_uint(&vcursor, &u64));
-    ASSERT_EQ(u64, UINT32_MAX);
+    REQUIRE(FLEXI_OK == flexi_cursor_seek_vector_index(&cursor, 3, &vcursor));
+    REQUIRE(FLEXI_OK == flexi_cursor_uint(&vcursor, &u64));
+    REQUIRE(u64 == UINT16_MAX);
+    REQUIRE(FLEXI_OK == flexi_cursor_seek_vector_index(&cursor, 4, &vcursor));
+    REQUIRE(FLEXI_OK == flexi_cursor_uint(&vcursor, &u64));
+    REQUIRE(u64 == UINT32_MAX);
 }
 
-TEST_F(WriteFixture, VectorFloats)
+TEST_CASE("Vector of floats", "[write_vector]")
 {
-    ASSERT_EQ(FLEXI_OK, flexi_write_f32(&m_writer, NULL, PI_VALUE));
-    ASSERT_EQ(FLEXI_OK, flexi_write_indirect_f32(&m_writer, NULL, PI_VALUE));
-    ASSERT_EQ(FLEXI_OK, flexi_write_f64(&m_writer, NULL, PI_VALUE));
-    ASSERT_EQ(FLEXI_OK, flexi_write_indirect_f64(&m_writer, NULL, PI_VALUE));
-    ASSERT_EQ(FLEXI_OK, flexi_write_vector(&m_writer, NULL, 4, FLEXI_WIDTH_8B));
-    ASSERT_EQ(FLEXI_OK, flexi_write_finalize(&m_writer));
+    TestWriter writer;
+    flexi_writer_s *fwriter = writer.GetWriter();
+
+    REQUIRE(FLEXI_OK == flexi_write_f32(fwriter, NULL, PI_VALUE_FLT));
+    REQUIRE(FLEXI_OK == flexi_write_indirect_f32(fwriter, NULL, PI_VALUE_FLT));
+    REQUIRE(FLEXI_OK == flexi_write_f64(fwriter, NULL, PI_VALUE_DBL));
+    REQUIRE(FLEXI_OK == flexi_write_indirect_f64(fwriter, NULL, PI_VALUE_DBL));
+    REQUIRE(FLEXI_OK == flexi_write_vector(fwriter, NULL, 4, FLEXI_WIDTH_8B));
+    REQUIRE(FLEXI_OK == flexi_write_finalize(fwriter));
 
     std::vector<uint8_t> expected = {//
         // Indirect float
@@ -111,45 +117,48 @@ TEST_F(WriteFixture, VectorFloats)
         // Root
         0x24, 0x2b, 0x01};
 
-    AssertData(expected);
+    writer.AssertData(expected);
 
     flexi_cursor_s cursor{};
-    GetCursor(&cursor);
+    writer.GetCursor(&cursor);
 
-    ASSERT_EQ(FLEXI_TYPE_VECTOR, flexi_cursor_type(&cursor));
-    ASSERT_EQ(8, flexi_cursor_width(&cursor));
-    ASSERT_EQ(4, flexi_cursor_length(&cursor));
+    REQUIRE(FLEXI_TYPE_VECTOR == flexi_cursor_type(&cursor));
+    REQUIRE(8 == flexi_cursor_width(&cursor));
+    REQUIRE(4 == flexi_cursor_length(&cursor));
 
     flexi_cursor_s vcursor{};
     float f32 = 0.0f;
 
-    ASSERT_EQ(FLEXI_OK, flexi_cursor_seek_vector_index(&cursor, 0, &vcursor));
-    ASSERT_EQ(FLEXI_OK, flexi_cursor_f32(&vcursor, &f32));
-    ASSERT_FLOAT_EQ(f32, PI_VALUE);
-    ASSERT_EQ(FLEXI_OK, flexi_cursor_seek_vector_index(&cursor, 1, &vcursor));
-    ASSERT_EQ(FLEXI_OK, flexi_cursor_f32(&vcursor, &f32));
-    ASSERT_FLOAT_EQ(f32, PI_VALUE);
+    REQUIRE(FLEXI_OK == flexi_cursor_seek_vector_index(&cursor, 0, &vcursor));
+    REQUIRE(FLEXI_OK == flexi_cursor_f32(&vcursor, &f32));
+    REQUIRE_THAT(f32, WithinRel(PI_VALUE_FLT));
+    REQUIRE(FLEXI_OK == flexi_cursor_seek_vector_index(&cursor, 1, &vcursor));
+    REQUIRE(FLEXI_OK == flexi_cursor_f32(&vcursor, &f32));
+    REQUIRE_THAT(f32, WithinRel(PI_VALUE_FLT));
 
     double f64 = 0.0;
 
-    ASSERT_EQ(FLEXI_OK, flexi_cursor_seek_vector_index(&cursor, 2, &vcursor));
-    ASSERT_EQ(FLEXI_OK, flexi_cursor_f64(&vcursor, &f64));
-    ASSERT_DOUBLE_EQ(f64, PI_VALUE);
-    ASSERT_EQ(FLEXI_OK, flexi_cursor_seek_vector_index(&cursor, 3, &vcursor));
-    ASSERT_EQ(FLEXI_OK, flexi_cursor_f64(&vcursor, &f64));
-    ASSERT_DOUBLE_EQ(f64, PI_VALUE);
+    REQUIRE(FLEXI_OK == flexi_cursor_seek_vector_index(&cursor, 2, &vcursor));
+    REQUIRE(FLEXI_OK == flexi_cursor_f64(&vcursor, &f64));
+    REQUIRE_THAT(f64, WithinRel(PI_VALUE_DBL));
+    REQUIRE(FLEXI_OK == flexi_cursor_seek_vector_index(&cursor, 3, &vcursor));
+    REQUIRE(FLEXI_OK == flexi_cursor_f64(&vcursor, &f64));
+    REQUIRE_THAT(f64, WithinRel(PI_VALUE_DBL));
 }
 
-TEST_F(WriteFixture, VectorStringBlob)
+TEST_CASE("Vector of strings and blobs", "[write_vector]")
 {
+    TestWriter writer;
+    flexi_writer_s *fwriter = writer.GetWriter();
+
     static constexpr std::array<uint8_t, 8> BLOB = {
         0xD0, 0xCF, 0x11, 0xE0, 0xA1, 0xB1, 0x1A, 0xE1};
 
-    ASSERT_EQ(FLEXI_OK, flexi_write_strlen(&m_writer, NULL, "xyzzy"));
-    ASSERT_EQ(FLEXI_OK,
-        flexi_write_blob(&m_writer, NULL, &BLOB[0], std::size(BLOB), 1));
-    ASSERT_EQ(FLEXI_OK, flexi_write_vector(&m_writer, NULL, 2, FLEXI_WIDTH_1B));
-    ASSERT_EQ(FLEXI_OK, flexi_write_finalize(&m_writer));
+    REQUIRE(FLEXI_OK == flexi_write_strlen(fwriter, NULL, "xyzzy"));
+    REQUIRE(FLEXI_OK ==
+            flexi_write_blob(fwriter, NULL, BLOB.data(), std::size(BLOB), 1));
+    REQUIRE(FLEXI_OK == flexi_write_vector(fwriter, NULL, 2, FLEXI_WIDTH_1B));
+    REQUIRE(FLEXI_OK == flexi_write_finalize(fwriter));
 
     std::vector<uint8_t> expected = {// String
         0x05, 'x', 'y', 'z', 'z', 'y', '\0',
@@ -166,45 +175,48 @@ TEST_F(WriteFixture, VectorStringBlob)
         // Root
         0x04, 0x28, 0x01};
 
-    AssertData(expected);
+    writer.AssertData(expected);
 
     flexi_cursor_s cursor{};
-    GetCursor(&cursor);
+    writer.GetCursor(&cursor);
 
-    ASSERT_EQ(FLEXI_TYPE_VECTOR, flexi_cursor_type(&cursor));
-    ASSERT_EQ(1, flexi_cursor_width(&cursor));
-    ASSERT_EQ(2, flexi_cursor_length(&cursor));
+    REQUIRE(FLEXI_TYPE_VECTOR == flexi_cursor_type(&cursor));
+    REQUIRE(1 == flexi_cursor_width(&cursor));
+    REQUIRE(2 == flexi_cursor_length(&cursor));
 
     flexi_cursor_s vcursor{};
 
     const char *str = nullptr;
     flexi_ssize_t len = -1;
-    ASSERT_EQ(FLEXI_OK, flexi_cursor_seek_vector_index(&cursor, 0, &vcursor));
-    ASSERT_EQ(5, flexi_cursor_length(&vcursor));
-    ASSERT_EQ(FLEXI_OK, flexi_cursor_string(&vcursor, &str, &len));
-    ASSERT_EQ(5, len);
-    ASSERT_STREQ(str, "xyzzy");
+    REQUIRE(FLEXI_OK == flexi_cursor_seek_vector_index(&cursor, 0, &vcursor));
+    REQUIRE(5 == flexi_cursor_length(&vcursor));
+    REQUIRE(FLEXI_OK == flexi_cursor_string(&vcursor, &str, &len));
+    REQUIRE(5 == len);
+    REQUIRE_THAT(str, Equals("xyzzy"));
 
     const uint8_t *blob = nullptr;
-    ASSERT_EQ(FLEXI_OK, flexi_cursor_seek_vector_index(&cursor, 1, &vcursor));
-    ASSERT_EQ(FLEXI_OK, flexi_cursor_blob(&vcursor, &blob, &len));
-    ASSERT_EQ(8, flexi_cursor_length(&vcursor));
-    ASSERT_EQ(8, len);
+    REQUIRE(FLEXI_OK == flexi_cursor_seek_vector_index(&cursor, 1, &vcursor));
+    REQUIRE(FLEXI_OK == flexi_cursor_blob(&vcursor, &blob, &len));
+    REQUIRE(8 == flexi_cursor_length(&vcursor));
+    REQUIRE(8 == len);
     for (size_t i = 0; i < std::size(BLOB); i++) {
-        ASSERT_EQ(blob[i], BLOB[i]);
+        REQUIRE(blob[i] == BLOB[i]);
     }
 }
 
-TEST_F(WriteFixture, VectorAlignedBlob4)
+TEST_CASE("Aligned Vector (4 bytes)", "[write_vector]")
 {
+    TestWriter writer;
+    flexi_writer_s *fwriter = writer.GetWriter();
+
     static constexpr std::array<uint8_t, 8> BLOB = {
         0xD0, 0xCF, 0x11, 0xE0, 0xA1, 0xB1, 0x1A, 0xE1};
 
-    ASSERT_EQ(FLEXI_OK, flexi_write_strlen(&m_writer, NULL, "xyzzy"));
-    ASSERT_EQ(FLEXI_OK,
-        flexi_write_blob(&m_writer, NULL, &BLOB[0], std::size(BLOB), 4));
-    ASSERT_EQ(FLEXI_OK, flexi_write_vector(&m_writer, NULL, 2, FLEXI_WIDTH_1B));
-    ASSERT_EQ(FLEXI_OK, flexi_write_finalize(&m_writer));
+    REQUIRE(FLEXI_OK == flexi_write_strlen(fwriter, NULL, "xyzzy"));
+    REQUIRE(FLEXI_OK ==
+            flexi_write_blob(fwriter, NULL, &BLOB[0], std::size(BLOB), 4));
+    REQUIRE(FLEXI_OK == flexi_write_vector(fwriter, NULL, 2, FLEXI_WIDTH_1B));
+    REQUIRE(FLEXI_OK == flexi_write_finalize(fwriter));
 
     std::vector<uint8_t> expected = {// String
         0x05, 'x', 'y', 'z', 'z', 'y', '\0',
@@ -223,43 +235,46 @@ TEST_F(WriteFixture, VectorAlignedBlob4)
         // Root
         0x04, 0x28, 0x01};
 
-    AssertData(expected);
+    writer.AssertData(expected);
 
     flexi_cursor_s cursor{};
-    GetCursor(&cursor);
+    writer.GetCursor(&cursor);
 
-    ASSERT_EQ(FLEXI_TYPE_VECTOR, flexi_cursor_type(&cursor));
-    ASSERT_EQ(1, flexi_cursor_width(&cursor));
-    ASSERT_EQ(2, flexi_cursor_length(&cursor));
+    REQUIRE(FLEXI_TYPE_VECTOR == flexi_cursor_type(&cursor));
+    REQUIRE(1 == flexi_cursor_width(&cursor));
+    REQUIRE(2 == flexi_cursor_length(&cursor));
 
     flexi_cursor_s vcursor{};
 
     const char *str = nullptr;
     flexi_ssize_t len = -1;
-    ASSERT_EQ(FLEXI_OK, flexi_cursor_seek_vector_index(&cursor, 0, &vcursor));
-    ASSERT_EQ(FLEXI_OK, flexi_cursor_string(&vcursor, &str, &len));
-    ASSERT_EQ(5, len);
-    ASSERT_STREQ(str, "xyzzy");
+    REQUIRE(FLEXI_OK == flexi_cursor_seek_vector_index(&cursor, 0, &vcursor));
+    REQUIRE(FLEXI_OK == flexi_cursor_string(&vcursor, &str, &len));
+    REQUIRE(5 == len);
+    REQUIRE_THAT(str, Equals("xyzzy"));
 
     const uint8_t *blob = nullptr;
-    ASSERT_EQ(FLEXI_OK, flexi_cursor_seek_vector_index(&cursor, 1, &vcursor));
-    ASSERT_EQ(FLEXI_OK, flexi_cursor_blob(&vcursor, &blob, &len));
-    ASSERT_EQ(8, len);
+    REQUIRE(FLEXI_OK == flexi_cursor_seek_vector_index(&cursor, 1, &vcursor));
+    REQUIRE(FLEXI_OK == flexi_cursor_blob(&vcursor, &blob, &len));
+    REQUIRE(8 == len);
     for (size_t i = 0; i < std::size(BLOB); i++) {
-        ASSERT_EQ(blob[i], BLOB[i]);
+        REQUIRE(blob[i] == BLOB[i]);
     }
 }
 
-TEST_F(WriteFixture, VectorAlignedBlob16)
+TEST_CASE("Aligned Vector (16 bytes)", "[write_vector]")
 {
+    TestWriter writer;
+    flexi_writer_s *fwriter = writer.GetWriter();
+
     static constexpr std::array<uint8_t, 8> BLOB = {
         0xD0, 0xCF, 0x11, 0xE0, 0xA1, 0xB1, 0x1A, 0xE1};
 
-    ASSERT_EQ(FLEXI_OK, flexi_write_strlen(&m_writer, NULL, "xyzzy"));
-    ASSERT_EQ(FLEXI_OK,
-        flexi_write_blob(&m_writer, NULL, &BLOB[0], std::size(BLOB), 16));
-    ASSERT_EQ(FLEXI_OK, flexi_write_vector(&m_writer, NULL, 2, FLEXI_WIDTH_1B));
-    ASSERT_EQ(FLEXI_OK, flexi_write_finalize(&m_writer));
+    REQUIRE(FLEXI_OK == flexi_write_strlen(fwriter, NULL, "xyzzy"));
+    REQUIRE(FLEXI_OK ==
+            flexi_write_blob(fwriter, NULL, &BLOB[0], std::size(BLOB), 16));
+    REQUIRE(FLEXI_OK == flexi_write_vector(fwriter, NULL, 2, FLEXI_WIDTH_1B));
+    REQUIRE(FLEXI_OK == flexi_write_finalize(fwriter));
 
     std::vector<uint8_t> expected = {// String
         0x05, 'x', 'y', 'z', 'z', 'y', '\0',
@@ -278,96 +293,102 @@ TEST_F(WriteFixture, VectorAlignedBlob16)
         // Root
         0x04, 0x28, 0x01};
 
-    AssertData(expected);
+    writer.AssertData(expected);
 
     flexi_cursor_s cursor{};
-    GetCursor(&cursor);
+    writer.GetCursor(&cursor);
 
-    ASSERT_EQ(FLEXI_TYPE_VECTOR, flexi_cursor_type(&cursor));
-    ASSERT_EQ(1, flexi_cursor_width(&cursor));
-    ASSERT_EQ(2, flexi_cursor_length(&cursor));
+    REQUIRE(FLEXI_TYPE_VECTOR == flexi_cursor_type(&cursor));
+    REQUIRE(1 == flexi_cursor_width(&cursor));
+    REQUIRE(2 == flexi_cursor_length(&cursor));
 
     flexi_cursor_s vcursor{};
 
     const char *str = nullptr;
     flexi_ssize_t len = -1;
-    ASSERT_EQ(FLEXI_OK, flexi_cursor_seek_vector_index(&cursor, 0, &vcursor));
-    ASSERT_EQ(FLEXI_OK, flexi_cursor_string(&vcursor, &str, &len));
-    ASSERT_EQ(5, len);
-    ASSERT_STREQ(str, "xyzzy");
+    REQUIRE(FLEXI_OK == flexi_cursor_seek_vector_index(&cursor, 0, &vcursor));
+    REQUIRE(FLEXI_OK == flexi_cursor_string(&vcursor, &str, &len));
+    REQUIRE(5 == len);
+    REQUIRE_THAT(str, Equals("xyzzy"));
 
     const uint8_t *blob = nullptr;
-    ASSERT_EQ(FLEXI_OK, flexi_cursor_seek_vector_index(&cursor, 1, &vcursor));
-    ASSERT_EQ(FLEXI_OK, flexi_cursor_blob(&vcursor, &blob, &len));
-    ASSERT_EQ(8, len);
+    REQUIRE(FLEXI_OK == flexi_cursor_seek_vector_index(&cursor, 1, &vcursor));
+    REQUIRE(FLEXI_OK == flexi_cursor_blob(&vcursor, &blob, &len));
+    REQUIRE(8 == len);
     for (size_t i = 0; i < std::size(BLOB); i++) {
-        ASSERT_EQ(blob[i], BLOB[i]);
+        REQUIRE(blob[i] == BLOB[i]);
     }
 }
 
-TEST_F(WriteFixture, VectorWidthTooSmall)
+TEST_CASE("Aligned Vector (Too small param)", "[write_vector]")
 {
     // The size of this string is designed to induce a situation in the
     // implementation where our first guess at the offset value is wrong.
 
+    TestWriter writer;
+    flexi_writer_s *fwriter = writer.GetWriter();
+
     std::string str;
     str.resize(UINT16_MAX - 2, 'x');
 
-    ASSERT_EQ(FLEXI_OK,
-        flexi_write_string(&m_writer, NULL, str.c_str(), str.length()));
-    ASSERT_EQ(FLEXI_OK, flexi_write_uint(&m_writer, NULL, 128));
-    ASSERT_EQ(FLEXI_OK, flexi_write_vector(&m_writer, NULL, 2, FLEXI_WIDTH_1B));
-    ASSERT_EQ(FLEXI_OK, flexi_write_finalize(&m_writer));
+    REQUIRE(FLEXI_OK ==
+            flexi_write_string(fwriter, NULL, str.c_str(), str.length()));
+    REQUIRE(FLEXI_OK == flexi_write_uint(fwriter, NULL, 128));
+    REQUIRE(FLEXI_OK == flexi_write_vector(fwriter, NULL, 2, FLEXI_WIDTH_1B));
+    REQUIRE(FLEXI_OK == flexi_write_finalize(fwriter));
 
     flexi_cursor_s cursor{};
-    GetCursor(&cursor);
+    writer.GetCursor(&cursor);
 
-    ASSERT_EQ(FLEXI_TYPE_VECTOR, flexi_cursor_type(&cursor));
-    ASSERT_EQ(4, flexi_cursor_width(&cursor));
-    ASSERT_EQ(2, flexi_cursor_length(&cursor));
+    REQUIRE(FLEXI_TYPE_VECTOR == flexi_cursor_type(&cursor));
+    REQUIRE(4 == flexi_cursor_width(&cursor));
+    REQUIRE(2 == flexi_cursor_length(&cursor));
 }
 
-TEST_F(WriteFixture, VectorBool)
+TEST_CASE("Aligned Vector (Vector bool)", "[write_vector]")
 {
+    TestWriter writer;
+    flexi_writer_s *fwriter = writer.GetWriter();
+
     {
         static constexpr std::array<bool, 5> data = {
             true, false, false, true, true};
 
-        ASSERT_EQ(FLEXI_OK, flexi_write_typed_vector_bool(&m_writer, NULL,
+        REQUIRE(FLEXI_OK == flexi_write_typed_vector_bool(fwriter, NULL,
                                 data.data(), data.size()));
-        ASSERT_EQ(FLEXI_OK, flexi_write_finalize(&m_writer));
+        REQUIRE(FLEXI_OK == flexi_write_finalize(fwriter));
     }
 
     std::vector<uint8_t> expected = {
         0x05, 0x01, 0x00, 0x00, 0x01, 0x01, 0x05, 0x90, 0x01};
 
-    AssertData(expected);
+    writer.AssertData(expected);
 
     flexi_cursor_s cursor{};
-    GetCursor(&cursor);
+    writer.GetCursor(&cursor);
 
-    ASSERT_EQ(FLEXI_TYPE_VECTOR_BOOL, flexi_cursor_type(&cursor));
-    ASSERT_EQ(1, flexi_cursor_width(&cursor));
-    ASSERT_EQ(5, flexi_cursor_length(&cursor));
+    REQUIRE(FLEXI_TYPE_VECTOR_BOOL == flexi_cursor_type(&cursor));
+    REQUIRE(1 == flexi_cursor_width(&cursor));
+    REQUIRE(5 == flexi_cursor_length(&cursor));
 
     {
         const void *data;
         flexi_type_e type;
         int stride;
         flexi_ssize_t count;
-        ASSERT_EQ(FLEXI_OK, flexi_cursor_typed_vector_data(&cursor, &data,
+        REQUIRE(FLEXI_OK == flexi_cursor_typed_vector_data(&cursor, &data,
                                 &type, &stride, &count));
-        ASSERT_EQ(FLEXI_TYPE_VECTOR_BOOL, type);
-        ASSERT_EQ(1, stride);
-        ASSERT_EQ(5, count);
+        REQUIRE(FLEXI_TYPE_VECTOR_BOOL == type);
+        REQUIRE(1 == stride);
+        REQUIRE(5 == count);
 
         auto boolData = static_cast<const bool *>(data);
 
         size_t i = 0;
-        ASSERT_EQ(true, boolData[i++]);
-        ASSERT_EQ(false, boolData[i++]);
-        ASSERT_EQ(false, boolData[i++]);
-        ASSERT_EQ(true, boolData[i++]);
-        ASSERT_EQ(true, boolData[i++]);
+        REQUIRE(true == boolData[i++]);
+        REQUIRE(false == boolData[i++]);
+        REQUIRE(false == boolData[i++]);
+        REQUIRE(true == boolData[i++]);
+        REQUIRE(true == boolData[i++]);
     }
 }

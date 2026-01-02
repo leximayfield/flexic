@@ -22,79 +22,86 @@
 
 #include "tests.hpp"
 
+/******************************************************************************/
+
 static void
-GetCursorBoolPattern(flexi_cursor_s &cursor)
+GetCursorUint64Pattern(flexi_cursor_s &cursor)
 {
-    static constexpr std::array<uint8_t, 3> s_data = {0x01, 0x68, 0x01};
+    static std::array<uint8_t, 10> s_data = {
+        0x88, 0x99, 0xaa, 0xbb, 0xcc, 0xdd, 0xee, 0xff, 0x0b, 0x08};
 
     auto span = flexi_make_span(s_data.data(), s_data.size());
     REQUIRE(FLEXI_OK == flexi_open_span(&span, &cursor));
 }
 
-TEST_CASE("Cursor metadata", "[cursor_bool]")
+/******************************************************************************/
+
+TEST_CASE("Cursor metadata", "[cursor_uint]")
 {
     flexi_cursor_s cursor{};
-    GetCursorBoolPattern(cursor);
+    GetCursorUint64Pattern(cursor);
 
-    REQUIRE(FLEXI_TYPE_BOOL == flexi_cursor_type(&cursor));
-    REQUIRE(1 == flexi_cursor_width(&cursor));
+    REQUIRE(FLEXI_TYPE_UINT == flexi_cursor_type(&cursor));
+    REQUIRE(8 == flexi_cursor_width(&cursor));
     REQUIRE(0 == flexi_cursor_length(&cursor));
 }
 
-TEST_CASE("flexi_cursor_sint", "[cursor_bool]")
+TEST_CASE("flexi_cursor_sint", "[cursor_uint]")
 {
     flexi_cursor_s cursor{};
-    GetCursorBoolPattern(cursor);
+    GetCursorUint64Pattern(cursor);
 
-    int64_t v = 0;
-    REQUIRE(FLEXI_OK == flexi_cursor_sint(&cursor, &v));
-    REQUIRE(1 == v);
+    int64_t v = 1;
+    REQUIRE(FLEXI_ERR_RANGE == flexi_cursor_sint(&cursor, &v));
+    REQUIRE(INT64_MAX == v);
 }
 
-TEST_CASE("flexi_cursor_uint", "[cursor_bool]")
+TEST_CASE("flexi_cursor_uint", "[cursor_uint]")
 {
     flexi_cursor_s cursor{};
-    GetCursorBoolPattern(cursor);
+    GetCursorUint64Pattern(cursor);
 
     uint64_t v = 0;
     REQUIRE(FLEXI_OK == flexi_cursor_uint(&cursor, &v));
-    REQUIRE(1 == v);
+    REQUIRE(UINT64_PATTERN == v);
 }
 
-TEST_CASE("flexi_cursor_f32", "[cursor_bool]")
+TEST_CASE("flexi_cursor_f32", "[cursor_uint]")
 {
     flexi_cursor_s cursor{};
-    GetCursorBoolPattern(cursor);
+    GetCursorUint64Pattern(cursor);
 
-    float v = 0.0f;
+    constexpr float ex = float(UINT64_PATTERN);
+    float v = 0;
     REQUIRE(FLEXI_OK == flexi_cursor_f32(&cursor, &v));
-    REQUIRE(1.0f == v);
+    REQUIRE(ex == v);
 }
 
-TEST_CASE("flexi_cursor_f64", "[cursor_bool]")
+TEST_CASE("flexi_cursor_f64", "[cursor_uint]")
 {
     flexi_cursor_s cursor{};
-    GetCursorBoolPattern(cursor);
+    GetCursorUint64Pattern(cursor);
 
-    double v = 0.0;
+    constexpr double ex = double(UINT64_PATTERN);
+    double v = 0;
     REQUIRE(FLEXI_OK == flexi_cursor_f64(&cursor, &v));
-    REQUIRE(1.0 == v);
+    REQUIRE(ex == v);
 }
 
-TEST_CASE("flexi_cursor_key", "[cursor_bool]")
+TEST_CASE("flexi_cursor_key", "[cursor_uint]")
 {
     flexi_cursor_s cursor{};
-    GetCursorBoolPattern(cursor);
+    GetCursorUint64Pattern(cursor);
 
     const char *v = nullptr;
     REQUIRE(FLEXI_ERR_BADTYPE == flexi_cursor_key(&cursor, &v));
     REQUIRE_THAT("", Equals(v));
 }
 
-TEST_CASE("flexi_cursor_string", "[cursor_bool]")
+TEST_CASE("flexi_cursor_string", "[cursor_uint]")
 {
     flexi_cursor_s cursor{};
-    GetCursorBoolPattern(cursor);
+    GetCursorUint64Pattern(cursor);
 
     const char *v = nullptr;
     flexi_ssize_t len = -1;
@@ -103,10 +110,10 @@ TEST_CASE("flexi_cursor_string", "[cursor_bool]")
     REQUIRE(0 == len);
 }
 
-TEST_CASE("flexi_cursor_typed_vector_data", "[cursor_bool]")
+TEST_CASE("flexi_cursor_typed_vector_data", "[cursor_uint]")
 {
     flexi_cursor_s cursor{};
-    GetCursorBoolPattern(cursor);
+    GetCursorUint64Pattern(cursor);
 
     const void *v = nullptr;
     flexi_type_e t = FLEXI_TYPE_NULL;
@@ -115,26 +122,26 @@ TEST_CASE("flexi_cursor_typed_vector_data", "[cursor_bool]")
 
     REQUIRE(FLEXI_ERR_BADTYPE ==
             flexi_cursor_typed_vector_data(&cursor, &v, &t, &s, &c));
-    REQUIRE(0 == *static_cast<const int64_t *>(v));
+    REQUIRE(0 == *static_cast<const uint64_t *>(v));
     REQUIRE(FLEXI_TYPE_INVALID == t);
     REQUIRE(0 == s);
     REQUIRE(0 == c);
 }
 
-TEST_CASE("flexi_cursor_vector_types", "[cursor_bool]")
+TEST_CASE("flexi_cursor_vector_types", "[cursor_uint]")
 {
     flexi_cursor_s cursor{};
-    GetCursorBoolPattern(cursor);
+    GetCursorUint64Pattern(cursor);
 
     const flexi_packed_t *v = nullptr;
     REQUIRE(FLEXI_ERR_BADTYPE == flexi_cursor_vector_types(&cursor, &v));
     REQUIRE(FLEXI_TYPE_NULL == FLEXI_UNPACK_TYPE(*v));
 }
 
-TEST_CASE("flexi_cursor_blob", "[cursor_bool]")
+TEST_CASE("flexi_cursor_blob", "[cursor_uint]")
 {
     flexi_cursor_s cursor{};
-    GetCursorBoolPattern(cursor);
+    GetCursorUint64Pattern(cursor);
 
     const uint8_t *v = nullptr;
     flexi_ssize_t len = -1;
@@ -143,40 +150,40 @@ TEST_CASE("flexi_cursor_blob", "[cursor_bool]")
     REQUIRE(0 == len);
 }
 
-TEST_CASE("flexi_cursor_bool", "[cursor_bool]")
+TEST_CASE("flexi_cursor_bool", "[cursor_uint]")
 {
     flexi_cursor_s cursor{};
-    GetCursorBoolPattern(cursor);
+    GetCursorUint64Pattern(cursor);
 
     bool v = false;
     REQUIRE(FLEXI_OK == flexi_cursor_bool(&cursor, &v));
     REQUIRE(true == v);
 }
 
-TEST_CASE("flexi_cursor_seek_vector_index", "[cursor_bool]")
+TEST_CASE("flexi_cursor_seek_vector_index", "[cursor_uint]")
 {
     flexi_cursor_s cursor{};
-    GetCursorBoolPattern(cursor);
+    GetCursorUint64Pattern(cursor);
 
     flexi_cursor_s v{};
     REQUIRE(FLEXI_ERR_BADTYPE ==
             flexi_cursor_seek_vector_index(&cursor, 0, &v));
 }
 
-TEST_CASE("flexi_cursor_map_key_at_index", "[cursor_bool]")
+TEST_CASE("flexi_cursor_map_key_at_index", "[cursor_uint]")
 {
     flexi_cursor_s cursor{};
-    GetCursorBoolPattern(cursor);
+    GetCursorUint64Pattern(cursor);
 
     const char *v = nullptr;
     REQUIRE(FLEXI_ERR_BADTYPE == flexi_cursor_map_key_at_index(&cursor, 0, &v));
     REQUIRE_THAT("", Equals(v));
 }
 
-TEST_CASE("flexi_cursor_seek_map_key", "[cursor_bool]")
+TEST_CASE("flexi_cursor_seek_map_key", "[cursor_uint]")
 {
     flexi_cursor_s cursor{};
-    GetCursorBoolPattern(cursor);
+    GetCursorUint64Pattern(cursor);
 
     flexi_cursor_s v{};
     REQUIRE(FLEXI_ERR_BADTYPE == flexi_cursor_seek_map_key(&cursor, "", &v));

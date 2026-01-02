@@ -30,339 +30,344 @@
 
 /******************************************************************************/
 
-TEST(CursorToJSON, BasicTypes)
+TEST_CASE("Basic Types", "[json]")
 {
     std::string data = ReadFileToString("basic_types.flexbuf");
     flexi_span_s span = flexi_make_span(data.data(), data.size());
 
     flexi_cursor_s cursor{};
-    ASSERT_EQ(FLEXI_OK, flexi_open_span(&span, &cursor));
+    REQUIRE(FLEXI_OK == flexi_open_span(&span, &cursor));
 
     std::string json_str;
-    ASSERT_EQ(FLEXI_OK, flexi_json_string_from_cursor(&cursor, json_str));
+    REQUIRE(FLEXI_OK == flexi_json_string_from_cursor(&cursor, json_str));
 
     nlohmann::json json;
-    ASSERT_NO_THROW(json = nlohmann::json::parse(json_str));
+    REQUIRE_NOTHROW(json = nlohmann::json::parse(json_str));
 
-    ASSERT_EQ(11, json.size());
+    REQUIRE(11 == json.size());
 
     size_t i = 0;
     {
         nlohmann::json value = json[i++];
-        ASSERT_TRUE(value.is_null());
+        REQUIRE(value.is_null());
     }
 
     {
         nlohmann::json value = json[i++];
-        ASSERT_TRUE(value.is_number_integer());
-        ASSERT_TRUE(value == 1);
+        REQUIRE(value.is_number_integer());
+        REQUIRE(value == 1);
     }
 
     {
         nlohmann::json value = json[i++];
-        ASSERT_TRUE(value.is_number_integer());
-        ASSERT_TRUE(value == 2);
+        REQUIRE(value.is_number_integer());
+        REQUIRE(value == 2);
     }
 
     {
         nlohmann::json value = json[i++];
-        ASSERT_TRUE(value.is_string());
-        ASSERT_TRUE(value == "Key");
+        REQUIRE(value.is_string());
+        REQUIRE(value == "Key");
     }
 
     {
         nlohmann::json value = json[i++];
-        ASSERT_TRUE(value.is_string());
-        ASSERT_TRUE(value == "Str");
+        REQUIRE(value.is_string());
+        REQUIRE(value == "Str");
     }
 
     {
         nlohmann::json value = json[i++];
-        ASSERT_TRUE(value.is_number_integer());
-        ASSERT_TRUE(value == 3);
+        REQUIRE(value.is_number_integer());
+        REQUIRE(value == 3);
     }
 
     {
         nlohmann::json value = json[i++];
-        ASSERT_TRUE(value.is_number_integer());
-        ASSERT_TRUE(value == 4);
+        REQUIRE(value.is_number_integer());
+        REQUIRE(value == 4);
     }
 
     {
         nlohmann::json value = json[i++];
-        ASSERT_TRUE(value.is_number_float());
-        ASSERT_FLOAT_EQ(PI_VALUE / 2, value);
+        REQUIRE(value.is_number_float());
+        REQUIRE_THAT(PI_VALUE_FLT / 2, WithinRel(value.get<float>()));
     }
 
     {
         nlohmann::json value = json[i++];
-        ASSERT_TRUE(value.is_number_float());
-        ASSERT_EQ(PI_VALUE, value);
+        REQUIRE(value.is_number_float());
+        REQUIRE_THAT(PI_VALUE_DBL, WithinRel(value.get<double>()));
     }
 
     {
         nlohmann::json value = json[i++];
-        ASSERT_TRUE(value.is_string());
+        REQUIRE(value.is_string());
         std::string str{value};
 
         uint8_t data[8];
         flexi_ssize_t written = sizeof(data);
-        ASSERT_EQ(FLEXI_OK,
-            flexi_json_decode_blob(str.c_str(), str.length(), data, &written));
+        REQUIRE(FLEXI_OK == flexi_json_decode_blob(str.c_str(), str.length(),
+                                data, &written));
 
-        ASSERT_EQ(4, written);
-        ASSERT_EQ(0, memcmp("blob", data, 4));
+        REQUIRE(4 == written);
+        REQUIRE(0 == memcmp("blob", data, 4));
     }
 
     {
         nlohmann::json value = json[i++];
-        ASSERT_TRUE(value.is_boolean());
-        ASSERT_EQ(true, value);
+        REQUIRE(value.is_boolean());
+        REQUIRE(true == value);
     }
 }
 
-TEST(CursorToJSON, NestedTypes)
+TEST_CASE("Nested Types", "[json]")
 {
     std::string data = ReadFileToString("nested_types.flexbuf");
     flexi_span_s span = flexi_make_span(data.data(), data.size());
 
     flexi_cursor_s cursor{};
-    ASSERT_EQ(FLEXI_OK, flexi_open_span(&span, &cursor));
+    REQUIRE(FLEXI_OK == flexi_open_span(&span, &cursor));
 
     std::string json_str;
-    ASSERT_EQ(FLEXI_OK, flexi_json_string_from_cursor(&cursor, json_str));
+    REQUIRE(FLEXI_OK == flexi_json_string_from_cursor(&cursor, json_str));
 
     nlohmann::json json;
-    ASSERT_NO_THROW(json = nlohmann::json::parse(json_str));
+    REQUIRE_NOTHROW(json = nlohmann::json::parse(json_str));
 
-    ASSERT_EQ(3, json.size());
+    REQUIRE(3 == json.size());
 
     size_t i = 0;
     {
         nlohmann::json object = json[i++];
-        ASSERT_TRUE(object.is_object());
+        REQUIRE(object.is_object());
     }
 
     {
         nlohmann::json array = json[i++];
-        ASSERT_TRUE(array.is_array());
-        ASSERT_EQ(2, array.size());
+        REQUIRE(array.is_array());
+        REQUIRE(2 == array.size());
 
         size_t j = 0;
         {
             nlohmann::json value = array[j++];
-            ASSERT_TRUE(value.is_number_integer());
-            ASSERT_EQ(4, value);
+            REQUIRE(value.is_number_integer());
+            REQUIRE(4 == value);
         }
 
         {
             nlohmann::json value = array[j++];
-            ASSERT_TRUE(value.is_number_float());
-            ASSERT_FLOAT_EQ((PI_VALUE / 2) * 3, value);
+            REQUIRE(value.is_number_float());
+            REQUIRE_THAT((PI_VALUE_FLT / 2) * 3, WithinRel(value.get<float>()));
         }
     }
 
     {
         nlohmann::json array = json[i++];
-        ASSERT_TRUE(array.is_array());
-        ASSERT_EQ(2, array.size());
+        REQUIRE(array.is_array());
+        REQUIRE(2 == array.size());
 
         size_t j = 0;
         {
             nlohmann::json value = array[j++];
-            ASSERT_TRUE(value.is_number_integer());
-            ASSERT_EQ(8, value);
+            REQUIRE(value.is_number_integer());
+            REQUIRE(8 == value);
         }
 
         {
             nlohmann::json value = array[j++];
-            ASSERT_TRUE(value.is_number_float());
-            ASSERT_FLOAT_EQ(PI_VALUE * 2, value);
+            REQUIRE(value.is_number_float());
+            REQUIRE_THAT(PI_VALUE_FLT * 2, WithinRel(value.get<float>()));
         }
     }
 }
 
-TEST(CursorToJSON, TypedVectors)
+TEST_CASE("Typed Vectors", "[json]")
 {
     std::string data = ReadFileToString("typed_vectors.flexbuf");
     flexi_span_s span = flexi_make_span(data.data(), data.size());
 
     flexi_cursor_s cursor{};
-    ASSERT_EQ(FLEXI_OK, flexi_open_span(&span, &cursor));
+    REQUIRE(FLEXI_OK == flexi_open_span(&span, &cursor));
 
     std::string json_str;
-    ASSERT_EQ(FLEXI_OK, flexi_json_string_from_cursor(&cursor, json_str));
+    REQUIRE(FLEXI_OK == flexi_json_string_from_cursor(&cursor, json_str));
 
     nlohmann::json json;
-    ASSERT_NO_THROW(json = nlohmann::json::parse(json_str));
+    REQUIRE_NOTHROW(json = nlohmann::json::parse(json_str));
 
     {
         nlohmann::json array = json["bool_vec"];
-        ASSERT_TRUE(array.is_array());
-        ASSERT_EQ(2, array.size());
+        REQUIRE(array.is_array());
+        REQUIRE(2 == array.size());
 
         size_t i = 0;
         {
             nlohmann::json value = array[i++];
-            ASSERT_TRUE(value.is_boolean());
-            ASSERT_EQ(false, value);
+            REQUIRE(value.is_boolean());
+            REQUIRE(false == value);
         }
 
         {
             nlohmann::json value = array[i++];
-            ASSERT_TRUE(value.is_boolean());
-            ASSERT_EQ(true, value);
+            REQUIRE(value.is_boolean());
+            REQUIRE(true == value);
         }
     }
 
     {
         nlohmann::json array = json["float_vec2"];
-        ASSERT_TRUE(array.is_array());
-        ASSERT_EQ(2, array.size());
+        REQUIRE(array.is_array());
+        REQUIRE(2 == array.size());
 
         for (size_t i = 0; i < array.size(); i++) {
-            ASSERT_TRUE(array[i].is_number_float());
-            ASSERT_FLOAT_EQ((PI_VALUE / 2) * (i + 1.0), array[i]);
+            REQUIRE(array[i].is_number_float());
+            REQUIRE_THAT((PI_VALUE_FLT / 2) * (i + 1.0),
+                WithinRel(array[i].get<float>()));
         }
     }
 
     {
         nlohmann::json array = json["float_vec3"];
-        ASSERT_TRUE(array.is_array());
-        ASSERT_EQ(3, array.size());
+        REQUIRE(array.is_array());
+        REQUIRE(3 == array.size());
 
         for (size_t i = 0; i < array.size(); i++) {
-            ASSERT_TRUE(array[i].is_number_float());
-            ASSERT_FLOAT_EQ((PI_VALUE / 2) * (i + 1.0), array[i]);
+            CAPTURE(i);
+            REQUIRE(array[i].is_number_float());
+            REQUIRE_THAT((PI_VALUE_FLT / 2) * (i + 1.0),
+                WithinRel(array[i].get<float>()));
         }
     }
 
     {
         nlohmann::json array = json["float_vec4"];
-        ASSERT_TRUE(array.is_array());
-        ASSERT_EQ(4, array.size());
+        REQUIRE(array.is_array());
+        REQUIRE(4 == array.size());
 
         for (size_t i = 0; i < array.size(); i++) {
-            ASSERT_TRUE(array[i].is_number_float());
-            ASSERT_FLOAT_EQ((PI_VALUE / 2) * (i + 1.0), array[i]);
+            REQUIRE(array[i].is_number_float());
+            REQUIRE_THAT((PI_VALUE_FLT / 2) * (i + 1.0),
+                WithinRel(array[i].get<float>()));
         }
     }
 
     {
         nlohmann::json array = json["float_vec"];
-        ASSERT_TRUE(array.is_array());
-        ASSERT_EQ(5, array.size());
+        REQUIRE(array.is_array());
+        REQUIRE(5 == array.size());
 
         for (size_t i = 0; i < array.size(); i++) {
-            ASSERT_TRUE(array[i].is_number_float());
-            ASSERT_FLOAT_EQ((PI_VALUE / 2) * (i + 1.0), array[i]);
+            REQUIRE(array[i].is_number_float());
+            REQUIRE_THAT((PI_VALUE_FLT / 2) * (i + 1.0),
+                WithinRel(array[i].get<float>()));
         }
     }
 
     {
         nlohmann::json array = json["keys_vec"];
-        ASSERT_TRUE(array.is_array());
-        ASSERT_EQ(2, array.size());
+        REQUIRE(array.is_array());
+        REQUIRE(2 == array.size());
 
         size_t i = 0;
         {
             nlohmann::json value = array[i++];
-            ASSERT_TRUE(value.is_string());
-            ASSERT_EQ("foo", value);
+            REQUIRE(value.is_string());
+            REQUIRE_THAT("foo", Equals(value));
         }
 
         {
             nlohmann::json value = array[i++];
-            ASSERT_TRUE(value.is_string());
-            ASSERT_EQ("bar", value);
+            REQUIRE(value.is_string());
+            REQUIRE_THAT("bar", Equals(value));
         }
     }
 
     {
         nlohmann::json array = json["sint_vec2"];
-        ASSERT_TRUE(array.is_array());
-        ASSERT_EQ(2, array.size());
+        REQUIRE(array.is_array());
+        REQUIRE(2 == array.size());
 
         for (size_t i = 0; i < array.size(); i++) {
-            ASSERT_TRUE(array[i].is_number_integer());
-            ASSERT_EQ(i + 1, array[i]);
+            REQUIRE(array[i].is_number_integer());
+            REQUIRE(i + 1 == array[i]);
         }
     }
 
     {
         nlohmann::json array = json["sint_vec3"];
-        ASSERT_TRUE(array.is_array());
-        ASSERT_EQ(3, array.size());
+        REQUIRE(array.is_array());
+        REQUIRE(3 == array.size());
 
         for (size_t i = 0; i < array.size(); i++) {
-            ASSERT_TRUE(array[i].is_number_integer());
-            ASSERT_EQ(i + 1, array[i]);
+            REQUIRE(array[i].is_number_integer());
+            REQUIRE(i + 1 == array[i]);
         }
     }
 
     {
         nlohmann::json array = json["sint_vec4"];
-        ASSERT_TRUE(array.is_array());
-        ASSERT_EQ(4, array.size());
+        REQUIRE(array.is_array());
+        REQUIRE(4 == array.size());
 
         for (size_t i = 0; i < array.size(); i++) {
-            ASSERT_TRUE(array[i].is_number_integer());
-            ASSERT_EQ(i + 1, array[i]);
+            REQUIRE(array[i].is_number_integer());
+            REQUIRE(i + 1 == array[i]);
         }
     }
 
     {
         nlohmann::json array = json["sint_vec"];
-        ASSERT_TRUE(array.is_array());
-        ASSERT_EQ(5, array.size());
+        REQUIRE(array.is_array());
+        REQUIRE(5 == array.size());
 
         for (size_t i = 0; i < array.size(); i++) {
-            ASSERT_TRUE(array[i].is_number_integer());
-            ASSERT_EQ(i + 1, array[i]);
+            REQUIRE(array[i].is_number_integer());
+            REQUIRE(i + 1 == array[i]);
         }
     }
 
     {
         nlohmann::json array = json["uint_vec2"];
-        ASSERT_TRUE(array.is_array());
-        ASSERT_EQ(2, array.size());
+        REQUIRE(array.is_array());
+        REQUIRE(2 == array.size());
 
         for (size_t i = 0; i < array.size(); i++) {
-            ASSERT_TRUE(array[i].is_number_integer());
-            ASSERT_EQ(i + 1, array[i]);
+            REQUIRE(array[i].is_number_integer());
+            REQUIRE(i + 1 == array[i]);
         }
     }
 
     {
         nlohmann::json array = json["uint_vec3"];
-        ASSERT_TRUE(array.is_array());
-        ASSERT_EQ(3, array.size());
+        REQUIRE(array.is_array());
+        REQUIRE(3 == array.size());
 
         for (size_t i = 0; i < array.size(); i++) {
-            ASSERT_TRUE(array[i].is_number_integer());
-            ASSERT_EQ(i + 1, array[i]);
+            REQUIRE(array[i].is_number_integer());
+            REQUIRE(i + 1 == array[i]);
         }
     }
 
     {
         nlohmann::json array = json["uint_vec4"];
-        ASSERT_TRUE(array.is_array());
-        ASSERT_EQ(4, array.size());
+        REQUIRE(array.is_array());
+        REQUIRE(4 == array.size());
 
         for (size_t i = 0; i < array.size(); i++) {
-            ASSERT_TRUE(array[i].is_number_integer());
-            ASSERT_EQ(i + 1, array[i]);
+            REQUIRE(array[i].is_number_integer());
+            REQUIRE(i + 1 == array[i]);
         }
     }
 
     {
         nlohmann::json array = json["uint_vec"];
-        ASSERT_TRUE(array.is_array());
-        ASSERT_EQ(5, array.size());
+        REQUIRE(array.is_array());
+        REQUIRE(5 == array.size());
 
         for (size_t i = 0; i < array.size(); i++) {
-            ASSERT_TRUE(array[i].is_number_integer());
-            ASSERT_EQ(i + 1, array[i]);
+            REQUIRE(array[i].is_number_integer());
+            REQUIRE(i + 1 == array[i]);
         }
     }
 }

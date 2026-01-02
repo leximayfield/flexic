@@ -20,12 +20,22 @@
 // 3. This notice may not be removed or altered from any source distribution.
 //
 
+#pragma once
+
 #include "flexic.h"
 
-#include "gtest/gtest.h"
+#include "catch2/catch_test_macros.hpp"
+#include "catch2/matchers/catch_matchers_floating_point.hpp"
+#include "catch2/matchers/catch_matchers_string.hpp"
+
+CATCH_REGISTER_ENUM(flexi_result_e);
+CATCH_REGISTER_ENUM(flexi_width_e);
+CATCH_REGISTER_ENUM(flexi_type_e);
 
 #include <array>
-#include <iostream>
+#include <vector>
+
+using namespace Catch::Matchers;
 
 #define INT8_PATTERN (INT8_C(-120))
 #define INT16_PATTERN (INT16_C(-26232))
@@ -37,7 +47,8 @@
 #define UINT32_PATTERN (UINT32_C(0xbbaa9988))
 #define UINT64_PATTERN (UINT64_C(0xffeeddccbbaa9988))
 
-#define PI_VALUE (3.14159265358979323846)
+#define PI_VALUE_DBL (3.14159265358979323846)
+#define PI_VALUE_FLT (3.14159265358979323846f)
 
 enum class direct_e {
     direct,
@@ -129,13 +140,14 @@ public:
 /**
  * @brief A fixture for writing and checking written data.
  */
-class WriteFixture : public testing::Test {
+class TestWriter {
 protected:
     TestStream m_actual;
     TestStack m_stack;
     flexi_writer_s m_writer{};
 
-    void SetUp() override
+public:
+    TestWriter()
     {
         flexi_stack_s stack =
             flexi_make_stack(TestStack::AtFunc, TestStack::CountFunc,
@@ -145,41 +157,44 @@ protected:
         m_writer = flexi_make_writer(&stack, &ostream, NULL, NULL);
     }
 
-    void TearDown() override { flexi_destroy_writer(&m_writer); }
+    ~TestWriter() { flexi_destroy_writer(&m_writer); }
 
-    void AssertData(const std::vector<uint8_t> &expected)
+    void AssertData(const std::vector<uint8_t> &expected) const
     {
         flexi_ssize_t actual_size = 0;
-        ASSERT_TRUE(m_actual.Tell(&actual_size));
+        REQUIRE(m_actual.Tell(&actual_size));
 
         // If the size is bad, we still want to know where any misalignment
         // is located in the buffer.
-        EXPECT_EQ(expected.size(), actual_size);
+        CHECK(expected.size() == actual_size);
         flexi_ssize_t min_size =
             std::min(flexi_ssize_t(expected.size()), actual_size);
 
         for (flexi_ssize_t i = 0; i < min_size; i++) {
-            SCOPED_TRACE(testing::Message() << "At pos: " << i);
-            ASSERT_EQ(expected[i], *m_actual.DataAt(i));
+            CAPTURE(i);
+            CHECK(expected[i] == *m_actual.DataAt(i));
         }
     }
 
     void GetCursor(flexi_cursor_s *cursor)
     {
         flexi_ssize_t offset = 0;
-        ASSERT_TRUE(m_actual.Tell(&offset));
+        REQUIRE(m_actual.Tell(&offset));
 
         auto span = flexi_make_span(m_actual.DataAt(0), offset);
-        ASSERT_EQ(FLEXI_OK, flexi_open_span(&span, cursor));
+        REQUIRE(FLEXI_OK == flexi_open_span(&span, cursor));
     }
+
+    TestStream &GetActual() { return m_actual; }
+    flexi_writer_s *GetWriter() { return &m_writer; }
 };
 
 /**
  * @brief A fixture for writing and checking written data - with strdup.
  */
-class WriteFixtureStrdup : public WriteFixture {
-protected:
-    void SetUp() override
+class TestWriterStrdup : public TestWriter {
+public:
+    TestWriterStrdup()
     {
         flexi_stack_s stack =
             flexi_make_stack(TestStack::AtFunc, TestStack::CountFunc,

@@ -30,17 +30,17 @@ GetCursorLargeDoc1(flexi_cursor_s &cursor)
     static std::string s_data = ReadFileToString("large_doc1.flexbuf");
 
     auto span = flexi_make_span(s_data.data(), s_data.size());
-    ASSERT_EQ(FLEXI_OK, flexi_open_span(&span, &cursor));
+    REQUIRE(FLEXI_OK == flexi_open_span(&span, &cursor));
 }
 
 /******************************************************************************/
 
-TEST(CursorMap, SeekMapKey)
+TEST_CASE("flexi_cursor_seek_map_key", "[cursor_map]")
 {
     flexi_cursor_s cursor;
     GetCursorLargeDoc1(cursor);
 
     flexi_cursor_s curValue;
-    ASSERT_EQ(FLEXI_OK,
-        flexi_cursor_seek_map_key(&cursor, "map-23", &curValue));
+    REQUIRE(FLEXI_OK ==
+            flexi_cursor_seek_map_key(&cursor, "map-23", &curValue));
 }

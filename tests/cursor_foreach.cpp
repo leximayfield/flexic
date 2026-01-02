@@ -32,7 +32,7 @@ static constexpr std::array<uint8_t, 28> g_test_vector = {
     0xff, 0xff,                   // [3] Uint
     0x0e, 0x00,                   // [4] Indirect uint
     0x68, 0x05, 0x1a, 0x09, 0x1e, // Vector types
-    0x0f, 0x29, 0x01,             // Root offset
+    0x0f, 0x29, 0x01              // Root offset
 };
 
 static constexpr std::array<uint8_t, 84> g_test_map = {
@@ -61,7 +61,7 @@ static constexpr std::array<uint8_t, 84> g_test_map = {
     0xff, 0x7f,                   // Values[3] Int
     0xff, 0xff,                   // Values[4] Uint
     0x68, 0x1a, 0x1e, 0x05, 0x09, // Types
-    0x0f, 0x25, 0x01,             // Root
+    0x0f, 0x25, 0x01              // Root
 };
 
 struct foreach_result_s {
@@ -79,133 +79,133 @@ ForeachCB(const char *key, flexi_cursor_s *cursor, void *user)
     return true;
 }
 
-TEST(CursorForeach, ForeachVector)
+TEST_CASE("flexi_cursor_foreach (Vector)", "[cursor_foreach]")
 {
     flexi_span_s span =
         flexi_make_span(g_test_vector.data(), g_test_vector.size());
 
     flexi_cursor_s cursor;
-    ASSERT_EQ(FLEXI_OK, flexi_open_span(&span, &cursor));
+    REQUIRE(FLEXI_OK == flexi_open_span(&span, &cursor));
 
     foreach_results_t results;
-    ASSERT_EQ(FLEXI_OK, flexi_cursor_foreach(&cursor, &ForeachCB, &results));
+    REQUIRE(FLEXI_OK == flexi_cursor_foreach(&cursor, &ForeachCB, &results));
 
-    ASSERT_EQ(5, results.size());
+    REQUIRE(5 == results.size());
 
     size_t i = 0;
     {
-        ASSERT_EQ(nullptr, results[i].key);
-        ASSERT_EQ(FLEXI_TYPE_BOOL, flexi_cursor_type(&results[i].cursor));
+        REQUIRE(nullptr == results[i].key);
+        REQUIRE(FLEXI_TYPE_BOOL == flexi_cursor_type(&results[i].cursor));
 
         bool val;
-        ASSERT_EQ(FLEXI_OK, flexi_cursor_bool(&results[i].cursor, &val));
-        ASSERT_EQ(true, val);
+        REQUIRE(FLEXI_OK == flexi_cursor_bool(&results[i].cursor, &val));
+        REQUIRE(true == val);
     }
 
     i++;
     {
-        ASSERT_EQ(nullptr, results[i].key);
-        ASSERT_EQ(FLEXI_TYPE_SINT, flexi_cursor_type(&results[i].cursor));
+        REQUIRE(nullptr == results[i].key);
+        REQUIRE(FLEXI_TYPE_SINT == flexi_cursor_type(&results[i].cursor));
 
         int64_t val;
-        ASSERT_EQ(FLEXI_OK, flexi_cursor_sint(&results[i].cursor, &val));
-        ASSERT_EQ(INT16_MAX, val);
+        REQUIRE(FLEXI_OK == flexi_cursor_sint(&results[i].cursor, &val));
+        REQUIRE(INT16_MAX == val);
     }
 
     i++;
     {
-        ASSERT_EQ(nullptr, results[i].key);
-        ASSERT_EQ(FLEXI_TYPE_INDIRECT_SINT,
-            flexi_cursor_type(&results[i].cursor));
+        REQUIRE(nullptr == results[i].key);
+        REQUIRE(FLEXI_TYPE_INDIRECT_SINT ==
+                flexi_cursor_type(&results[i].cursor));
 
         int64_t val;
-        ASSERT_EQ(FLEXI_OK, flexi_cursor_sint(&results[i].cursor, &val));
-        ASSERT_EQ(INT32_MAX, val);
+        REQUIRE(FLEXI_OK == flexi_cursor_sint(&results[i].cursor, &val));
+        REQUIRE(INT32_MAX == val);
     }
 
     i++;
     {
-        ASSERT_EQ(nullptr, results[i].key);
-        ASSERT_EQ(FLEXI_TYPE_UINT, flexi_cursor_type(&results[i].cursor));
+        REQUIRE(nullptr == results[i].key);
+        REQUIRE(FLEXI_TYPE_UINT == flexi_cursor_type(&results[i].cursor));
 
         uint64_t val;
-        ASSERT_EQ(FLEXI_OK, flexi_cursor_uint(&results[i].cursor, &val));
-        ASSERT_EQ(UINT16_MAX, val);
+        REQUIRE(FLEXI_OK == flexi_cursor_uint(&results[i].cursor, &val));
+        REQUIRE(UINT16_MAX == val);
     }
 
     i++;
     {
-        ASSERT_EQ(nullptr, results[i].key);
-        ASSERT_EQ(FLEXI_TYPE_INDIRECT_UINT,
-            flexi_cursor_type(&results[i].cursor));
+        REQUIRE(nullptr == results[i].key);
+        REQUIRE(FLEXI_TYPE_INDIRECT_UINT ==
+                flexi_cursor_type(&results[i].cursor));
 
         uint64_t val;
-        ASSERT_EQ(FLEXI_OK, flexi_cursor_uint(&results[i].cursor, &val));
-        ASSERT_EQ(UINT32_MAX, val);
+        REQUIRE(FLEXI_OK == flexi_cursor_uint(&results[i].cursor, &val));
+        REQUIRE(UINT32_MAX == val);
     }
 }
 
-TEST(CursorForeach, ForeachMap)
+TEST_CASE("flexi_cursor_foreach (Map)", "[cursor_foreach]")
 {
     flexi_span_s span = flexi_make_span(g_test_map.data(), g_test_map.size());
 
     flexi_cursor_s cursor;
-    ASSERT_EQ(FLEXI_OK, flexi_open_span(&span, &cursor));
+    REQUIRE(FLEXI_OK == flexi_open_span(&span, &cursor));
 
     foreach_results_t results;
-    ASSERT_EQ(FLEXI_OK, flexi_cursor_foreach(&cursor, &ForeachCB, &results));
+    REQUIRE(FLEXI_OK == flexi_cursor_foreach(&cursor, &ForeachCB, &results));
 
-    ASSERT_EQ(5, results.size());
+    REQUIRE(5 == results.size());
 
     size_t i = 0;
     {
-        ASSERT_STREQ("bool", results[i].key);
-        ASSERT_EQ(FLEXI_TYPE_BOOL, flexi_cursor_type(&results[i].cursor));
+        REQUIRE_THAT("bool", Equals(results[i].key));
+        REQUIRE(FLEXI_TYPE_BOOL == flexi_cursor_type(&results[i].cursor));
 
         bool val;
-        ASSERT_EQ(FLEXI_OK, flexi_cursor_bool(&results[i].cursor, &val));
-        ASSERT_EQ(true, val);
+        REQUIRE(FLEXI_OK == flexi_cursor_bool(&results[i].cursor, &val));
+        REQUIRE(true == val);
     }
 
     i++;
     {
-        ASSERT_STREQ("indirect_sint", results[i].key);
-        ASSERT_EQ(FLEXI_TYPE_INDIRECT_SINT,
-            flexi_cursor_type(&results[i].cursor));
+        REQUIRE_THAT("indirect_sint", Equals(results[i].key));
+        REQUIRE(FLEXI_TYPE_INDIRECT_SINT ==
+                flexi_cursor_type(&results[i].cursor));
 
         int64_t val;
-        ASSERT_EQ(FLEXI_OK, flexi_cursor_sint(&results[i].cursor, &val));
-        ASSERT_EQ(INT32_MAX, val);
+        REQUIRE(FLEXI_OK == flexi_cursor_sint(&results[i].cursor, &val));
+        REQUIRE(INT32_MAX == val);
     }
 
     i++;
     {
-        ASSERT_STREQ("indirect_uint", results[i].key);
-        ASSERT_EQ(FLEXI_TYPE_INDIRECT_UINT,
-            flexi_cursor_type(&results[i].cursor));
+        REQUIRE_THAT("indirect_uint", Equals(results[i].key));
+        REQUIRE(FLEXI_TYPE_INDIRECT_UINT ==
+                flexi_cursor_type(&results[i].cursor));
 
         uint64_t val;
-        ASSERT_EQ(FLEXI_OK, flexi_cursor_uint(&results[i].cursor, &val));
-        ASSERT_EQ(UINT32_MAX, val);
+        REQUIRE(FLEXI_OK == flexi_cursor_uint(&results[i].cursor, &val));
+        REQUIRE(UINT32_MAX == val);
     }
 
     i++;
     {
-        ASSERT_STREQ("sint", results[i].key);
-        ASSERT_EQ(FLEXI_TYPE_SINT, flexi_cursor_type(&results[i].cursor));
+        REQUIRE_THAT("sint", Equals(results[i].key));
+        REQUIRE(FLEXI_TYPE_SINT == flexi_cursor_type(&results[i].cursor));
 
         int64_t val;
-        ASSERT_EQ(FLEXI_OK, flexi_cursor_sint(&results[i].cursor, &val));
-        ASSERT_EQ(INT16_MAX, val);
+        REQUIRE(FLEXI_OK == flexi_cursor_sint(&results[i].cursor, &val));
+        REQUIRE(INT16_MAX == val);
     }
 
     i++;
     {
-        ASSERT_STREQ("uint", results[i].key);
-        ASSERT_EQ(FLEXI_TYPE_UINT, flexi_cursor_type(&results[i].cursor));
+        REQUIRE_THAT("uint", Equals(results[i].key));
+        REQUIRE(FLEXI_TYPE_UINT == flexi_cursor_type(&results[i].cursor));
 
         uint64_t val;
-        ASSERT_EQ(FLEXI_OK, flexi_cursor_uint(&results[i].cursor, &val));
-        ASSERT_EQ(UINT16_MAX, val);
+        REQUIRE(FLEXI_OK == flexi_cursor_uint(&results[i].cursor, &val));
+        REQUIRE(UINT16_MAX == val);
     }
 }

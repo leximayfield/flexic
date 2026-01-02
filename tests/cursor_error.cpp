@@ -22,22 +22,22 @@
 
 #include "tests.hpp"
 
-TEST(CursorError, OpenSpan_TooSmall)
+TEST_CASE("flexi_open_span (Too small)", "[cursor_error]")
 {
     flexi_span_s span;
     span.data = nullptr;
     span.length = 0;
 
     flexi_cursor_s cursor;
-    ASSERT_EQ(FLEXI_ERR_BADREAD, flexi_open_span(&span, &cursor));
+    REQUIRE(FLEXI_ERR_BADREAD == flexi_open_span(&span, &cursor));
 }
 
-TEST(CursorError, OpenSpan_ZeroWidth)
+TEST_CASE("flexi_open_span (Zero Width)", "[cursor_error]")
 {
     std::array<uint8_t, 3> data{0x00, 0x00, 0x00};
 
     flexi_span_s span = flexi_make_span(data.data(), data.size());
 
     flexi_cursor_s cursor;
-    ASSERT_EQ(FLEXI_ERR_BADREAD, flexi_open_span(&span, &cursor));
+    REQUIRE(FLEXI_ERR_BADREAD == flexi_open_span(&span, &cursor));
 }

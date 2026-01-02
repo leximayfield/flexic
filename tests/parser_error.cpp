@@ -20,6 +20,7 @@
 // 3. This notice may not be removed or altered from any source distribution.
 //
 
+#include "catch2/generators/catch_generators.hpp"
 #include "tests.hpp"
 
 #if FLEXI_FEATURE_PARSER
@@ -52,28 +53,9 @@ static flexi_parser_s g_parser{
 
 /******************************************************************************/
 
-class ParseCursorBadReadTest
-    : public testing::TestWithParam<std::vector<uint8_t>> {};
-
-TEST_P(ParseCursorBadReadTest, Check)
+TEST_CASE("Bad Read Tests", "[parser_error]")
 {
-    const std::vector<uint8_t> &data = GetParam();
-
-    flexi_span_s span = flexi_make_span(data.data(), data.size());
-    flexi_cursor_s cursor{};
-
-    flexi_result_e act_result = flexi_open_span(&span, &cursor);
-    if (act_result != FLEXI_OK) {
-        ASSERT_EQ(FLEXI_ERR_BADREAD, act_result);
-        return;
-    }
-
-    act_result = flexi_parse_cursor(&g_parser, &cursor, NULL);
-    ASSERT_EQ(FLEXI_ERR_BADREAD, act_result);
-}
-
-INSTANTIATE_TEST_SUITE_P(ParserError, ParseCursorBadReadTest,
-    testing::Values(                           //
+    value_t test = GENERATE(                   //
         value_t{0xF5, 0x01, 0x64, 0x01},       //
         value_t{0x7A, 0x01, 0x2D, 0x01},       //
         value_t{0x0A, 0x01, 0x00, 0x2B, 0x01}, //
@@ -138,29 +120,26 @@ INSTANTIATE_TEST_SUITE_P(ParserError, ParseCursorBadReadTest,
             0x7A, 0x7A, 0x7A, 0x7A, 0x7A, 0x7A, 0x7A, 0x7A, 0x7A, 0x7A, 0x3B,
             0x0A, 0x01, 0x7A, 0x7A, 0x7A, 0x7A, 0x7A, 0x7A, 0x7A, 0x7A, 0x7A,
             0x7A, 0x7A, 0x3B, 0x0A, 0xFF, 0x85, 0x85, 0x8C, 0x7A, 0x94, 0xB4,
-            0x02, 0x01, 0x6B, 0x02, 0x28, 0x01}));
+            0x02, 0x01, 0x6B, 0x02, 0x28, 0x01});
 
-/******************************************************************************/
-
-class ParseCursorParseLimitTest
-    : public testing::TestWithParam<std::vector<uint8_t>> {};
-
-TEST_P(ParseCursorParseLimitTest, Check)
-{
-    const std::vector<uint8_t> &data = GetParam();
-
-    flexi_span_s span = flexi_make_span(data.data(), data.size());
+    flexi_span_s span = flexi_make_span(test.data(), test.size());
     flexi_cursor_s cursor{};
 
     flexi_result_e act_result = flexi_open_span(&span, &cursor);
-    ASSERT_EQ(FLEXI_OK, act_result);
+    if (act_result != FLEXI_OK) {
+        REQUIRE(FLEXI_ERR_BADREAD == act_result);
+        return;
+    }
 
     act_result = flexi_parse_cursor(&g_parser, &cursor, NULL);
-    ASSERT_EQ(FLEXI_ERR_PARSELIMIT, act_result);
+    REQUIRE(FLEXI_ERR_BADREAD == act_result);
 }
 
-INSTANTIATE_TEST_SUITE_P(ParserError, ParseCursorParseLimitTest,
-    testing::Values( //
+/******************************************************************************/
+
+TEST_CASE("Parse Limits Tests", "[parser_error]")
+{
+    value_t data = GENERATE( //
         value_t{0x03, 0x0A, 0x06, 0x00, 0x68, 0x05, 0x0B, 0x0B, 0x0B, 0x0B,
             0x0B, 0x0B, 0x0B, 0x0B, 0x0B, 0x0B, 0x0B, 0x0B, 0x0B, 0x0B, 0x0B,
             0x0B, 0x0B, 0x0B, 0x06, 0x0B, 0x0B, 0x0B, 0x0B, 0x0B, 0x0B, 0x0B,
@@ -177,6 +156,19 @@ INSTANTIATE_TEST_SUITE_P(ParserError, ParseCursorParseLimitTest,
             0x28, 0x28, 0x28, 0x28, 0x28, 0x28, 0x28, 0x28, 0x28, 0x28, 0x28,
             0x28, 0x28, 0x28, 0x28, 0x28, 0x28, 0x28, 0x28, 0x28, 0x28, 0x28,
             0x28, 0x28, 0x28, 0x28, 0x28, 0x28, 0x28, 0x28, 0x28, 0x28, 0x0B,
-            0x0B, 0x0B, 0x0B, 0x0B, 0x68, 0x28, 0x01}));
+            0x0B, 0x0B, 0x0B, 0x0B, 0x68, 0x28, 0x01});
+
+    TestWriter writer;
+    flexi_writer_s *fwriter = writer.GetWriter();
+
+    flexi_span_s span = flexi_make_span(data.data(), data.size());
+    flexi_cursor_s cursor{};
+
+    flexi_result_e act_result = flexi_open_span(&span, &cursor);
+    REQUIRE(FLEXI_OK == act_result);
+
+    act_result = flexi_parse_cursor(&g_parser, &cursor, NULL);
+    REQUIRE(FLEXI_ERR_PARSELIMIT == act_result);
+}
 
 #endif // #if FLEXI_FEATURE_PARSER

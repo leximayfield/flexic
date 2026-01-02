@@ -22,41 +22,41 @@
 
 #include "tests.hpp"
 
-TEST(WriteError, FailSafe)
+TEST_CASE("FLEXI_ERR_FAILSAFE", "[write_error]")
 {
     flexi_writer_s writer{};
     writer.err = FLEXI_ERR_INTERNAL;
 
-    EXPECT_EQ(FLEXI_ERR_FAILSAFE, flexi_write_null(&writer, NULL));
-    EXPECT_EQ(FLEXI_ERR_FAILSAFE, flexi_write_sint(&writer, NULL, 0));
-    EXPECT_EQ(FLEXI_ERR_FAILSAFE, flexi_write_uint(&writer, NULL, 0));
-    EXPECT_EQ(FLEXI_ERR_FAILSAFE, flexi_write_f32(&writer, NULL, 0));
-    EXPECT_EQ(FLEXI_ERR_FAILSAFE, flexi_write_f64(&writer, NULL, 0));
-    EXPECT_EQ(FLEXI_ERR_FAILSAFE, flexi_write_key(&writer, ""));
-    EXPECT_EQ(FLEXI_ERR_FAILSAFE, flexi_write_keyed_key(&writer, NULL, ""));
-    EXPECT_EQ(FLEXI_ERR_FAILSAFE, flexi_write_strlen(&writer, NULL, ""));
-    EXPECT_EQ(FLEXI_ERR_FAILSAFE, flexi_write_indirect_sint(&writer, NULL, 0));
-    EXPECT_EQ(FLEXI_ERR_FAILSAFE, flexi_write_indirect_uint(&writer, NULL, 0));
-    EXPECT_EQ(FLEXI_ERR_FAILSAFE, flexi_write_indirect_f32(&writer, NULL, 0));
-    EXPECT_EQ(FLEXI_ERR_FAILSAFE, flexi_write_indirect_f64(&writer, NULL, 0));
-    EXPECT_EQ(FLEXI_ERR_FAILSAFE,
-        flexi_write_map_keys(&writer, 0, FLEXI_WIDTH_1B, NULL));
-    EXPECT_EQ(FLEXI_ERR_FAILSAFE,
-        flexi_write_map_values(&writer, NULL, 0, 0, FLEXI_WIDTH_1B));
-    EXPECT_EQ(FLEXI_ERR_FAILSAFE,
-        flexi_write_map(&writer, NULL, 0, FLEXI_WIDTH_1B));
-    EXPECT_EQ(FLEXI_ERR_FAILSAFE,
-        flexi_write_vector(&writer, NULL, 0, FLEXI_WIDTH_1B));
-    EXPECT_EQ(FLEXI_ERR_FAILSAFE,
-        flexi_write_typed_vector_sint(&writer, NULL, NULL, FLEXI_WIDTH_1B, 0));
-    EXPECT_EQ(FLEXI_ERR_FAILSAFE,
-        flexi_write_typed_vector_uint(&writer, NULL, NULL, FLEXI_WIDTH_1B, 0));
-    EXPECT_EQ(FLEXI_ERR_FAILSAFE,
-        flexi_write_typed_vector_flt(&writer, NULL, NULL, FLEXI_WIDTH_1B, 0));
-    EXPECT_EQ(FLEXI_ERR_FAILSAFE, flexi_write_blob(&writer, NULL, NULL, 0, 1));
+    REQUIRE(FLEXI_ERR_FAILSAFE == flexi_write_null(&writer, NULL));
+    REQUIRE(FLEXI_ERR_FAILSAFE == flexi_write_sint(&writer, NULL, 0));
+    REQUIRE(FLEXI_ERR_FAILSAFE == flexi_write_uint(&writer, NULL, 0));
+    REQUIRE(FLEXI_ERR_FAILSAFE == flexi_write_f32(&writer, NULL, 0));
+    REQUIRE(FLEXI_ERR_FAILSAFE == flexi_write_f64(&writer, NULL, 0));
+    REQUIRE(FLEXI_ERR_FAILSAFE == flexi_write_key(&writer, ""));
+    REQUIRE(FLEXI_ERR_FAILSAFE == flexi_write_keyed_key(&writer, NULL, ""));
+    REQUIRE(FLEXI_ERR_FAILSAFE == flexi_write_strlen(&writer, NULL, ""));
+    REQUIRE(FLEXI_ERR_FAILSAFE == flexi_write_indirect_sint(&writer, NULL, 0));
+    REQUIRE(FLEXI_ERR_FAILSAFE == flexi_write_indirect_uint(&writer, NULL, 0));
+    REQUIRE(FLEXI_ERR_FAILSAFE == flexi_write_indirect_f32(&writer, NULL, 0));
+    REQUIRE(FLEXI_ERR_FAILSAFE == flexi_write_indirect_f64(&writer, NULL, 0));
+    REQUIRE(FLEXI_ERR_FAILSAFE ==
+            flexi_write_map_keys(&writer, 0, FLEXI_WIDTH_1B, NULL));
+    REQUIRE(FLEXI_ERR_FAILSAFE ==
+            flexi_write_map_values(&writer, NULL, 0, 0, FLEXI_WIDTH_1B));
+    REQUIRE(FLEXI_ERR_FAILSAFE ==
+            flexi_write_map(&writer, NULL, 0, FLEXI_WIDTH_1B));
+    REQUIRE(FLEXI_ERR_FAILSAFE ==
+            flexi_write_vector(&writer, NULL, 0, FLEXI_WIDTH_1B));
+    REQUIRE(FLEXI_ERR_FAILSAFE == flexi_write_typed_vector_sint(&writer, NULL,
+                                      NULL, FLEXI_WIDTH_1B, 0));
+    REQUIRE(FLEXI_ERR_FAILSAFE == flexi_write_typed_vector_uint(&writer, NULL,
+                                      NULL, FLEXI_WIDTH_1B, 0));
+    REQUIRE(FLEXI_ERR_FAILSAFE == flexi_write_typed_vector_flt(&writer, NULL,
+                                      NULL, FLEXI_WIDTH_1B, 0));
+    REQUIRE(FLEXI_ERR_FAILSAFE == flexi_write_blob(&writer, NULL, NULL, 0, 1));
 
-    EXPECT_EQ(FLEXI_ERR_FAILSAFE, flexi_write_bool(&writer, NULL, false));
-    EXPECT_EQ(FLEXI_ERR_FAILSAFE,
-        flexi_write_typed_vector_bool(&writer, NULL, NULL, 0));
-    EXPECT_EQ(FLEXI_ERR_FAILSAFE, flexi_write_finalize(&writer));
+    REQUIRE(FLEXI_ERR_FAILSAFE == flexi_write_bool(&writer, NULL, false));
+    REQUIRE(FLEXI_ERR_FAILSAFE ==
+            flexi_write_typed_vector_bool(&writer, NULL, NULL, 0));
+    REQUIRE(FLEXI_ERR_FAILSAFE == flexi_write_finalize(&writer));
 }

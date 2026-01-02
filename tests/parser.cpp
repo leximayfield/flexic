@@ -175,282 +175,282 @@ static constexpr flexi_parser_s g_parser{
     },
 };
 
-TEST(Parser, ParseBasicTypes)
+TEST_CASE("Parse basic types", "[parser]")
 {
     std::string data = ReadFileToString("basic_types.flexbuf");
     flexi_span_s span = flexi_make_span(data.data(), data.size());
 
     flexi_cursor_s cursor{};
-    ASSERT_EQ(FLEXI_OK, flexi_open_span(&span, &cursor));
+    REQUIRE(FLEXI_OK == flexi_open_span(&span, &cursor));
 
     Results results;
-    ASSERT_EQ(FLEXI_OK, flexi_parse_cursor(&g_parser, &cursor, &results));
+    REQUIRE(FLEXI_OK == flexi_parse_cursor(&g_parser, &cursor, &results));
 
-    ASSERT_EQ(13, results.size());
+    REQUIRE(13 == results.size());
 
     size_t i = 0;
     {
         auto value = std::get_if<vecbegin_s>(&results[i++]);
-        ASSERT_NE(nullptr, value);
-        ASSERT_EQ(11, value->len);
+        REQUIRE(value);
+        REQUIRE(11 == value->len);
     }
 
     {
         auto value = std::get_if<null_s>(&results[i++]);
-        ASSERT_NE(nullptr, value);
+        REQUIRE(value);
     }
 
     {
         auto value = std::get_if<sint_s>(&results[i++]);
-        ASSERT_NE(nullptr, value);
-        ASSERT_EQ(1, value->value);
+        REQUIRE(value);
+        REQUIRE(1 == value->value);
     }
 
     {
         auto value = std::get_if<uint_s>(&results[i++]);
-        ASSERT_NE(nullptr, value);
-        ASSERT_EQ(2, value->value);
+        REQUIRE(value);
+        REQUIRE(2 == value->value);
     }
 
     {
         auto value = std::get_if<key_s>(&results[i++]);
-        ASSERT_NE(nullptr, value);
-        ASSERT_STREQ("Key", value->str);
+        REQUIRE(value);
+        REQUIRE_THAT("Key", Equals(value->str));
     }
 
     {
         auto value = std::get_if<str_s>(&results[i++]);
-        ASSERT_NE(nullptr, value);
-        ASSERT_STREQ("Str", value->str);
-        ASSERT_EQ(3, value->len);
+        REQUIRE(value);
+        REQUIRE_THAT("Str", Equals(value->str));
+        REQUIRE(3 == value->len);
     }
 
     {
         auto value = std::get_if<sint_s>(&results[i++]);
-        ASSERT_NE(nullptr, value);
-        ASSERT_EQ(3, value->value);
+        REQUIRE(value);
+        REQUIRE(3 == value->value);
     }
 
     {
         auto value = std::get_if<uint_s>(&results[i++]);
-        ASSERT_NE(nullptr, value);
-        ASSERT_EQ(4, value->value);
+        REQUIRE(value);
+        REQUIRE(4 == value->value);
     }
 
     {
         auto value = std::get_if<f32_s>(&results[i++]);
-        ASSERT_NE(nullptr, value);
-        ASSERT_FLOAT_EQ(PI_VALUE / 2, value->value);
+        REQUIRE(value);
+        REQUIRE_THAT(PI_VALUE_FLT / 2, WithinRel(value->value));
     }
 
     {
         auto value = std::get_if<f64_s>(&results[i++]);
-        ASSERT_NE(nullptr, value);
-        ASSERT_EQ(PI_VALUE, value->value);
+        REQUIRE(value);
+        REQUIRE_THAT(PI_VALUE_DBL, WithinRel(value->value));
     }
 
     {
         auto value = std::get_if<blob_s>(&results[i++]);
-        ASSERT_NE(nullptr, value);
-        ASSERT_EQ(4, value->len);
-        ASSERT_EQ(0, memcmp("blob", value->ptr, 4));
+        REQUIRE(value);
+        REQUIRE(4 == value->len);
+        REQUIRE(0 == memcmp("blob", value->ptr, 4));
     }
 
     {
         auto value = std::get_if<bool_s>(&results[i++]);
-        ASSERT_NE(nullptr, value);
-        ASSERT_EQ(true, value->value);
+        REQUIRE(value);
+        REQUIRE(true == value->value);
     }
 
     {
         auto value = std::get_if<vecend_s>(&results[i++]);
-        ASSERT_NE(nullptr, value);
+        REQUIRE(value);
     }
 }
 
-TEST(Parser, ParseNestedTypes)
+TEST_CASE("Parse nested types", "[parser]")
 {
     std::string data = ReadFileToString("nested_types.flexbuf");
     flexi_span_s span = flexi_make_span(data.data(), data.size());
 
     flexi_cursor_s cursor{};
-    ASSERT_EQ(FLEXI_OK, flexi_open_span(&span, &cursor));
+    REQUIRE(FLEXI_OK == flexi_open_span(&span, &cursor));
 
     Results results;
-    ASSERT_EQ(FLEXI_OK, flexi_parse_cursor(&g_parser, &cursor, &results));
+    REQUIRE(FLEXI_OK == flexi_parse_cursor(&g_parser, &cursor, &results));
 
-    ASSERT_EQ(14, results.size());
+    REQUIRE(14 == results.size());
 
     size_t i = 0;
     {
         auto value = std::get_if<vecbegin_s>(&results[i++]);
-        ASSERT_NE(nullptr, value);
-        ASSERT_EQ(3, value->len);
+        REQUIRE(value);
+        REQUIRE(3 == value->len);
     }
 
     {
         auto value = std::get_if<mapbegin_s>(&results[i++]);
-        ASSERT_NE(nullptr, value);
-        ASSERT_EQ(2, value->len);
+        REQUIRE(value);
+        REQUIRE(2 == value->len);
     }
 
     {
         auto value = std::get_if<sint_s>(&results[i++]);
-        ASSERT_NE(nullptr, value);
-        ASSERT_STREQ("bar", value->key);
-        ASSERT_EQ(2, value->value);
+        REQUIRE(value);
+        REQUIRE_THAT("bar", Equals(value->key));
+        REQUIRE(2 == value->value);
     }
 
     {
         auto value = std::get_if<sint_s>(&results[i++]);
-        ASSERT_NE(nullptr, value);
-        ASSERT_STREQ("foo", value->key);
-        ASSERT_EQ(1, value->value);
+        REQUIRE(value);
+        REQUIRE_THAT("foo", Equals(value->key));
+        REQUIRE(1 == value->value);
     }
 
     {
         auto value = std::get_if<mapend_s>(&results[i++]);
-        ASSERT_NE(nullptr, value);
+        REQUIRE(value);
     }
 
     {
         auto value = std::get_if<vecbegin_s>(&results[i++]);
-        ASSERT_NE(nullptr, value);
-        ASSERT_EQ(2, value->len);
+        REQUIRE(value);
+        REQUIRE(2 == value->len);
     }
 
     {
         auto value = std::get_if<sint_s>(&results[i++]);
-        ASSERT_NE(nullptr, value);
-        ASSERT_EQ(4, value->value);
+        REQUIRE(value);
+        REQUIRE(4 == value->value);
     }
 
     {
         auto value = std::get_if<f32_s>(&results[i++]);
-        ASSERT_NE(nullptr, value);
-        ASSERT_FLOAT_EQ((PI_VALUE / 2) * 3, value->value);
+        REQUIRE(value);
+        REQUIRE_THAT((PI_VALUE_FLT / 2) * 3, WithinRel(value->value));
     }
 
     {
         auto value = std::get_if<vecend_s>(&results[i++]);
-        ASSERT_NE(nullptr, value);
+        REQUIRE(value);
     }
 
     {
         auto value = std::get_if<vecbegin_s>(&results[i++]);
-        ASSERT_NE(nullptr, value);
-        ASSERT_EQ(2, value->len);
+        REQUIRE(value);
+        REQUIRE(2 == value->len);
     }
 
     {
         auto value = std::get_if<sint_s>(&results[i++]);
-        ASSERT_NE(nullptr, value);
-        ASSERT_EQ(8, value->value);
+        REQUIRE(value);
+        REQUIRE(8 == value->value);
     }
 
     {
         auto value = std::get_if<f64_s>(&results[i++]);
-        ASSERT_NE(nullptr, value);
-        ASSERT_EQ(PI_VALUE * 2, value->value);
+        REQUIRE(value);
+        REQUIRE_THAT(PI_VALUE_DBL * 2, WithinRel(value->value));
     }
 
     {
         auto value = std::get_if<vecend_s>(&results[i++]);
-        ASSERT_NE(nullptr, value);
+        REQUIRE(value);
     }
 
     {
         auto value = std::get_if<vecend_s>(&results[i++]);
-        ASSERT_NE(nullptr, value);
+        REQUIRE(value);
     }
 }
 
-TEST(Parser, ParseTypedVectors)
+TEST_CASE("Parse typed vectors", "[parser]")
 {
     std::string data = ReadFileToString("typed_vectors.flexbuf");
     flexi_span_s span = flexi_make_span(data.data(), data.size());
 
     flexi_cursor_s cursor{};
-    ASSERT_EQ(FLEXI_OK, flexi_open_span(&span, &cursor));
+    REQUIRE(FLEXI_OK == flexi_open_span(&span, &cursor));
 
     Results results;
-    ASSERT_EQ(FLEXI_OK, flexi_parse_cursor(&g_parser, &cursor, &results));
+    REQUIRE(FLEXI_OK == flexi_parse_cursor(&g_parser, &cursor, &results));
 
-    ASSERT_EQ(19, results.size());
+    REQUIRE(19 == results.size());
 
     size_t i = 0;
     {
         auto value = std::get_if<mapbegin_s>(&results[i++]);
-        ASSERT_NE(nullptr, value);
-        ASSERT_EQ(14, value->len);
+        REQUIRE(value);
+        REQUIRE(14 == value->len);
     }
 
     {
         auto value = std::get_if<typedvec_s>(&results[i++]);
-        ASSERT_NE(nullptr, value);
-        ASSERT_STREQ("bool_vec", value->key);
-        ASSERT_EQ(2, value->count);
-        ASSERT_EQ(FLEXI_TYPE_VECTOR_BOOL, value->type);
-        ASSERT_EQ(1, value->width);
+        REQUIRE(value);
+        REQUIRE_THAT("bool_vec", Equals(value->key));
+        REQUIRE(2 == value->count);
+        REQUIRE(FLEXI_TYPE_VECTOR_BOOL == value->type);
+        REQUIRE(1 == value->width);
 
         const bool *ptr = static_cast<const bool *>(value->ptr);
-        ASSERT_EQ(false, ptr[0]);
-        ASSERT_EQ(true, ptr[1]);
+        REQUIRE(false == ptr[0]);
+        REQUIRE(true == ptr[1]);
     }
 
     {
         auto value = std::get_if<typedvec_s>(&results[i++]);
-        ASSERT_NE(nullptr, value);
-        ASSERT_STREQ("float_vec", value->key);
-        ASSERT_EQ(5, value->count);
-        ASSERT_EQ(FLEXI_TYPE_VECTOR_FLOAT, value->type);
-        ASSERT_EQ(4, value->width);
+        REQUIRE(value);
+        REQUIRE_THAT("float_vec", Equals(value->key));
+        REQUIRE(5 == value->count);
+        REQUIRE(FLEXI_TYPE_VECTOR_FLOAT == value->type);
+        REQUIRE(4 == value->width);
 
         const float *ptr = static_cast<const float *>(value->ptr);
         for (flexi_ssize_t i = 0; i < value->count; i++) {
-            ASSERT_FLOAT_EQ((PI_VALUE / 2) * (i + 1.0), ptr[i]);
+            REQUIRE_THAT((PI_VALUE_FLT / 2) * (i + 1.0), WithinRel(ptr[i]));
         }
     }
 
     {
         auto value = std::get_if<typedvec_s>(&results[i++]);
-        ASSERT_NE(nullptr, value);
-        ASSERT_STREQ("float_vec2", value->key);
-        ASSERT_EQ(2, value->count);
-        ASSERT_EQ(FLEXI_TYPE_VECTOR_FLOAT2, value->type);
-        ASSERT_EQ(8, value->width);
+        REQUIRE(value);
+        REQUIRE_THAT("float_vec2", Equals(value->key));
+        REQUIRE(2 == value->count);
+        REQUIRE(FLEXI_TYPE_VECTOR_FLOAT2 == value->type);
+        REQUIRE(8 == value->width);
 
         const double *ptr = static_cast<const double *>(value->ptr);
         for (flexi_ssize_t i = 0; i < value->count; i++) {
-            ASSERT_FLOAT_EQ((PI_VALUE / 2) * (i + 1.0), ptr[i]);
+            REQUIRE_THAT((PI_VALUE_DBL / 2) * (i + 1.0), WithinRel(ptr[i]));
         }
     }
 
     {
         auto value = std::get_if<typedvec_s>(&results[i++]);
-        ASSERT_NE(nullptr, value);
-        ASSERT_STREQ("float_vec3", value->key);
-        ASSERT_EQ(3, value->count);
-        ASSERT_EQ(FLEXI_TYPE_VECTOR_FLOAT3, value->type);
-        ASSERT_EQ(4, value->width);
+        REQUIRE(value);
+        REQUIRE_THAT("float_vec3", Equals(value->key));
+        REQUIRE(3 == value->count);
+        REQUIRE(FLEXI_TYPE_VECTOR_FLOAT3 == value->type);
+        REQUIRE(4 == value->width);
 
         const float *ptr = static_cast<const float *>(value->ptr);
         for (flexi_ssize_t i = 0; i < value->count; i++) {
-            ASSERT_FLOAT_EQ((PI_VALUE / 2) * (i + 1.0), ptr[i]);
+            REQUIRE_THAT((PI_VALUE_FLT / 2) * (i + 1.0), WithinRel(ptr[i]));
         }
     }
 
     {
         auto value = std::get_if<typedvec_s>(&results[i++]);
-        ASSERT_NE(nullptr, value);
-        ASSERT_STREQ("float_vec4", value->key);
-        ASSERT_EQ(4, value->count);
-        ASSERT_EQ(FLEXI_TYPE_VECTOR_FLOAT4, value->type);
-        ASSERT_EQ(4, value->width);
+        REQUIRE(value);
+        REQUIRE_THAT("float_vec4", Equals(value->key));
+        REQUIRE(4 == value->count);
+        REQUIRE(FLEXI_TYPE_VECTOR_FLOAT4 == value->type);
+        REQUIRE(4 == value->width);
 
         const float *ptr = static_cast<const float *>(value->ptr);
         for (flexi_ssize_t i = 0; i < value->count; i++) {
-            ASSERT_FLOAT_EQ((PI_VALUE / 2) * (i + 1.0), ptr[i]);
+            REQUIRE_THAT((PI_VALUE_FLT / 2) * (i + 1.0), WithinRel(ptr[i]));
         }
     }
 
@@ -458,138 +458,138 @@ TEST(Parser, ParseTypedVectors)
 
     {
         auto value = std::get_if<vecbegin_s>(&results[i++]);
-        ASSERT_NE(nullptr, value);
-        ASSERT_STREQ("keys_vec", value->key);
-        ASSERT_EQ(2, value->len);
+        REQUIRE(value);
+        REQUIRE_THAT("keys_vec", Equals(value->key));
+        REQUIRE(2 == value->len);
     }
 
     {
         auto value = std::get_if<key_s>(&results[i++]);
-        ASSERT_NE(nullptr, value);
-        ASSERT_EQ(nullptr, value->key);
-        ASSERT_STREQ("foo", value->str);
+        REQUIRE(value);
+        REQUIRE(nullptr == value->key);
+        REQUIRE_THAT("foo", Equals(value->str));
     }
 
     {
         auto value = std::get_if<key_s>(&results[i++]);
-        ASSERT_EQ(nullptr, value->key);
-        ASSERT_STREQ("bar", value->str);
+        REQUIRE(nullptr == value->key);
+        REQUIRE_THAT("bar", Equals(value->str));
     }
 
     {
         auto end = std::get_if<vecend_s>(&results[i++]);
-        ASSERT_NE(nullptr, end);
+        REQUIRE(end);
     }
 
     {
         auto value = std::get_if<typedvec_s>(&results[i++]);
-        ASSERT_NE(nullptr, value);
-        ASSERT_STREQ("sint_vec", value->key);
-        ASSERT_EQ(5, value->count);
-        ASSERT_EQ(FLEXI_TYPE_VECTOR_SINT, value->type);
-        ASSERT_EQ(1, value->width);
+        REQUIRE(value);
+        REQUIRE_THAT("sint_vec", Equals(value->key));
+        REQUIRE(5 == value->count);
+        REQUIRE(FLEXI_TYPE_VECTOR_SINT == value->type);
+        REQUIRE(1 == value->width);
 
         const int8_t *ptr = static_cast<const int8_t *>(value->ptr);
         for (flexi_ssize_t i = 0; i < value->count; i++) {
-            ASSERT_EQ(i + 1, ptr[i]);
+            REQUIRE(i + 1 == ptr[i]);
         }
     }
 
     {
         auto value = std::get_if<typedvec_s>(&results[i++]);
-        ASSERT_NE(nullptr, value);
-        ASSERT_STREQ("sint_vec2", value->key);
-        ASSERT_EQ(2, value->count);
-        ASSERT_EQ(FLEXI_TYPE_VECTOR_SINT2, value->type);
-        ASSERT_EQ(1, value->width);
+        REQUIRE(value);
+        REQUIRE_THAT("sint_vec2", Equals(value->key));
+        REQUIRE(2 == value->count);
+        REQUIRE(FLEXI_TYPE_VECTOR_SINT2 == value->type);
+        REQUIRE(1 == value->width);
 
         const int8_t *ptr = static_cast<const int8_t *>(value->ptr);
         for (flexi_ssize_t i = 0; i < value->count; i++) {
-            ASSERT_EQ(i + 1, ptr[i]);
+            REQUIRE(i + 1 == ptr[i]);
         }
     }
 
     {
         auto value = std::get_if<typedvec_s>(&results[i++]);
-        ASSERT_NE(nullptr, value);
-        ASSERT_STREQ("sint_vec3", value->key);
-        ASSERT_EQ(3, value->count);
-        ASSERT_EQ(FLEXI_TYPE_VECTOR_SINT3, value->type);
-        ASSERT_EQ(1, value->width);
+        REQUIRE(value);
+        REQUIRE_THAT("sint_vec3", Equals(value->key));
+        REQUIRE(3 == value->count);
+        REQUIRE(FLEXI_TYPE_VECTOR_SINT3 == value->type);
+        REQUIRE(1 == value->width);
 
         const int8_t *ptr = static_cast<const int8_t *>(value->ptr);
         for (flexi_ssize_t i = 0; i < value->count; i++) {
-            ASSERT_EQ(i + 1, ptr[i]);
+            REQUIRE(i + 1 == ptr[i]);
         }
     }
 
     {
         auto value = std::get_if<typedvec_s>(&results[i++]);
-        ASSERT_NE(nullptr, value);
-        ASSERT_STREQ("sint_vec4", value->key);
-        ASSERT_EQ(4, value->count);
-        ASSERT_EQ(FLEXI_TYPE_VECTOR_SINT4, value->type);
-        ASSERT_EQ(1, value->width);
+        REQUIRE(value);
+        REQUIRE_THAT("sint_vec4", Equals(value->key));
+        REQUIRE(4 == value->count);
+        REQUIRE(FLEXI_TYPE_VECTOR_SINT4 == value->type);
+        REQUIRE(1 == value->width);
 
         const int8_t *ptr = static_cast<const int8_t *>(value->ptr);
         for (flexi_ssize_t i = 0; i < value->count; i++) {
-            ASSERT_EQ(i + 1, ptr[i]);
+            REQUIRE(i + 1 == ptr[i]);
         }
     }
 
     {
         auto value = std::get_if<typedvec_s>(&results[i++]);
-        ASSERT_NE(nullptr, value);
-        ASSERT_STREQ("uint_vec", value->key);
-        ASSERT_EQ(5, value->count);
-        ASSERT_EQ(FLEXI_TYPE_VECTOR_UINT, value->type);
-        ASSERT_EQ(1, value->width);
+        REQUIRE(value);
+        REQUIRE_THAT("uint_vec", Equals(value->key));
+        REQUIRE(5 == value->count);
+        REQUIRE(FLEXI_TYPE_VECTOR_UINT == value->type);
+        REQUIRE(1 == value->width);
 
         const int8_t *ptr = static_cast<const int8_t *>(value->ptr);
         for (flexi_ssize_t i = 0; i < value->count; i++) {
-            ASSERT_EQ(i + 1, ptr[i]);
+            REQUIRE(i + 1 == ptr[i]);
         }
     }
 
     {
         auto value = std::get_if<typedvec_s>(&results[i++]);
-        ASSERT_NE(nullptr, value);
-        ASSERT_STREQ("uint_vec2", value->key);
-        ASSERT_EQ(2, value->count);
-        ASSERT_EQ(FLEXI_TYPE_VECTOR_UINT2, value->type);
-        ASSERT_EQ(1, value->width);
+        REQUIRE(value);
+        REQUIRE_THAT("uint_vec2", Equals(value->key));
+        REQUIRE(2 == value->count);
+        REQUIRE(FLEXI_TYPE_VECTOR_UINT2 == value->type);
+        REQUIRE(1 == value->width);
 
         const int8_t *ptr = static_cast<const int8_t *>(value->ptr);
         for (flexi_ssize_t i = 0; i < value->count; i++) {
-            ASSERT_EQ(i + 1, ptr[i]);
+            REQUIRE(i + 1 == ptr[i]);
         }
     }
 
     {
         auto value = std::get_if<typedvec_s>(&results[i++]);
-        ASSERT_NE(nullptr, value);
-        ASSERT_STREQ("uint_vec3", value->key);
-        ASSERT_EQ(3, value->count);
-        ASSERT_EQ(FLEXI_TYPE_VECTOR_UINT3, value->type);
-        ASSERT_EQ(1, value->width);
+        REQUIRE(value);
+        REQUIRE_THAT("uint_vec3", Equals(value->key));
+        REQUIRE(3 == value->count);
+        REQUIRE(FLEXI_TYPE_VECTOR_UINT3 == value->type);
+        REQUIRE(1 == value->width);
 
         const int8_t *ptr = static_cast<const int8_t *>(value->ptr);
         for (flexi_ssize_t i = 0; i < value->count; i++) {
-            ASSERT_EQ(i + 1, ptr[i]);
+            REQUIRE(i + 1 == ptr[i]);
         }
     }
 
     {
         auto value = std::get_if<typedvec_s>(&results[i++]);
-        ASSERT_NE(nullptr, value);
-        ASSERT_STREQ("uint_vec4", value->key);
-        ASSERT_EQ(4, value->count);
-        ASSERT_EQ(FLEXI_TYPE_VECTOR_UINT4, value->type);
-        ASSERT_EQ(1, value->width);
+        REQUIRE(value);
+        REQUIRE_THAT("uint_vec4", Equals(value->key));
+        REQUIRE(4 == value->count);
+        REQUIRE(FLEXI_TYPE_VECTOR_UINT4 == value->type);
+        REQUIRE(1 == value->width);
 
         const int8_t *ptr = static_cast<const int8_t *>(value->ptr);
         for (flexi_ssize_t i = 0; i < value->count; i++) {
-            ASSERT_EQ(i + 1, ptr[i]);
+            REQUIRE(i + 1 == ptr[i]);
         }
     }
 }

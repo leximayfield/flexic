@@ -72,6 +72,7 @@ if(FLEXIC_ENABLE_DOCS)
 endif()
 
 if(FLEXIC_ENABLE_TESTS)
+    enable_testing()
     add_subdirectory(tests)
 endif()
 

@@ -22,94 +22,109 @@
 
 #include "tests.hpp"
 
-TEST_F(WriteFixture, Null)
+TEST_CASE("Null", "[write_other]")
 {
-    ASSERT_EQ(FLEXI_OK, flexi_write_null(&m_writer, NULL));
-    ASSERT_EQ(FLEXI_OK, flexi_write_finalize(&m_writer));
+    TestWriter writer;
+    flexi_writer_s *fwriter = writer.GetWriter();
+
+    REQUIRE(FLEXI_OK == flexi_write_null(fwriter, NULL));
+    REQUIRE(FLEXI_OK == flexi_write_finalize(fwriter));
 
     std::vector<uint8_t> expected = {0x00, 0x00, 0x01};
-    AssertData(expected);
+    writer.AssertData(expected);
 
     flexi_cursor_s cursor{};
-    GetCursor(&cursor);
+    writer.GetCursor(&cursor);
 
-    ASSERT_EQ(FLEXI_TYPE_NULL, flexi_cursor_type(&cursor));
-    ASSERT_EQ(1, flexi_cursor_width(&cursor));
+    REQUIRE(FLEXI_TYPE_NULL == flexi_cursor_type(&cursor));
+    REQUIRE(1 == flexi_cursor_width(&cursor));
 }
 
-TEST_F(WriteFixture, Bool)
+TEST_CASE("Bool", "[write_other]")
 {
-    ASSERT_EQ(FLEXI_OK, flexi_write_bool(&m_writer, NULL, true));
-    ASSERT_EQ(FLEXI_OK, flexi_write_finalize(&m_writer));
+    TestWriter writer;
+    flexi_writer_s *fwriter = writer.GetWriter();
+
+    REQUIRE(FLEXI_OK == flexi_write_bool(fwriter, NULL, true));
+    REQUIRE(FLEXI_OK == flexi_write_finalize(fwriter));
 
     std::vector<uint8_t> expected = {0x01, 0x68, 0x01};
-    AssertData(expected);
+    writer.AssertData(expected);
 
     flexi_cursor_s cursor{};
-    GetCursor(&cursor);
+    writer.GetCursor(&cursor);
 
-    ASSERT_EQ(FLEXI_TYPE_BOOL, flexi_cursor_type(&cursor));
-    ASSERT_EQ(1, flexi_cursor_width(&cursor));
+    REQUIRE(FLEXI_TYPE_BOOL == flexi_cursor_type(&cursor));
+    REQUIRE(1 == flexi_cursor_width(&cursor));
 
     bool value = false;
-    ASSERT_EQ(FLEXI_OK, flexi_cursor_bool(&cursor, &value));
-    ASSERT_EQ(true, value);
+    REQUIRE(FLEXI_OK == flexi_cursor_bool(&cursor, &value));
+    REQUIRE(true == value);
 }
 
-TEST_F(WriteFixture, String)
+TEST_CASE("String", "[write_other]")
 {
-    ASSERT_EQ(FLEXI_OK, flexi_write_string(&m_writer, NULL, "foobar", 6));
-    ASSERT_EQ(FLEXI_OK, flexi_write_finalize(&m_writer));
+    TestWriter writer;
+    flexi_writer_s *fwriter = writer.GetWriter();
+
+    REQUIRE(FLEXI_OK == flexi_write_string(fwriter, NULL, "foobar", 6));
+    REQUIRE(FLEXI_OK == flexi_write_finalize(fwriter));
 
     std::vector<uint8_t> expected = {
         0x06,                               // String length.
         'f', 'o', 'o', 'b', 'a', 'r', '\0', // String.
         0x07, 0x14, 0x01                    // Root
     };
-    AssertData(expected);
+    writer.AssertData(expected);
 
     flexi_cursor_s cursor{};
-    GetCursor(&cursor);
+    writer.GetCursor(&cursor);
 
-    ASSERT_EQ(FLEXI_TYPE_STRING, flexi_cursor_type(&cursor));
-    ASSERT_EQ(1, flexi_cursor_width(&cursor));
+    REQUIRE(FLEXI_TYPE_STRING == flexi_cursor_type(&cursor));
+    REQUIRE(1 == flexi_cursor_width(&cursor));
 }
 
-TEST_F(WriteFixture, StringView)
+TEST_CASE("StringView", "[write_other]")
 {
-    ASSERT_EQ(FLEXI_OK, flexi_write_string(&m_writer, NULL, "foobar"));
-    ASSERT_EQ(FLEXI_OK, flexi_write_finalize(&m_writer));
+    TestWriter writer;
+    flexi_writer_s *fwriter = writer.GetWriter();
+
+    REQUIRE(FLEXI_OK == flexi_write_string(fwriter, NULL, "foobar"));
+    REQUIRE(FLEXI_OK == flexi_write_finalize(fwriter));
 
     std::vector<uint8_t> expected = {
         0x06,                               // String length.
         'f', 'o', 'o', 'b', 'a', 'r', '\0', // String.
         0x07, 0x14, 0x01                    // Root
     };
-    AssertData(expected);
+    writer.AssertData(expected);
 
     flexi_cursor_s cursor{};
-    GetCursor(&cursor);
+    writer.GetCursor(&cursor);
 
-    ASSERT_EQ(FLEXI_TYPE_STRING, flexi_cursor_type(&cursor));
-    ASSERT_EQ(1, flexi_cursor_width(&cursor));
+    REQUIRE(FLEXI_TYPE_STRING == flexi_cursor_type(&cursor));
+    REQUIRE(1 == flexi_cursor_width(&cursor));
 }
 
-TEST_F(WriteFixture, Blob)
+TEST_CASE("Blob", "[write_other]")
 {
+    TestWriter writer;
+    flexi_writer_s *fwriter = writer.GetWriter();
+
     auto data = reinterpret_cast<const uint8_t *>("foobar");
-    ASSERT_EQ(FLEXI_OK, flexi_write_blob(&m_writer, NULL, data, 6, 1));
-    ASSERT_EQ(FLEXI_OK, flexi_write_finalize(&m_writer));
+    REQUIRE(FLEXI_OK == flexi_write_blob(fwriter, NULL, data, 6, 1));
+    REQUIRE(FLEXI_OK == flexi_write_finalize(fwriter));
 
     std::vector<uint8_t> expected = {
         0x06,                         // String length.
         'f', 'o', 'o', 'b', 'a', 'r', // String.
         0x06, 0x64, 0x01              // Root
     };
-    AssertData(expected);
+    writer.AssertData(expected);
 
     flexi_cursor_s cursor{};
-    GetCursor(&cursor);
+    writer.GetCursor(&cursor);
 
-    ASSERT_EQ(FLEXI_TYPE_BLOB, flexi_cursor_type(&cursor));
-    ASSERT_EQ(1, flexi_cursor_width(&cursor));
+    REQUIRE(FLEXI_TYPE_BLOB == flexi_cursor_type(&cursor));
+    REQUIRE(1 == flexi_cursor_width(&cursor));
 }
