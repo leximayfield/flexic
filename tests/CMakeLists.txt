@@ -49,8 +49,8 @@ if(MSVC)
 endif()
 
 add_sanitizers(flexic_test)
-add_sanitizers(gtest)
-add_sanitizers(gtest_main)
+add_sanitizers(Catch2)
+add_sanitizers(Catch2WithMain)
 
 list(APPEND CMAKE_MODULE_PATH ${catch2_SOURCE_DIR}/extras)
 include(CTest)
