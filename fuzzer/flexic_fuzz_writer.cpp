@@ -84,6 +84,28 @@ public:
     }
 };
 
+enum : uint8_t {
+    CMD_NULL,
+    CMD_SINT,
+    CMD_UINT,
+    CMD_F32,
+    CMD_F64,
+    CMD_KEY,
+    CMD_STR,
+    CMD_IN_SINT,
+    CMD_IN_UINT,
+    CMD_IN_F32,
+    CMD_IN_F64,
+    CMD_BLOB,
+    CMD_BOOL,
+    CMD_MAP = 0xFD,
+    CMD_VECTOR,
+    CMD_FINAL,
+};
+
+constexpr int CMD_LAST_VALUE = CMD_BOOL;
+constexpr int CMD_FIRST_CONT = CMD_MAP;
+
 extern "C" int
 LLVMFuzzerTestOneInput(const uint8_t *data, size_t len)
 {
@@ -100,59 +122,63 @@ LLVMFuzzerTestOneInput(const uint8_t *data, size_t len)
     flexi_ssize_t count = 0;
     for (size_t i = 0; i < len; i++) {
         switch (data[i]) {
-        case 0x00:
+        case CMD_NULL:
             flexi_write_null(&writer, "null");
             count += 1;
             break;
-        case 0x01:
+        case CMD_SINT:
             flexi_write_sint(&writer, "sint", 1);
             count += 1;
             break;
-        case 0x02:
+        case CMD_UINT:
             flexi_write_uint(&writer, "uint", 2);
             count += 1;
             break;
-        case 0x03:
+        case CMD_F32:
             flexi_write_f32(&writer, "f32", 3.0f);
             count += 1;
             break;
-        case 0x04:
+        case CMD_F64:
             flexi_write_f64(&writer, "f64", 4.0);
             count += 1;
             break;
-        case 0x05:
+        case CMD_KEY:
             flexi_write_key(&writer, "five");
             count += 1;
             break;
-        case 0x06:
+        case CMD_STR:
             flexi_write_string(&writer, "string", "string", 6);
             count += 1;
             break;
-        case 0x07:
+        case CMD_IN_SINT:
             flexi_write_indirect_sint(&writer, "in_sint", 7);
             count += 1;
             break;
-        case 0x08:
+        case CMD_IN_UINT:
             flexi_write_indirect_uint(&writer, "in_uint", 8);
             count += 1;
             break;
-        case 0x09:
+        case CMD_IN_F32:
             flexi_write_indirect_f32(&writer, "f32", 9.0f);
             count += 1;
             break;
-        case 0x0a:
+        case CMD_IN_F64:
             flexi_write_indirect_f64(&writer, "f64", 10.0);
             count += 1;
             break;
-        case 0xFF: flexi_write_finalize(&writer); break;
-        case 0xFE:
-            flexi_write_vector(&writer, "vector", count, FLEXI_WIDTH_1B);
-            count = 0;
+        case CMD_BLOB:
+            flexi_write_blob(&writer, "blob", "blob", 4, FLEXI_WIDTH_4B);
+            count += 1;
             break;
-        case 0xFD:
+        case CMD_MAP:
             flexi_write_map(&writer, "map", count, FLEXI_WIDTH_1B);
             count = 0;
             break;
+        case CMD_VECTOR:
+            flexi_write_vector(&writer, "vector", count, FLEXI_WIDTH_1B);
+            count = 0;
+            break;
+        case CMD_FINAL: flexi_write_finalize(&writer); break;
         default: return -1;
         }
     }
@@ -172,15 +198,21 @@ LLVMFuzzerCustomMutator(uint8_t *data, size_t size, size_t maxSize,
     }
 
     if (size > 0) {
-        data[size - 1] = 0xFF;
+        data[size - 1] = CMD_FINAL;
     }
 
-    if (size > 1) {
-        LLVMFuzzerMutate(data, size - 1, maxSize);
-        for (size_t i = 0; i < size - 1; i++) {
-            if (data[i] < 0xFD) {
+    if (size == 2) {
+        // Lone value.
+        LLVMFuzzerMutate(data, 1, maxSize);
+        data[0] %= CMD_LAST_VALUE + 1;
+    } else if (size > 2) {
+        // Container of values.
+        data[size - 2] = seed % 2 ? CMD_MAP : CMD_VECTOR;
+        LLVMFuzzerMutate(data, size - 2, maxSize);
+        for (size_t i = 0; i < size - 2; i++) {
+            if (data[i] < CMD_FIRST_CONT) {
                 // Constrain fuzz to only valid cases.
-                data[i] %= 0x0b;
+                data[i] %= CMD_LAST_VALUE + 1;
             }
         }
     }
