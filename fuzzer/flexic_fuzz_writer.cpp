@@ -99,66 +99,91 @@ LLVMFuzzerTestOneInput(const uint8_t *data, size_t len)
 
     flexi_ssize_t count = 0;
     for (size_t i = 0; i < len; i++) {
-        switch(data[i]) {
-            case 0x00:
-                flexi_write_finalize(&writer);
-                break;
-            case 0x01:
-                flexi_write_vector(&writer, "vector", count, FLEXI_WIDTH_1B);
-                count = 0;
-                break;
-            case 0x02:
-                flexi_write_map(&writer, "map", count, FLEXI_WIDTH_1B);
-                count = 0;
-                break;
-            case 0x80:
-                flexi_write_null(&writer, "null");
-                count += 1;
-                break;
-            case 0x81:
-                flexi_write_sint(&writer, "sint", 1);
-                count += 1;
-                break;
-            case 0x82:
-                flexi_write_uint(&writer, "uint", 2);
-                count += 1;
-                break;
-            case 0x83:
-                flexi_write_f32(&writer, "f32", 3.0f);
-                count += 1;
-                break;
-            case 0x84:
-                flexi_write_f64(&writer, "f64", 4.0);
-                count += 1;
-                break;
-            case 0x85:
-                flexi_write_key(&writer, "five");
-                count += 1;
-                break;
-            case 0x86:
-                flexi_write_string(&writer, "string", "string", 6);
-                count += 1;
-                break;
-            case 0x87:
-                flexi_write_indirect_sint(&writer, "in_sint", 7);
-                count += 1;
-                break;
-            case 0x88:
-                flexi_write_indirect_uint(&writer, "in_uint", 8);
-                count += 1;
-                break;
-            case 0x89:
-                flexi_write_indirect_f32(&writer, "f32", 9.0f);
-                count += 1;
-                break;
-            case 0x8a:
-                flexi_write_indirect_f64(&writer, "f64", 10.0);
-                count += 1;
-                break;
-            default:
-                return -1;
+        switch (data[i]) {
+        case 0x00:
+            flexi_write_null(&writer, "null");
+            count += 1;
+            break;
+        case 0x01:
+            flexi_write_sint(&writer, "sint", 1);
+            count += 1;
+            break;
+        case 0x02:
+            flexi_write_uint(&writer, "uint", 2);
+            count += 1;
+            break;
+        case 0x03:
+            flexi_write_f32(&writer, "f32", 3.0f);
+            count += 1;
+            break;
+        case 0x04:
+            flexi_write_f64(&writer, "f64", 4.0);
+            count += 1;
+            break;
+        case 0x05:
+            flexi_write_key(&writer, "five");
+            count += 1;
+            break;
+        case 0x06:
+            flexi_write_string(&writer, "string", "string", 6);
+            count += 1;
+            break;
+        case 0x07:
+            flexi_write_indirect_sint(&writer, "in_sint", 7);
+            count += 1;
+            break;
+        case 0x08:
+            flexi_write_indirect_uint(&writer, "in_uint", 8);
+            count += 1;
+            break;
+        case 0x09:
+            flexi_write_indirect_f32(&writer, "f32", 9.0f);
+            count += 1;
+            break;
+        case 0x0a:
+            flexi_write_indirect_f64(&writer, "f64", 10.0);
+            count += 1;
+            break;
+        case 0xFF: flexi_write_finalize(&writer); break;
+        case 0xFE:
+            flexi_write_vector(&writer, "vector", count, FLEXI_WIDTH_1B);
+            count = 0;
+            break;
+        case 0xFD:
+            flexi_write_map(&writer, "map", count, FLEXI_WIDTH_1B);
+            count = 0;
+            break;
+        default: return -1;
         }
     }
 
     return 0;
+}
+
+extern "C" size_t
+LLVMFuzzerMutate(uint8_t *data, size_t size, size_t maxSize);
+
+extern "C" size_t
+LLVMFuzzerCustomMutator(uint8_t *data, size_t size, size_t maxSize,
+    unsigned int seed)
+{
+    if (seed % 8 && size < maxSize) {
+        size += 1;
+    }
+
+    if (size > 0) {
+        data[size - 1] = 0xFF;
+    }
+
+    if (size > 1) {
+        LLVMFuzzerMutate(data, size - 1, maxSize);
+        for (size_t i = 0; i < size - 1; i++) {
+            if (data[i] < 0xFD) {
+                // Constrain fuzz to only valid cases.
+                data[i] %= 0x0b;
+            }
+        }
+    }
+
+    return size;
 }

@@ -69,19 +69,10 @@
 /******************************************************************************/
 
 #ifndef NDEBUG
-#if 0
+#ifdef _MSC_VER
 #define ASSERT(ex) ((ex) ? (void)0 : (__debugbreak(), (void)0))
 #else
-#include <stdlib.h>
-
-/**
- * @brief Force a crash if expression evaluates to false.
- *
- * @details Asserts should only be used to validate preconditions of calling
- *          a particular internal function.  Problems found in the middle
- *          of a function should return an error.
- */
-#define ASSERT(ex) ((ex) ? (void)0 : (abort(), (void)0))
+#define ASSERT(ex) ((ex) ? (void)0 : (__builtin_trap(), (void)0))
 #endif
 #else
 #define ASSERT(ex) (void)0

@@ -26,6 +26,11 @@
       }
     },
     {
+      "name": "msvc2022-win32",
+      "inherits": "msvc2022",
+      "architecture": "Win32"
+    },
+    {
       "name": "msvc2022-dll",
       "inherits": "msvc2022",
       "cacheVariables": {

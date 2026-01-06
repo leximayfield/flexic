@@ -3,7 +3,7 @@
 function(target_fuzz_options TARGET)
     target_include_directories(${TARGET} PRIVATE "../include")
     if(MSVC)
-        target_compile_options(${TARGET} PRIVATE "/fsanitize=fuzzer")
+        target_compile_options(${TARGET} PRIVATE "/fsanitize=address" "/fsanitize=fuzzer")
     else()
         target_compile_options(${TARGET} PRIVATE "-fsanitize=address,fuzzer,undefined")
         target_link_options(${TARGET} PRIVATE "-fsanitize=address,fuzzer,undefined")
