@@ -51,3 +51,26 @@ jobs:
       - name: Run Tests
         run: |
           ctest --test-dir ./build-${{ matrix.config }}/tests/
+  macos:
+    name: macos-${{ matrix.config }}
+    strategy:
+      matrix:
+        config: [ninja, ninja-cxx]
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          lfs: true
+      - uses: lukka/get-cmake@latest
+      - name: Configure
+        env:
+          CC: clang
+          CXX: clang++
+        run: |
+          cmake --preset ${{ matrix.config }}
+      - name: Build
+        run: |
+          cmake --build ./build-${{ matrix.config }}
+      - name: Run Tests
+        run: |
+          ctest --test-dir ./build-${{ matrix.config }}/tests/
