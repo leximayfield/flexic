@@ -1633,26 +1633,31 @@ writer_sort_map_values(flexi_writer_s *writer, flexi_ssize_t len)
         return false;
     }
 
-    // TODO: Use a faster sort for large key sets.
-    for (flexi_ssize_t i = 1; i < len; i++) {
-        flexi_value_s cur = *writer_get_stack_value(writer, start, i);
-        const char *curkey = cur.key;
+    // Shell sort gap sequence.
+    static const flexi_ssize_t gaps[] = {701, 301, 132, 57, 23, 10, 4, 1};
 
-        flexi_ssize_t j = i;
-        for (; j > 0; j--) {
-            flexi_value_s seek = *writer_get_stack_value(writer, start, j - 1);
-            const char *seekkey = seek.key;
+    // The actual shell sort.
+    for (size_t g = 0; g < 8; g++) {
+        flexi_ssize_t gap = gaps[g];
+        for (flexi_ssize_t i = gap; i < len; i++) {
+            flexi_value_s cur = *writer_get_stack_value(writer, start, i);
+            const char *curkey = cur.key;
 
-            int cmp = strcmp(curkey, seekkey);
-            if (cmp > 0) {
-                break;
+            flexi_ssize_t j = i;
+            for (; j >= gap; j -= gap) {
+                flexi_value_s seek =
+                    *writer_get_stack_value(writer, start, j - gap);
+                const char *seekkey = seek.key;
+
+                int cmp = strcmp(seekkey, curkey);
+                if (cmp <= 0) {
+                    break;
+                }
+
+                flexi_value_s *dest = writer_get_stack_value(writer, start, j);
+                memcpy(dest, &seek, sizeof(flexi_value_s));
             }
 
-            flexi_value_s *dest = writer_get_stack_value(writer, start, j);
-            memcpy(dest, &seek, sizeof(flexi_value_s));
-        }
-
-        if (i != j) {
             flexi_value_s *dest = writer_get_stack_value(writer, start, j);
             memcpy(dest, &cur, sizeof(flexi_value_s));
         }
@@ -1804,29 +1809,35 @@ writer_sort_map_keys(flexi_writer_s *writer, flexi_ssize_t len)
         return false;
     }
 
-    // TODO: Use a faster sort for large key sets.
-    for (flexi_ssize_t i = 1; i < len; i++) {
-        flexi_value_s *cur = writer_get_stack_key(writer, start, i);
-        flexi_ssize_t curoff = cur->u.offset;
-        const char *curkey =
-            (const char *)ostream_data_at(&writer->ostream, curoff);
+    // Shell sort gap sequence.
+    static const flexi_ssize_t gaps[] = {701, 301, 132, 57, 23, 10, 4, 1};
 
-        flexi_ssize_t j = i;
-        for (; j > 0; j--) {
-            flexi_value_s *seek = writer_get_stack_key(writer, start, j - 1);
-            const char *seekkey =
-                (const char *)ostream_data_at(&writer->ostream, seek->u.offset);
+    // The actual shell sort.
+    for (size_t g = 0; g < 8; g++) {
+        flexi_ssize_t gap = gaps[g];
 
-            int cmp = strcmp(curkey, seekkey);
-            if (cmp > 0) {
-                break;
+        for (flexi_ssize_t i = gap; i < len; i++) {
+            flexi_value_s *cur = writer_get_stack_key(writer, start, i);
+            flexi_ssize_t curoff = cur->u.offset;
+            const char *curkey =
+                (const char *)ostream_data_at(&writer->ostream, curoff);
+
+            flexi_ssize_t j = i;
+            for (; j >= gap; j -= gap) {
+                flexi_value_s *seek =
+                    writer_get_stack_key(writer, start, j - gap);
+                const char *seekkey = (const char *)ostream_data_at(
+                    &writer->ostream, seek->u.offset);
+
+                int cmp = strcmp(seekkey, curkey);
+                if (cmp <= 0) {
+                    break;
+                }
+
+                flexi_value_s *dest = writer_get_stack_key(writer, start, j);
+                dest->u.offset = seek->u.offset;
             }
 
-            flexi_value_s *dest = writer_get_stack_key(writer, start, j);
-            dest->u.offset = seek->u.offset;
-        }
-
-        if (i != j) {
             flexi_value_s *dest = writer_get_stack_key(writer, start, j);
             dest->u.offset = curoff;
         }
