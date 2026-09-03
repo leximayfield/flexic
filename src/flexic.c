@@ -900,6 +900,32 @@ cursor_set_error(flexi_cursor_s *cursor)
 }
 
 /**
+ * @brief Safely figure out the length of a string.
+ *
+ * @param begin[in] Pointer to use as lower bound, inclusive.
+ * @param end[in] Pointer to use as upper bound, exclusive.
+ * @param str[in] String to check.
+ * @return Length of string, or a negative number if we hit the cursor.
+ */
+static flexi_ssize_t
+cursor_safe_strlen(const char *begin, const char *end, const char *str)
+{
+    if (str < begin || str >= end) {
+        // String is out-of-bounds.
+        return -1;
+    }
+
+    size_t maxlen = (size_t)(end - str);
+    char *tail = memchr(str, '\0', maxlen);
+    if (tail == NULL) {
+        // Could not find a NUL in the given range.
+        return -1;
+    }
+
+    return tail - str;
+}
+
+/**
  * @brief Given a cursor pointing at the base of a vector which contains
  *        trailing types, return a pointer to the first type.
  *
@@ -1439,6 +1465,10 @@ cursor_foreach_map(const flexi_cursor_s *cursor, flexi_foreach_fn foreach,
         const char *key;
         if (!cursor_map_key_at_index(cursor, &keys, i, &key)) {
             // Couldn't find the map key.
+            return FLEXI_ERR_BADREAD;
+        }
+        if (cursor_safe_strlen(keys.msg.data, keys.cursor, key) < 0) {
+            // This key is busted, don't pass it to our callback function.
             return FLEXI_ERR_BADREAD;
         }
 

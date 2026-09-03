@@ -209,3 +209,32 @@ TEST_CASE("flexi_cursor_foreach (Map)", "[cursor_foreach]")
         REQUIRE(UINT16_MAX == val);
     }
 }
+
+/******************************************************************************/
+
+constexpr std::array<uint8_t, 21> g_bad_map = {
+    0x61, 0x62, 0x63, 0x01, // First key (invalid)
+    0x64, 0x65, 0x66, 0x01, // Second key (invalid)
+    0x02,                   // Map keys vector length
+    0x09,                   // Keys[0]
+    0x06,                   // Keys[1]
+    0x02,                   // Keys Offset
+    0x01,                   // Keys Stride
+    0x02,                   // Values length
+    0x7B,                   // Values[0] Uint
+    0xEA,                   // Values[1] Uint
+    0x08, 0x08,             // Types
+    0x04, 0x24, 0x01,       // Root
+};
+
+TEST_CASE("flexi_cursor_foreach (Malicious Map)", "[cursor_foreach]")
+{
+    flexi_span_s span = flexi_make_span(g_bad_map.data(), g_bad_map.size());
+
+    flexi_cursor_s cursor;
+    REQUIRE(FLEXI_OK == flexi_open_span(&span, &cursor));
+
+    foreach_results_t results;
+    REQUIRE(FLEXI_ERR_BADREAD ==
+            flexi_cursor_foreach(&cursor, &ForeachCB, &results));
+}
