@@ -471,7 +471,8 @@ flexi_cursor_width(const flexi_cursor_s *cursor);
  *        strings, and blobs.
  *
  * @param[in] cursor Cursor pointing to value to examine.
- * @return Length of value at cursor.  Returns 0 on invalid type.
+ * @return Length of value at cursor.  Returns 0 on invalid type, or -1 on
+ *         malicious key with no null terminator.
  */
 FLEXI_API flexi_ssize_t
 flexi_cursor_length(const flexi_cursor_s *cursor);

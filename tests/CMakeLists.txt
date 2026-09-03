@@ -24,6 +24,7 @@ target_sources(flexic_test PRIVATE
     "${CMAKE_CURRENT_SOURCE_DIR}/cursor_error.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/cursor_float.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/cursor_foreach.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/cursor_key.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/cursor_sint.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/cursor_uint.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/cursor_map.cpp"
