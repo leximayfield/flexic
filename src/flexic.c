@@ -1356,7 +1356,16 @@ cursor_map_key_at_index(const flexi_cursor_s *cursor,
         return false;
     }
 
-    return span_seek_back(&cursor->msg, offset_ptr, offset, str);
+    if (!span_seek_back(&cursor->msg, offset_ptr, offset, str)) {
+        return false;
+    }
+
+    // Check to see if the key is valid.
+    if (safe_strlen(cursor->msg.data, cursor->cursor, *str) < 0) {
+        return false;
+    }
+
+    return true;
 }
 
 /**
@@ -1465,10 +1474,6 @@ cursor_foreach_map(const flexi_cursor_s *cursor, flexi_foreach_fn foreach,
         const char *key;
         if (!cursor_map_key_at_index(cursor, &keys, i, &key)) {
             // Couldn't find the map key.
-            return FLEXI_ERR_BADREAD;
-        }
-        if (safe_strlen(keys.msg.data, keys.cursor, key) < 0) {
-            // This key is busted, don't pass it to our callback function.
             return FLEXI_ERR_BADREAD;
         }
 
