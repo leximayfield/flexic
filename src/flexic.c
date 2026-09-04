@@ -2465,8 +2465,16 @@ flexi_cursor_string(const flexi_cursor_s *cursor, const char **str,
 
     switch (cursor->type) {
     case FLEXI_TYPE_KEY: {
+        flexi_ssize_t slen = safe_strlen(span_begin(&cursor->msg),
+            span_end(&cursor->msg), cursor->cursor);
+        if (slen < 0) {
+            *str = "";
+            *len = 0;
+            return FLEXI_ERR_BADREAD;
+        }
+
         *str = cursor->cursor;
-        *len = strlen(cursor->cursor);
+        *len = slen;
         return FLEXI_OK;
     }
     case FLEXI_TYPE_STRING: {
@@ -2675,15 +2683,32 @@ flexi_cursor_blob(const flexi_cursor_s *cursor, const uint8_t **blob,
         return FLEXI_ERR_FAILSAFE;
     }
 
-    if (cursor->type != FLEXI_TYPE_BLOB) {
+    switch (cursor->type) {
+    case FLEXI_TYPE_KEY: {
+        flexi_ssize_t slen = safe_strlen(span_begin(&cursor->msg),
+            span_end(&cursor->msg), cursor->cursor);
+        if (slen < 0) {
+            *blob = &g_empty_blob;
+            *len = 0;
+            return FLEXI_ERR_BADREAD;
+        }
+
+        *blob = cursor->cursor;
+        *len = slen;
+        return FLEXI_OK;
+    }
+    case FLEXI_TYPE_STRING:
+    case FLEXI_TYPE_BLOB: {
+        *blob = (const uint8_t *)cursor->cursor;
+        *len = cursor->length;
+        return FLEXI_OK;
+    }
+    default: {
         *blob = &g_empty_blob;
         *len = 0;
         return FLEXI_ERR_BADTYPE;
     }
-
-    *blob = (const uint8_t *)cursor->cursor;
-    *len = cursor->length;
-    return FLEXI_OK;
+    }
 }
 
 /******************************************************************************/
