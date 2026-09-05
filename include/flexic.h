@@ -217,6 +217,10 @@ typedef enum flexi_width_e {
  */
 typedef enum flexi_type_e {
     /**
+     * @brief Error type sentinal value.
+     */
+    FLEXI_TYPE_INVALID = -1,
+    /**
      * @brief A null value of 0.
      */
     FLEXI_TYPE_NULL = 0,
@@ -394,11 +398,6 @@ typedef uint8_t flexi_packed_t;
 #define FLEXI_WIDTH_TO_BYTES(width) ((int)(1 << width))
 
 /**
- * @brief Error type sentinal value, used by flexi_cursor_s.
- */
-#define FLEXI_TYPE_INVALID ((flexi_type_e) - 1)
-
-/**
  * @brief A non-owning contiguous span of memory.
  */
 typedef struct flexi_span_s {
@@ -471,8 +470,7 @@ flexi_cursor_width(const flexi_cursor_s *cursor);
  *        strings, and blobs.
  *
  * @param[in] cursor Cursor pointing to value to examine.
- * @return Length of value at cursor.  Returns 0 on invalid type, or -1 on
- *         malicious key with no null terminator.
+ * @return Length of value at cursor.  Returns 0 on invalid type.
  */
 FLEXI_API flexi_ssize_t
 flexi_cursor_length(const flexi_cursor_s *cursor);
