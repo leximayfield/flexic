@@ -326,8 +326,8 @@ typedef enum flexi_type_e {
     /**
      * @brief A typed vector which contains exactly 2 direct signed ints.
      *
-     * @notes Exact-length typed vectors do not have a length stored at
-     *        offset -1.
+     * @note Exact-length typed vectors do not have a length stored at
+     *       offset -1.
      */
     FLEXI_TYPE_VECTOR_SINT2 = 16,
     /**
@@ -1071,8 +1071,8 @@ flexi_write_map_keys(flexi_writer_s *writer, flexi_ssize_t len,
  *        from the stack, and pushes a single vector of map values to the
  *        stack.
  *
- * @notes This is the "vector of values" half of a map.  You need to have
- *        created the keys first.
+ * @note This is the "vector of values" half of a map.  You need to have
+ *       created the keys first.
  *
  * @param[in,out] writer Writer to operate on.
  * @param[in] key Key to use if this map is going to be nested in another
@@ -1203,7 +1203,6 @@ flexi_write_bool(flexi_writer_s *writer, const char *key, bool val);
  * @param[in,out] writer Writer to operate on.
  * @param[in] key Key for use in a map.  NULL if there is no key.
  * @param[in] ptr Pointer to int array to be written.
- * @param[in] stride Width of each individual int.
  * @param[in] len Number of elements in the array.
  * @return FLEXI_OK || FLEXI_ERR_BADWRITE.
  */
@@ -1331,9 +1330,9 @@ flexi_json_decode_blob(const char *src, flexi_ssize_t src_len, void *dst,
 /**
  * @brief Calculate the length of the encoded blob in decoded bytes.
  *
- * @param src[in] Source string to measure.
- * @param src_len[in] Length of source string to measure.
- * @param dst_len[out] Minimum length of byte buffer that can contain decoded
+ * @param[in] src Source string to measure.
+ * @param[in] src_len Length of source string to measure.
+ * @param[out] dst_len Minimum length of byte buffer that can contain decoded
  *                     source string.
  * @return FLEXI_OK || FLEXI_ERR_PARAM.
  */

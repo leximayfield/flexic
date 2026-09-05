@@ -50,8 +50,34 @@ if(FLEXIC_OVERRIDE_MAX_ITERABLES)
 endif()
 
 if(FLEXIC_COMPILE_AS_CXX)
-    set_source_files_properties(${FLEXIC_SOURCES} PROPERTIES LANGUAGE CXX )
+    set(FLEXIC_LANG "CXX")
+    set_source_files_properties(${FLEXIC_SOURCES} PROPERTIES LANGUAGE CXX)
+else()
+    set(FLEXIC_LANG "C")
 endif()
+
+# Compiler flags.
+include(CheckCompilerFlag)
+
+if(MSVC)
+    target_compile_options(flexic PRIVATE "/W4")
+else()
+    target_compile_options(flexic PRIVATE -Wall -Wextra)
+endif()
+
+foreach(FLAG IN ITEMS
+    -Wmost
+    -Wno-declaration-after-statement
+    -Wno-double-promotion
+    -Wno-switch-enum
+    -Wno-unsafe-buffer-usage
+)
+    string(MAKE_C_IDENTIFIER "${FLAG}" FLAG_VAR)
+    check_compiler_flag("${FLEXIC_LANG}" "${FLAG}" "${FLAG_VAR}")
+    if(${FLAG_VAR})
+        target_compile_options(flexic PRIVATE "${FLAG}")
+    endif()
+endforeach()
 
 include(FindSanitizers)
 add_sanitizers(flexic)

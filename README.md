@@ -73,7 +73,7 @@ Requirements
 This library does not require dynamic memory allocation of any kind.  However,
 your C compiler and standard library must support the following features:
 
-- `<string.h>`, specifically `memcpy`, `strlen` and `strcmp`.
+- `<string.h>`, specifically `memchr`, `memcpy`, `strlen` and `strcmp`.
 - `<stdint.h>` fixed-width int types.
 - `<stdbool.h>` booleans.
 - `//` line-based comments.

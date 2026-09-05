@@ -883,9 +883,9 @@ write_f64(flexi_writer_s *writer, double v, int width)
 /**
  * @brief Safely figure out the length of a string.
  *
- * @param begin[in] Pointer to use as lower bound, inclusive.
- * @param end[in] Pointer to use as upper bound, exclusive.
- * @param str[in] String to check.
+ * @param[in] begin Pointer to use as lower bound, inclusive.
+ * @param[in] end Pointer to use as upper bound, exclusive.
+ * @param[in] str String to check.
  * @return Length of string, or a negative number if we hit the cursor.
  */
 static flexi_ssize_t
@@ -1666,8 +1666,8 @@ writer_get_stack_value(flexi_writer_s *writer, flexi_stack_idx_t start,
 /**
  * @brief Sort the values of a map so all values keys are in strcmp order.
  *
- * @param writer[in] Writer to operate on.
- * @param len[in] Number of values to use for map.
+ * @param [in]writer Writer to operate on.
+ * @param [in]len Number of values to use for map.
  * @return True if sort was successful.
  */
 static bool
@@ -1842,8 +1842,8 @@ write_vector_types(flexi_writer_s *writer, flexi_ssize_t len)
 /**
  * @brief Sort the keys of a map so all keys are in strcmp order.
  *
- * @param writer[in] Writer to operate on.
- * @param len[in] Number of keys to use for map.
+ * @param[in] writer Writer to operate on.
+ * @param[in] len Number of keys to use for map.
  * @return True if sort was successful.
  */
 static bool
