@@ -27,7 +27,7 @@
 static void
 GetCursorStringPattern(flexi_cursor_s &cursor)
 {
-    constexpr std::array<uint8_t, 12> s_data = {
+    static constexpr std::array<uint8_t, 12> s_data = {
         0x08, 0xFF, 0xEE, 0xDD, 0xCC, 0xBB, 0xAA, 0x99, 0x88, // Blob
         0x08, 0x64, 0x01,                                     // Root
     };

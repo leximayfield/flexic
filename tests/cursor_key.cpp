@@ -169,10 +169,5 @@ TEST_CASE("Malicious key", "[cursor_key]")
 {
     flexi_cursor_s cursor{};
     auto span = flexi_make_span(g_bad_key.data(), g_bad_key.size());
-    REQUIRE(FLEXI_OK == flexi_open_span(&span, &cursor));
-    REQUIRE(-1 == flexi_cursor_length(&cursor));
-
-    const char *str;
-    flexi_ssize_t len;
-    REQUIRE(FLEXI_ERR_BADREAD == flexi_cursor_string(&cursor, &str, &len));
+    REQUIRE(FLEXI_ERR_BADREAD == flexi_open_span(&span, &cursor));
 }

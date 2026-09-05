@@ -20,6 +20,9 @@
 // 3. This notice may not be removed or altered from any source distribution.
 //
 
+// Say the line, Bart!
+#define _CRT_NONSTDC_NO_DEPRECATE
+
 #include "flexic.h"
 
 #include <string.h>
@@ -894,7 +897,7 @@ safe_strlen(const char *begin, const char *end, const char *str)
     }
 
     size_t maxlen = (size_t)(end - str);
-    char *tail = memchr(str, '\0', maxlen);
+    const char *tail = (const char*)memchr(str, '\0', maxlen);
     if (tail == NULL) {
         // Could not find a NUL in the given range.
         return -1;
@@ -1018,7 +1021,14 @@ cursor_set_checked(flexi_cursor_s *cursor, const flexi_span_s *msg,
         }
         cursor->length = 0;
         break;
-    case FLEXI_TYPE_KEY: cursor->length = 0; break;
+    case FLEXI_TYPE_KEY: {
+        flexi_ssize_t len = safe_strlen(span_begin(msg), span_end(msg), pos);
+        if (len < 0) {
+            return false;
+        }
+        cursor->length = len;
+        break;
+    }
     case FLEXI_TYPE_STRING:
         if (!WIDTH_IS_VALID(width)) {
             // Not a valid width.
@@ -2179,12 +2189,7 @@ flexi_cursor_width(const flexi_cursor_s *cursor)
 flexi_ssize_t
 flexi_cursor_length(const flexi_cursor_s *cursor)
 {
-    if (cursor->type == FLEXI_TYPE_KEY) {
-        return safe_strlen(span_begin(&cursor->msg), span_end(&cursor->msg),
-            cursor->cursor);
-    } else {
-        return cursor->length;
-    }
+    return cursor->length;
 }
 
 /******************************************************************************/
@@ -2464,19 +2469,7 @@ flexi_cursor_string(const flexi_cursor_s *cursor, const char **str,
     }
 
     switch (cursor->type) {
-    case FLEXI_TYPE_KEY: {
-        flexi_ssize_t slen = safe_strlen(span_begin(&cursor->msg),
-            span_end(&cursor->msg), cursor->cursor);
-        if (slen < 0) {
-            *str = "";
-            *len = 0;
-            return FLEXI_ERR_BADREAD;
-        }
-
-        *str = cursor->cursor;
-        *len = slen;
-        return FLEXI_OK;
-    }
+    case FLEXI_TYPE_KEY:
     case FLEXI_TYPE_STRING: {
         *str = cursor->cursor;
         *len = cursor->length;
@@ -2684,19 +2677,7 @@ flexi_cursor_blob(const flexi_cursor_s *cursor, const uint8_t **blob,
     }
 
     switch (cursor->type) {
-    case FLEXI_TYPE_KEY: {
-        flexi_ssize_t slen = safe_strlen(span_begin(&cursor->msg),
-            span_end(&cursor->msg), cursor->cursor);
-        if (slen < 0) {
-            *blob = &g_empty_blob;
-            *len = 0;
-            return FLEXI_ERR_BADREAD;
-        }
-
-        *blob = cursor->cursor;
-        *len = slen;
-        return FLEXI_OK;
-    }
+    case FLEXI_TYPE_KEY:
     case FLEXI_TYPE_STRING:
     case FLEXI_TYPE_BLOB: {
         *blob = (const uint8_t *)cursor->cursor;
